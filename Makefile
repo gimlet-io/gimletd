@@ -6,17 +6,17 @@ DOCKER_RUN?=
 _with-docker:
 	$(eval DOCKER_RUN=docker run --rm -v $(shell pwd):/go/src/github.com/gimlet-io/gimletd -w /go/src/github.com/gimlet-io/gimletd golang:$(GO_VERSION))
 
-.PHONY: all format-backend test-backend build-backend dist
+.PHONY: all format test build dist
 
-all: test-backend build-backend
+all: test build
 
-format-backend:
+format:
 	@gofmt -w ${GOFILES}
 
-test-backend:
+test:
 	$(DOCKER_RUN) go test -race -timeout 30s $(shell go list ./... )
 
-build-backend:
+build:
 	$(DOCKER_RUN) CGO_ENABLED=0 go build -ldflags $(LDFLAGS) -o build/gimlet github.com/gimlet-io/gimletd/cmd
 
 dist:
