@@ -55,6 +55,8 @@ Now, let's look at the release artifact.
 
 Instead of releasing, CI generates a release artifact for each releasable version of the application. The artifact contains all metadata that can be later used for releasing and auditing.
 
+The release artifact idea is adopted from [Lunar's release manager](https://github.com/lunarway/release-manager) project.
+
 ```json
 {
   "id": "example-service-017d995e32e3d1998395d971b969bcf682d2085",
