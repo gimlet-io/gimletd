@@ -102,7 +102,7 @@ GimletD then stores the artifacts in the artifact store.
 
 ## GimletD stores the release artifacts in the artifact storage
 
-The artifact store will be backed by an RDBMS, and GimletD provides and API to browse them.
+The artifact store will be backed by an RDBMS, and GimletD provides and API to browse the artifacts.
 
 ## Releasing a release artifact
 
