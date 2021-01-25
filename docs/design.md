@@ -78,7 +78,7 @@ The release artifact idea is adopted from [Lunar's release manager](https://gith
       [...the complete set of Gimlet environments from the Gimlet environment files...]  
     },    
   ],
-  "artifacts": [
+  "items": [
     {
       "name": "ci",
       "jobUrl": "https://jenkins.example.com/job/dev/84/display/redirect",
