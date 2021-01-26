@@ -1,10 +1,14 @@
 package main
 
 import (
+	"encoding/base32"
 	"fmt"
 	"github.com/gimlet-io/gimletd/cmd/config"
+	"github.com/gimlet-io/gimletd/model"
 	"github.com/gimlet-io/gimletd/server"
+	"github.com/gimlet-io/gimletd/server/token"
 	"github.com/gimlet-io/gimletd/store"
+	"github.com/gorilla/securecookie"
 	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
 	"net/http"
@@ -30,8 +34,16 @@ func main() {
 
 	store := store.New(config.Database.Driver, config.Database.Config)
 
+	err = setupAdminUser(store)
+	if err != nil {
+		panic(err)
+	}
+
 	r := server.SetupRouter(config, store)
-	http.ListenAndServe(":8888", r)
+	err = http.ListenAndServe(":8888", r)
+	if err != nil {
+		panic(err)
+	}
 }
 
 // helper function configures the logging.
@@ -52,4 +64,36 @@ func initLogging(c *config.Config) {
 			PrettyPrint: c.Logging.Pretty,
 		})
 	}
+}
+
+// Creates an admin user and prints her access token, in case there are no users in the database
+func setupAdminUser(store *store.Store) error {
+	users, err := store.Users()
+	if err != nil {
+		return fmt.Errorf("couldn't list users to create admin user %s", err)
+	}
+
+	if len(users) == 0 {
+		user := &model.User{
+			Login: "admin",
+			Secret: base32.StdEncoding.EncodeToString(
+				securecookie.GenerateRandomKey(32),
+			),
+		}
+		err = store.CreateUser(user)
+		if err != nil {
+			return fmt.Errorf("couldn't create user admin user %s", err)
+		}
+
+		token := token.New(token.UserToken, user.Login)
+		tokenStr, err := token.Sign(user.Secret)
+		if err != nil {
+			return fmt.Errorf("couldn't create admin token %s", err)
+		}
+		logrus.Infof("Admin token created: %s", tokenStr)
+	} else {
+		logrus.Info("Admin token is already created")
+	}
+
+	return nil
 }

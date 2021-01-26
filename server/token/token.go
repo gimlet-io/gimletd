@@ -27,6 +27,7 @@ type SecretFunc func(*Token) (string, error)
 
 const (
 	SessToken = "sess"
+	UserToken = "user"
 	CsrfToken = "csrf"
 )
 
