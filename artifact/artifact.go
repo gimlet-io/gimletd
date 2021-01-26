@@ -22,6 +22,8 @@ type Version struct {
 type Artifact struct {
 	ID string `json:"id,omitempty"`
 
+	Created int64 `json:"created,omitempty"`
+
 	// The releasable version
 	Version Version `json:"version,omitempty"`
 

@@ -35,9 +35,17 @@ func SetupRouter(
 
 	r.Group(func(r chi.Router) {
 		r.Use(session.SetUser())
-		r.Use(session.SetCSRF())
 		r.Use(session.MustUser())
 		r.Post("/api/artifact", saveArtifact)
+	})
+
+	r.Group(func(r chi.Router) {
+		r.Use(session.SetUser())
+		r.Use(session.MustAdmin())
+		r.Get("/api/user/{login}", getUser)
+		r.Post("/api/user", saveUser)
+		r.Delete("/api/user/{login}", deleteUser)
+		r.Get("/api/users", getUsers)
 	})
 
 	return r

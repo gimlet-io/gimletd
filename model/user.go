@@ -4,12 +4,18 @@ package model
 type User struct {
 	// ID for this user
 	// required: true
-	ID int64 `json:"-" meddler:"id,pk"`
+	ID int64 `json:"-"  meddler:"id,pk"`
 
 	// Login is the username for this user
 	// required: true
 	Login string `json:"login"  meddler:"login"`
 
-	// Secret is the PEM formatted RSA private key used to sign JWT and CSRF tokens
+	// Token is the user's api JWT token - not persisted
+	Token string `json:"token"  meddler:"-"'`
+
+	// Secret is the key used to sign JWT and CSRF tokens
 	Secret string `json:"-" meddler:"secret"`
+
+	// If the user is admin
+	Admin bool `json:"admin"  meddler:"admin"`
 }

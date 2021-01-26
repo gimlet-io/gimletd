@@ -30,4 +30,19 @@ func TestUserCRUD(t *testing.T) {
 	users, err := s.Users()
 	assert.Nil(t, err)
 	assert.Equal(t, len(users), 1)
+
+	err = s.DeleteUser("aLogin")
+	assert.Nil(t, err)
+
+	users, err = s.Users()
+	assert.Nil(t, err)
+	assert.Equal(t, len(users), 0)
+}
+
+func TestArtifactCRUD(t *testing.T) {
+	s := NewTest()
+	defer func() {
+		s.Close()
+	}()
+
 }

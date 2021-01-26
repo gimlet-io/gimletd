@@ -52,7 +52,7 @@ func SetUser() func(next http.Handler) http.Handler {
 					// if csrf token validation fails, exit immediately
 					// with a not authorized error.
 					if err != nil {
-						http.Error(w, http.StatusText(401), 401)
+						http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 						return
 					}
 				}
@@ -90,11 +90,31 @@ func MustUser() func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
-			_, userSet := ctx.Value("user").(*model.User)
+			user, userSet := ctx.Value("user").(*model.User)
 			if !userSet {
-				http.Error(w, http.StatusText(401), 401)
+				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+			} else if user.Admin {
+				http.Error(w, http.StatusText(http.StatusForbidden) + " admin users should be solely used for user management", http.StatusForbidden)
 			} else {
 				next.ServeHTTP(w, r)
+			}
+		}
+		return http.HandlerFunc(fn)
+	}
+}
+
+// MustAdmin makes sure there is an authenticated user set and she is admin
+func MustAdmin() func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		fn := func(w http.ResponseWriter, r *http.Request) {
+			ctx := r.Context()
+			user, userSet := ctx.Value("user").(*model.User)
+			if !userSet {
+				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+			} else if user.Admin {
+				next.ServeHTTP(w, r)
+			} else {
+				http.Error(w, http.StatusText(http.StatusForbidden) + " admin user is required", http.StatusForbidden)
 			}
 		}
 		return http.HandlerFunc(fn)

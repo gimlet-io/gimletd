@@ -17,6 +17,7 @@ package sql
 const Dummy = "dummy"
 const SelectUserByLogin = "select-user-by-login"
 const SelectAllUser = "select-all-user"
+const DeleteUser = "deleteUser"
 
 var queries = map[string]map[string]string{
 	"sqlite3": {
@@ -24,15 +25,17 @@ var queries = map[string]map[string]string{
 SELECT 1;
 `,
 		SelectUserByLogin: `
-SELECT id, login, secret
+SELECT id, login, secret, admin
 FROM users
 WHERE login = ?;
 `,
 		SelectAllUser: `
-SELECT id, login, secret
+SELECT id, login, secret, admin
 FROM users;
+`, 		DeleteUser: `
+DELETE FROM users where login = ?;
 `,
 	},
 	"postgres": {},
-	"mysql": {},
+	"mysql":    {},
 }

@@ -15,6 +15,7 @@
 package ddl
 
 const createTableUsers = "create-table-users"
+const createTableArtifacts = "create-table-artifacts"
 
 type migration struct {
 	name string
@@ -30,11 +31,27 @@ CREATE TABLE IF NOT EXISTS users (
 id           INTEGER PRIMARY KEY AUTOINCREMENT,
 login         TEXT,
 secret        TEXT,
+admin         BOOLEAN,
 UNIQUE(login)
+);
+`,
+		},
+		{
+			name: createTableArtifacts,
+			stmt: `
+CREATE TABLE IF NOT EXISTS artifacts (
+id            TEXT,
+repository    TEXT,
+branch        TEXT,
+pr            BOOLEAN,
+source_branch TEXT
+created       INT,
+blob          TEXT,
+UNIQUE(id)
 );
 `,
 		},
 	},
 	"postgres": {},
-	"mysql": {},
+	"mysql":    {},
 }
