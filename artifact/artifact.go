@@ -5,6 +5,7 @@ import (
 )
 
 type Version struct {
+	RepositoryName string `json:"repositoryName,omitempty"`
 	SHA            string `json:"sha,omitempty"`
 	Branch         string `json:"branch,omitempty"`
 	PR             bool   `json:"pr,omitempty"`
@@ -14,7 +15,6 @@ type Version struct {
 	CommitterName  string `json:"committerName,omitempty"`
 	CommitterEmail string `json:"committerEmail,omitempty"`
 	Message        string `json:"message,omitempty"`
-	RepositoryName string `json:"repositoryName,omitempty"`
 	URL            string `json:"url,omitempty"`
 }
 
