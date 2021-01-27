@@ -44,8 +44,8 @@ id            TEXT,
 repository    TEXT,
 branch        TEXT,
 pr            BOOLEAN,
-source_branch TEXT
-created       INT,
+source_branch TEXT,
+created       INTEGER,
 blob          TEXT,
 UNIQUE(id)
 );

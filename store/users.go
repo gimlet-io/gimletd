@@ -33,8 +33,3 @@ func (db *Store) DeleteUser(login string) error {
 	_, err := db.Exec(stmt, login)
 	return err
 }
-
-// CreateArtifact stores a new artifact in the database
-func (db *Store) CreateArtifact(artifact *model.Artifact) error {
-	return meddler.Insert(db, "artifacts", artifact)
-}

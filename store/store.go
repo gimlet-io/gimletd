@@ -90,7 +90,7 @@ func openTest() *sql.DB {
 func NewTest() *Store {
 	var (
 		driver = "sqlite3"
-		config = "file::memory:?cache=shared"
+		config = "file::memory:"
 	)
 	if os.Getenv("DATABASE_DRIVER") != "" {
 		driver = os.Getenv("DATABASE_DRIVER")

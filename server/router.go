@@ -37,6 +37,7 @@ func SetupRouter(
 		r.Use(session.SetUser())
 		r.Use(session.MustUser())
 		r.Post("/api/artifact", saveArtifact)
+		r.Get("/api/artifacts", getArtifacts)
 	})
 
 	r.Group(func(r chi.Router) {

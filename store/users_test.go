@@ -38,11 +38,3 @@ func TestUserCRUD(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, len(users), 0)
 }
-
-func TestArtifactCRUD(t *testing.T) {
-	s := NewTest()
-	defer func() {
-		s.Close()
-	}()
-
-}
