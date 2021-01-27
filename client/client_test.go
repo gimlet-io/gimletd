@@ -1,8 +1,16 @@
 package client
 
 import (
-	"fmt"
+	"encoding/base32"
 	"github.com/gimlet-io/gimletd/artifact"
+	"github.com/gimlet-io/gimletd/cmd/config"
+	"github.com/gimlet-io/gimletd/model"
+	"github.com/gimlet-io/gimletd/server"
+	"github.com/gimlet-io/gimletd/server/token"
+	"github.com/gimlet-io/gimletd/store"
+	"github.com/gorilla/securecookie"
+	"github.com/stretchr/testify/assert"
+	"net/http/httptest"
 	"testing"
 )
 
@@ -10,63 +18,47 @@ import (
 	"golang.org/x/oauth2"
 )
 
-const (
-	token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"
-	host  = "http://gimletd.company.com"
-)
-
 func Test_artifact(t *testing.T) {
+	store := store.NewTest()
+
+	router := server.SetupRouter(&config.Config{}, store)
+	server := httptest.NewServer(router)
+	defer server.Close()
+
+	user := &model.User{
+		Login: "admin",
+		Secret: base32.StdEncoding.EncodeToString(
+			securecookie.GenerateRandomKey(32),
+		),
+	}
+	err := store.CreateUser(user)
+	assert.Nil(t, err)
+
+	tokenInstance := token.New(token.UserToken, user.Login)
+	tokenStr, err := tokenInstance.Sign(user.Secret)
+	assert.Nil(t, err)
+
 	config := new(oauth2.Config)
 	auther := config.Client(
 		oauth2.NoContext,
 		&oauth2.Token{
-			AccessToken: token,
+			AccessToken: tokenStr,
 		},
 	)
 
-	client := NewClient(host, auther)
+	client := NewClient(server.URL, auther)
 
-	artifact, err := client.ArtifactPost(&artifact.Artifact{
-
+	savedArtifact, err := client.ArtifactPost(&artifact.Artifact{
+		ID: "id",
+		Version: artifact.Version{
+			SHA: "sha",
+			RepositoryName: "my-app",
+		},
 	})
-	fmt.Println(artifact, err)
-}
+	assert.Nil(t, err)
+	assert.Equal(t, "id", savedArtifact.ID)
 
-//func Test_artifact(t *testing.T) {
-//	fixtureHandler := func(w http.ResponseWriter, r *http.Request) {
-//		fmt.Fprint(w, `{
-//			"pending": null,
-//			"running": [
-//					{
-//							"id": "4696",
-//							"data": "",
-//							"labels": {
-//									"platform": "linux/amd64",
-//									"repo": "laszlocph/woodpecker"
-//							},
-//							"Dependencies": [],
-//							"DepStatus": {},
-//							"RunOn": null
-//					}
-//			],
-//			"stats": {
-//					"worker_count": 3,
-//					"pending_count": 0,
-//					"waiting_on_deps_count": 0,
-//					"running_count": 1,
-//					"completed_count": 0
-//			},
-//			"Paused": false
-//	}`)
-//	}
-//
-//	ts := httptest.NewServer(http.HandlerFunc(fixtureHandler))
-//	defer ts.Close()
-//
-//	client := NewClient(ts.URL, http.DefaultClient)
-//
-//	info, err := client.QueueInfo()
-//	if info.Stats.Workers != 3 {
-//		t.Errorf("Unexpected worker count: %v, %v", info, err)
-//	}
-//}
+	artifacts, err := client.ArtifactsGet()
+	assert.Nil(t, err)
+	assert.Equal(t, 1, len(artifacts))
+}

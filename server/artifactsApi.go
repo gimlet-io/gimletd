@@ -53,7 +53,7 @@ func getArtifacts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var artifacts []*artifact.Artifact
+	artifacts := []*artifact.Artifact{}
 	for _, a := range artifactModels {
 		artifact, err := model.ToArtifact(a)
 		if err != nil {

@@ -30,6 +30,7 @@ import (
 
 const (
 	pathArtifact = "%s/api/artifact"
+	pathArtifacts = "%s/api/artifacts"
 )
 
 type client struct {
@@ -65,6 +66,39 @@ func (c *client) ArtifactPost(in *artifact.Artifact) (*artifact.Artifact, error)
 	return out, err
 }
 
+// ArtifactsGet creates a new user account.
+func (c *client) ArtifactsGet() ([]*artifact.Artifact, error) {
+	var out []*artifact.Artifact
+	uri := fmt.Sprintf(pathArtifacts, c.addr)
+
+	body, err := c.open(uri, "GET", nil)
+	if err != nil {
+		return nil, err
+	}
+	defer body.Close()
+
+	bodyBytes, err := ioutil.ReadAll(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyString := string(bodyBytes)
+
+	if bodyString == "[]" || bodyString == "{}" { // json deserializer breaks on empty arrays / objects
+		return nil, nil
+	}
+
+	err = json.Unmarshal(bodyBytes, &out)
+	if err != nil {
+		return nil, err
+	}
+
+	if out == nil {
+		return []*artifact.Artifact{}, nil
+	}
+
+	return out, err
+}
+
 func (c *client) get(rawURL string, out interface{}) error {
 	return c.do(rawURL, "GET", nil, out)
 }
@@ -91,10 +125,17 @@ func (c *client) do(rawURL, method string, in, out interface{}) error {
 		return err
 	}
 	defer body.Close()
-	if out != nil {
-		return json.NewDecoder(body).Decode(out)
+
+	bodyBytes, err := ioutil.ReadAll(body)
+	if err != nil {
+		return err
 	}
-	return nil
+
+	if out == nil {
+		return nil
+	}
+
+	return json.Unmarshal(bodyBytes, &out)
 }
 
 func (c *client) open(rawURL, method string, in interface{}) (io.ReadCloser, error) {

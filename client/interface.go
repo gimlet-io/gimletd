@@ -30,4 +30,7 @@ type Client interface {
 
 	// ArtifactPost creates a new artifact.
 	ArtifactPost(artifact *artifact.Artifact) (*artifact.Artifact, error)
+
+	// ArtifactsGet gets all artifacts.
+	ArtifactsGet() ([]*artifact.Artifact, error)
 }
