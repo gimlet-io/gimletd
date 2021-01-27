@@ -79,6 +79,7 @@ func setupAdminUser(store *store.Store) error {
 			Secret: base32.StdEncoding.EncodeToString(
 				securecookie.GenerateRandomKey(32),
 			),
+			Admin: true,
 		}
 		err = store.CreateUser(user)
 		if err != nil {
