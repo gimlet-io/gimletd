@@ -31,10 +31,43 @@ func (db *Store) CreateArtifact(artifactModel *model.Artifact) (*model.Artifact,
 	return artifactModel, meddler.Insert(db, "artifacts", artifactModel)
 }
 
-// Users returns all users in the database
-func (db *Store) Artifacts() ([]*model.Artifact, error) {
-	stmt := sql.Stmt(db.driver, sql.SelectArtifactsByDate)
+// Artifacts returns all artifacts in the database within the given constraints
+func (db *Store) Artifacts(limit, offset int, since,until *time.Time) ([]*model.Artifact, error) {
+	if (limit != 0 || offset != 0) &&
+		since != nil || until != nil {
+		return []*model.Artifact{}, fmt.Errorf("use either limit - offset or since - until")
+	}
+
+	if since != nil || until != nil {
+		return db.artifactsSinceUntil(since, until)
+	}
+
+	if limit == 0 || offset == 0 {
+		limit = 10
+	}
+
+	return db.artifactsLimitOffset(limit, offset)
+}
+
+func (db *Store) artifactsLimitOffset(limit, offset int) ([]*model.Artifact, error) {
+	stmt := sql.Stmt(db.driver, sql.SelectArtifactsLimitOffset)
 	var data []*model.Artifact
-	err := meddler.QueryAll(db, &data, stmt)
+	err := meddler.QueryAll(db, &data, stmt, limit, offset)
 	return data, err
 }
+
+func (db *Store) artifactsSinceUntil(since,until *time.Time) ([]*model.Artifact, error) {
+	if since == nil || until == nil {
+		return []*model.Artifact{}, fmt.Errorf("you must set both since and until")
+	}
+
+	sinceUnix := since.Unix()
+	untilUnix := until.Unix()
+
+	stmt := sql.Stmt(db.driver, sql.SelectArtifactsSinceUntil)
+	var data []*model.Artifact
+	err := meddler.QueryAll(db, &data, stmt, sinceUnix, untilUnix)
+	return data, err
+}
+
+

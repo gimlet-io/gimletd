@@ -7,6 +7,8 @@ import (
 	"github.com/gimlet-io/gimletd/store"
 	"github.com/sirupsen/logrus"
 	"net/http"
+	"strconv"
+	"time"
 )
 
 func saveArtifact(w http.ResponseWriter, r *http.Request) {
@@ -46,10 +48,48 @@ func getArtifacts(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	store := ctx.Value("store").(*store.Store)
 
-	artifactModels, err := store.Artifacts()
+	var limit, offset int
+	var since, until *time.Time
+
+	params := r.URL.Query()
+	if val, ok := params["limit"]; ok {
+		l, err := strconv.Atoi(val[0])
+		if err != nil {
+			http.Error(w, http.StatusText(http.StatusBadRequest) + " - " + err.Error(), http.StatusBadRequest)
+			return
+		}
+		limit = l
+	}
+	if val, ok := params["offset"]; ok {
+		o, err := strconv.Atoi(val[0])
+		if err != nil {
+			http.Error(w, http.StatusText(http.StatusBadRequest) + " - " + err.Error(), http.StatusBadRequest)
+			return
+		}
+		offset = o
+	}
+
+	if val, ok := params["since"]; ok {
+		t, err := time.Parse(time.RFC3339, val[0])
+		if err != nil {
+			http.Error(w, http.StatusText(http.StatusBadRequest) + " - " + err.Error(), http.StatusBadRequest)
+			return
+		}
+		since = &t
+	}
+	if val, ok := params["until"]; ok {
+		t, err := time.Parse(time.RFC3339, val[0])
+		if err != nil {
+			http.Error(w, http.StatusText(http.StatusBadRequest) + " - " + err.Error(), http.StatusBadRequest)
+			return
+		}
+		until = &t
+	}
+
+	artifactModels, err := store.Artifacts(limit, offset, since, until)
 	if err != nil {
 		logrus.Errorf("cannot get artifacts: %s", err)
-		http.Error(w, http.StatusText(500), 500)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
