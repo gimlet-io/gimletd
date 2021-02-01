@@ -44,7 +44,7 @@ func (db *Store) Artifacts(
 	args := []interface{}{}
 
 	if since != nil {
-		filters = addFilter(filters, "created > ?")
+		filters = addFilter(filters, "created >= ?")
 		args = append(args, since.Unix())
 	}
 	if until != nil {

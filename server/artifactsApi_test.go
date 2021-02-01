@@ -9,7 +9,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
+	"time"
 )
 
 func Test_saveArtifact(t *testing.T) {
@@ -114,6 +116,60 @@ func Test_getArtifactsApp(t *testing.T) {
 	err = json.Unmarshal([]byte(body), &response)
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(response))
+}
+
+func Test_getArtifactsSince(t *testing.T) {
+	store := store.NewTest()
+	setupArtifacts(store)
+
+	time.Sleep(1 * time.Second)
+
+	since := time.Now().UTC()
+
+	artifactStr := `
+{
+  "id": "id-since",
+  "version": {
+    "repositoryName": "my-app",
+    "sha": "ea9ab7cc31b2599bf4afcfd639da516ca27a4780",
+    "branch": "master",
+    "authorName": "Jane Doe",
+    "authorEmail": "jane@doe.org",
+    "committerName": "Jane Doe",
+    "committerEmail": "jane@doe.org",
+    "message": "Bugfix 123",
+    "url": "https://github.com/gimlet-io/gimlet-cli/commit/ea9ab7cc31b2599bf4afcfd639da516ca27a4780"
+  },
+  "items": [
+    {
+      "name": "CI",
+      "url": "https://jenkins.example.com/job/dev/84/display/redirect"
+    }
+  ]
+}
+`
+
+	var a artifact.Artifact
+	json.Unmarshal([]byte(artifactStr), &a)
+	artifactModel, err := model.ToArtifactModel(a)
+	if err != nil {
+		panic(err)
+	}
+	_, err = store.CreateArtifact(artifactModel)
+	if err != nil {
+		panic(err)
+	}
+
+	code, body, err := testEndpoint(getArtifacts, func(ctx context.Context) context.Context {
+		ctx = context.WithValue(ctx, "store", store)
+		return ctx
+	}, "/artifacts?since=" + url.QueryEscape(since.Format(time.RFC3339)))
+	assert.Equal(t, http.StatusOK, code)
+	var response []*artifact.Artifact
+	err = json.Unmarshal([]byte(body), &response)
+	assert.Nil(t, err)
+	assert.Equal(t, 1, len(response))
+	assert.Equal(t, "id-since", response[0].ID)
 }
 
 func setupArtifacts(store *store.Store) {
