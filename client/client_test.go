@@ -51,14 +51,21 @@ func Test_artifact(t *testing.T) {
 	savedArtifact, err := client.ArtifactPost(&artifact.Artifact{
 		ID: "id",
 		Version: artifact.Version{
-			SHA: "sha",
+			SHA:            "sha",
 			RepositoryName: "my-app",
 		},
 	})
 	assert.Nil(t, err)
 	assert.Equal(t, "id", savedArtifact.ID)
 
-	artifacts, err := client.ArtifactsGet()
+	artifacts, err := client.ArtifactsGet(
+		"", "",
+		false,
+		"",
+		"",
+		0, 0,
+		nil, nil,
+	)
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(artifacts))
 }

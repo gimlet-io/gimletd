@@ -18,6 +18,7 @@ package client
 import (
 	"github.com/gimlet-io/gimletd/artifact"
 	"net/http"
+	"time"
 )
 
 // Client is used to communicate with a Drone server.
@@ -31,6 +32,13 @@ type Client interface {
 	// ArtifactPost creates a new artifact.
 	ArtifactPost(artifact *artifact.Artifact) (*artifact.Artifact, error)
 
-	// ArtifactsGet gets all artifacts.
-	ArtifactsGet() ([]*artifact.Artifact, error)
+	// ArtifactsGet returns all artifacts in the database within the given constraints
+	ArtifactsGet(
+		app, branch string,
+		pr bool,
+		sourceBranch string,
+		sha string,
+		limit, offset int,
+		since, until *time.Time,
+	) ([]*artifact.Artifact, error)
 }

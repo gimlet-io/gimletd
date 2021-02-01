@@ -26,10 +26,11 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 )
 
 const (
-	pathArtifact = "%s/api/artifact"
+	pathArtifact  = "%s/api/artifact"
 	pathArtifacts = "%s/api/artifacts"
 )
 
@@ -67,11 +68,53 @@ func (c *client) ArtifactPost(in *artifact.Artifact) (*artifact.Artifact, error)
 }
 
 // ArtifactsGet creates a new user account.
-func (c *client) ArtifactsGet() ([]*artifact.Artifact, error) {
-	var out []*artifact.Artifact
+func (c *client) ArtifactsGet(
+	app, branch string,
+	pr bool,
+	sourceBranch string,
+	sha string,
+	limit, offset int,
+	since, until *time.Time,
+) ([]*artifact.Artifact, error) {
 	uri := fmt.Sprintf(pathArtifacts, c.addr)
 
-	body, err := c.open(uri, "GET", nil)
+	var params []string
+
+	if limit != 0 {
+		params = append(params, fmt.Sprintf("limit=%d", limit))
+	}
+	if offset != 0 {
+		params = append(params, fmt.Sprintf("offset=%d", offset))
+	}
+	if since != nil {
+		params = append(params, fmt.Sprintf("since=%s", url.QueryEscape(since.Format(time.RFC3339))))
+	}
+	if until != nil {
+		params = append(params, fmt.Sprintf("until=%s", url.QueryEscape(until.Format(time.RFC3339))))
+	}
+	if app != "" {
+		params = append(params, fmt.Sprintf("app=%s", app))
+	}
+	if branch != "" {
+		params = append(params, fmt.Sprintf("branch=%s", branch))
+	}
+	if pr {
+		params = append(params, fmt.Sprintf("pr=%t", pr))
+	}
+	if sourceBranch != "" {
+		params = append(params, fmt.Sprintf("sourceBranch=%s", sourceBranch))
+	}
+	if sha != "" {
+		params = append(params, fmt.Sprintf("sha=%s", sha))
+	}
+
+	var paramsStr string
+	if len(params) > 0 {
+		paramsStr = strings.Join(params, "&")
+		paramsStr = "?" + paramsStr
+	}
+
+	body, err := c.open(uri+paramsStr, "GET", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -83,10 +126,11 @@ func (c *client) ArtifactsGet() ([]*artifact.Artifact, error) {
 	}
 	bodyString := string(bodyBytes)
 
-	if bodyString == "[]" || bodyString == "{}" { // json deserializer breaks on empty arrays / objects
-		return nil, nil
+	if bodyString == "[]" { // json deserializer breaks on empty arrays / objects
+		return []*artifact.Artifact{}, nil
 	}
 
+	var out []*artifact.Artifact
 	err = json.Unmarshal(bodyBytes, &out)
 	if err != nil {
 		return nil, err
