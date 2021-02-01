@@ -18,10 +18,6 @@ const Dummy = "dummy"
 const SelectUserByLogin = "select-user-by-login"
 const SelectAllUser = "select-all-user"
 const DeleteUser = "deleteUser"
-const SelectArtifactsSinceUntil = "select-artifacts-since-until"
-const SelectArtifactsLimitOffset = "select-artifacts-limit-offset"
-
-const artifactFields = "id, repository, branch, pr, source_branch, created, blob"
 
 var queries = map[string]map[string]string{
 	"sqlite3": {
@@ -36,19 +32,8 @@ WHERE login = ?;
 		SelectAllUser: `
 SELECT id, login, secret, admin
 FROM users;
-`, 		DeleteUser: `
+`, DeleteUser: `
 DELETE FROM users where login = ?;
-`,		SelectArtifactsLimitOffset: `
-SELECT ` + artifactFields + `
-FROM artifacts
-ORDER BY created desc
-LIMIT ? OFFSET ?;
-`, SelectArtifactsSinceUntil: `
-SELECT ` + artifactFields + `
-FROM artifacts
-WHERE created > since
-  AND created < until
-ORDER BY created desc;
 `,
 	},
 	"postgres": {},

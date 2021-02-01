@@ -51,11 +51,16 @@ func getArtifacts(w http.ResponseWriter, r *http.Request) {
 	var limit, offset int
 	var since, until *time.Time
 
+	var app, branch string
+	var pr bool
+	var sourceBranch string
+	var sha string
+
 	params := r.URL.Query()
 	if val, ok := params["limit"]; ok {
 		l, err := strconv.Atoi(val[0])
 		if err != nil {
-			http.Error(w, http.StatusText(http.StatusBadRequest) + " - " + err.Error(), http.StatusBadRequest)
+			http.Error(w, http.StatusText(http.StatusBadRequest)+" - "+err.Error(), http.StatusBadRequest)
 			return
 		}
 		limit = l
@@ -63,7 +68,7 @@ func getArtifacts(w http.ResponseWriter, r *http.Request) {
 	if val, ok := params["offset"]; ok {
 		o, err := strconv.Atoi(val[0])
 		if err != nil {
-			http.Error(w, http.StatusText(http.StatusBadRequest) + " - " + err.Error(), http.StatusBadRequest)
+			http.Error(w, http.StatusText(http.StatusBadRequest)+" - "+err.Error(), http.StatusBadRequest)
 			return
 		}
 		offset = o
@@ -72,7 +77,7 @@ func getArtifacts(w http.ResponseWriter, r *http.Request) {
 	if val, ok := params["since"]; ok {
 		t, err := time.Parse(time.RFC3339, val[0])
 		if err != nil {
-			http.Error(w, http.StatusText(http.StatusBadRequest) + " - " + err.Error(), http.StatusBadRequest)
+			http.Error(w, http.StatusText(http.StatusBadRequest)+" - "+err.Error(), http.StatusBadRequest)
 			return
 		}
 		since = &t
@@ -80,13 +85,34 @@ func getArtifacts(w http.ResponseWriter, r *http.Request) {
 	if val, ok := params["until"]; ok {
 		t, err := time.Parse(time.RFC3339, val[0])
 		if err != nil {
-			http.Error(w, http.StatusText(http.StatusBadRequest) + " - " + err.Error(), http.StatusBadRequest)
+			http.Error(w, http.StatusText(http.StatusBadRequest)+" - "+err.Error(), http.StatusBadRequest)
 			return
 		}
 		until = &t
 	}
 
-	artifactModels, err := store.Artifacts(limit, offset, since, until)
+	if val, ok := params["app"]; ok {
+		app = val[0]
+	}
+	if val, ok := params["branch"]; ok {
+		branch = val[0]
+	}
+	if val, ok := params["sourceBranch"]; ok {
+		sourceBranch = val[0]
+	}
+	if val, ok := params["sha"]; ok {
+		sha = val[0]
+	}
+	if val, ok := params["pr"]; ok {
+		pr = val[0] == "true"
+	}
+
+	artifactModels, err := store.Artifacts(
+		app, branch,
+		pr,
+		sourceBranch,
+		sha,
+		limit, offset, since, until)
 	if err != nil {
 		logrus.Errorf("cannot get artifacts: %s", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)

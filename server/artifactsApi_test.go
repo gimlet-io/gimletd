@@ -85,6 +85,37 @@ func Test_getArtifactsLimitOffset(t *testing.T) {
 	assert.Equal(t, response[0].ID, "my-app-2")
 }
 
+func Test_getArtifactsBranch(t *testing.T) {
+	store := store.NewTest()
+	setupArtifacts(store)
+
+	_, body, err := testEndpoint(getArtifacts, func(ctx context.Context) context.Context {
+		ctx = context.WithValue(ctx, "store", store)
+		return ctx
+	}, "/path?branch=bugfix-123")
+	assert.Nil(t, err)
+	var response []*artifact.Artifact
+	err = json.Unmarshal([]byte(body), &response)
+	assert.Nil(t, err)
+	assert.Equal(t, 1, len(response))
+	assert.Equal(t, "bugfix-123", response[0].Version.Branch)
+}
+
+func Test_getArtifactsApp(t *testing.T) {
+	store := store.NewTest()
+	setupArtifacts(store)
+
+	_, body, err := testEndpoint(getArtifacts, func(ctx context.Context) context.Context {
+		ctx = context.WithValue(ctx, "store", store)
+		return ctx
+	}, "/path?app=my-app")
+	assert.Nil(t, err)
+	var response []*artifact.Artifact
+	err = json.Unmarshal([]byte(body), &response)
+	assert.Nil(t, err)
+	assert.Equal(t, 2, len(response))
+}
+
 func setupArtifacts(store *store.Store) {
 	artifactStr := `
 {
@@ -126,7 +157,7 @@ func setupArtifacts(store *store.Store) {
   "version": {
     "repositoryName": "my-app",
     "sha": "2",
-    "branch": "master",
+    "branch": "bugfix-123",
     "authorName": "Jane Doe",
     "authorEmail": "jane@doe.org",
     "committerName": "Jane Doe",

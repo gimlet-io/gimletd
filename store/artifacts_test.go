@@ -48,7 +48,7 @@ func TestArtifactCRUD(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotEqual(t, savedArtifact.Created, 0)
 
-	artifacts, err := s.Artifacts()
+	artifacts, err := s.Artifacts("","",false, "","", 0, 0, nil, nil)
 	assert.Nil(t, err)
 	assert.Equal(t, len(artifacts), 1)
 }

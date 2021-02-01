@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"github.com/gimlet-io/gimletd/artifact"
 	"github.com/gimlet-io/gimletd/model"
-	"github.com/gimlet-io/gimletd/store/sql"
 	"github.com/russross/meddler"
+	"strings"
 	"time"
 )
 
@@ -32,42 +32,68 @@ func (db *Store) CreateArtifact(artifactModel *model.Artifact) (*model.Artifact,
 }
 
 // Artifacts returns all artifacts in the database within the given constraints
-func (db *Store) Artifacts(limit, offset int, since,until *time.Time) ([]*model.Artifact, error) {
-	if (limit != 0 || offset != 0) &&
-		since != nil || until != nil {
-		return []*model.Artifact{}, fmt.Errorf("use either limit - offset or since - until")
+func (db *Store) Artifacts(
+	app, branch string,
+	pr bool,
+	sourceBranch string,
+	sha string,
+	limit, offset int,
+	since,until *time.Time) ([]*model.Artifact, error) {
+
+	filters := []string{}
+	args := []interface{}{}
+
+	if since != nil {
+		filters = addFilter(filters, "created > ?")
+		args = append(args, since.Unix())
+	}
+	if until != nil {
+		filters = addFilter(filters, "created < ?")
+		args = append(args, until.Unix())
 	}
 
-	if since != nil || until != nil {
-		return db.artifactsSinceUntil(since, until)
+	if app != "" {
+		filters = addFilter(filters, "repository = ?")
+		args = append(args, app)
+	}
+	if branch != "" {
+		filters = addFilter(filters, "branch = ?")
+		args = append(args, branch)
+	}
+	if sourceBranch != "" {
+		filters = addFilter(filters, "branch = ?")
+		args = append(args, sourceBranch)
+	}
+	if sha != "" {
+		filters = addFilter(filters, fmt.Sprintf("branch = %s", sha))
+		args = append(args, sha)
+	}
+
+	if pr {
+		filters = addFilter(filters, fmt.Sprintf(" pr = %t", pr))
 	}
 
 	if limit == 0 || offset == 0 {
 		limit = 10
 	}
+	limitAndOffset := fmt.Sprintf("LIMIT %d OFFSET %d", limit, offset)
 
-	return db.artifactsLimitOffset(limit, offset)
-}
+	query := fmt.Sprintf(`
+SELECT id, repository, branch, pr, source_branch, created, blob
+FROM artifacts
+%s
+ORDER BY created desc
+%s;`, strings.Join(filters, " "), limitAndOffset)
 
-func (db *Store) artifactsLimitOffset(limit, offset int) ([]*model.Artifact, error) {
-	stmt := sql.Stmt(db.driver, sql.SelectArtifactsLimitOffset)
 	var data []*model.Artifact
-	err := meddler.QueryAll(db, &data, stmt, limit, offset)
+	err := meddler.QueryAll(db, &data, query, args...)
 	return data, err
 }
 
-func (db *Store) artifactsSinceUntil(since,until *time.Time) ([]*model.Artifact, error) {
-	if since == nil || until == nil {
-		return []*model.Artifact{}, fmt.Errorf("you must set both since and until")
+func addFilter(filters []string, filter string) []string {
+	if len(filters) == 0 {
+		return append(filters, "WHERE " + filter)
 	}
 
-	sinceUnix := since.Unix()
-	untilUnix := until.Unix()
-
-	stmt := sql.Stmt(db.driver, sql.SelectArtifactsSinceUntil)
-	var data []*model.Artifact
-	err := meddler.QueryAll(db, &data, stmt, sinceUnix, untilUnix)
-	return data, err
+	return append(filters, "AND " + filter)
 }
-
-
