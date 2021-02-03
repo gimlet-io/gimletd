@@ -38,6 +38,9 @@ containerPort: 8888
 image:
   repository: ghcr.io/gimlet-io/gimletd
   tag: latest
+probe:
+  enabled:true
+  path: /
 volumes:
   - name: data
     path: /var/lib/gimletd
