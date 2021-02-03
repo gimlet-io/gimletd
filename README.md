@@ -39,7 +39,7 @@ image:
   repository: ghcr.io/gimlet-io/gimletd
   tag: latest
 probe:
-  enabled:true
+  enabled: true
   path: /
 volumes:
   - name: data
