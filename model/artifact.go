@@ -5,6 +5,10 @@ import (
 	"github.com/gimlet-io/gimletd/artifact"
 )
 
+const StatusNew = "new"
+const StatusProcessed = "processed"
+const StatusError = "error"
+
 type Artifact struct {
 	ID           string `json:"id,omitempty"  meddler:"id"`
 	Repository   string `json:"repository,omitempty"  meddler:"repository"`
@@ -13,6 +17,7 @@ type Artifact struct {
 	SourceBranch string `json:"sourceBranch,omitempty"  meddler:"source_branch"`
 	Created      int64  `json:"created,omitempty"  meddler:"created"`
 	Blob         string `json:"blob,omitempty"  meddler:"blob"`
+	Status       string `json:"status"  meddler:"status"`
 }
 
 func ToArtifactModel(artifact artifact.Artifact) (*Artifact, error) {

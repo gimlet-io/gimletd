@@ -8,6 +8,7 @@ import (
 	"github.com/gimlet-io/gimletd/server"
 	"github.com/gimlet-io/gimletd/server/token"
 	"github.com/gimlet-io/gimletd/store"
+	"github.com/gimlet-io/gimletd/worker"
 	"github.com/gorilla/securecookie"
 	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
@@ -38,6 +39,9 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	gitopsWorker := worker.NewGitopsWorker(store, config)
+	go gitopsWorker.Run()
 
 	r := server.SetupRouter(config, store)
 	err = http.ListenAndServe(":8888", r)

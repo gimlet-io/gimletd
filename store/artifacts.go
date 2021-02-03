@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/gimlet-io/gimletd/artifact"
 	"github.com/gimlet-io/gimletd/model"
+	"github.com/gimlet-io/gimletd/store/sql"
 	"github.com/russross/meddler"
 	"strings"
 	"time"
@@ -15,6 +16,8 @@ func (db *Store) CreateArtifact(artifactModel *model.Artifact) (*model.Artifact,
 	// setting created on model and in artifact blob
 	now := time.Now().Unix()
 	artifactModel.Created = now
+	artifactModel.Status = model.StatusNew
+
 	var a artifact.Artifact
 	err := json.Unmarshal([]byte(artifactModel.Blob), &a)
 	if err != nil {
@@ -79,7 +82,7 @@ func (db *Store) Artifacts(
 	limitAndOffset := fmt.Sprintf("LIMIT %d OFFSET %d", limit, offset)
 
 	query := fmt.Sprintf(`
-SELECT id, repository, branch, pr, source_branch, created, blob
+SELECT id, repository, branch, pr, source_branch, created, blob, status
 FROM artifacts
 %s
 ORDER BY created desc
@@ -88,6 +91,13 @@ ORDER BY created desc
 	var data []*model.Artifact
 	err := meddler.QueryAll(db, &data, query, args...)
 	return data, err
+}
+
+// UnprocessedArtifacts selects an event timeline
+func (db *Store) UnprocessedArtifacts() (events []*model.Artifact, err error) {
+	stmt := sql.Stmt(db.driver, sql.SelectUnprocessedArtifacts)
+	err = meddler.QueryAll(db, &events, stmt)
+	return events, err
 }
 
 func addFilter(filters []string, filter string) []string {
