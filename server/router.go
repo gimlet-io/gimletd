@@ -7,6 +7,7 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/cors"
+	"net/http"
 	"time"
 )
 
@@ -47,6 +48,10 @@ func SetupRouter(
 		r.Post("/api/user", saveUser)
 		r.Delete("/api/user/{login}", deleteUser)
 		r.Get("/api/users", getUsers)
+	})
+
+	r.Get("/", func (w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
 	})
 
 	return r

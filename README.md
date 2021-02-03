@@ -12,6 +12,48 @@ Read the design docs [here](docs/design.md).
 docker run -it ghcr.io/gimlet-io/gimletd:latest
 ```
 
+## Running in Kubernetes
+
+```bash
+cat << EOF > values.yaml
+image:
+    repository: ghcr.io/gimlet-io/gimletd
+    tag: latest
+    
+volumes:
+  - name: data
+    path: /var/lib/gimletd
+    size: 10Gi
+    storageClass: default
+EOF
+
+helm template gimletd onechart/onechart -f values.yaml
+```
+
+with ingress and TLS:
+
+```bash
+cat << EOF > values.yaml
+containerPort: 8888
+image:
+  repository: ghcr.io/gimlet-io/gimletd
+  tag: latest
+volumes:
+  - name: data
+    path: /var/lib/gimletd
+    size: 10Gi
+    storageClass: default
+ingress:
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt
+  host: gimletd.my-company.com
+  tlsEnabled: true
+EOF
+
+helm template gimletd onechart/onechart -f values.yaml
+```
+
 ## First start
 
 When you first start GimletD, it inits a file based SQLite3 database, and prints the admin token to the logs.
