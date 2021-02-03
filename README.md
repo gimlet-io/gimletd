@@ -6,6 +6,12 @@ By assuming all release related work, it adds central control to the release wor
 
 Read the design docs [here](docs/design.md).
 
+## Docker image
+
+```bash
+docker run -it ghcr.io/gimlet-io/gimletd:latest
+```
+
 ## First start
 
 When you first start GimletD, it inits a file based SQLite3 database, and prints the admin token to the logs.
