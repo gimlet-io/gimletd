@@ -6,6 +6,7 @@ import (
 	"github.com/gimlet-io/gimletd/artifact"
 	"github.com/gimlet-io/gimletd/model"
 	"github.com/gimlet-io/gimletd/store/sql"
+	"github.com/google/uuid"
 	"github.com/russross/meddler"
 	"strings"
 	"time"
@@ -13,7 +14,7 @@ import (
 
 // CreateArtifact stores a new artifact in the database
 func (db *Store) CreateArtifact(artifactModel *model.Artifact) (*model.Artifact, error) {
-	// setting created on model and in artifact blob
+	artifactModel.ID = fmt.Sprintf("%s-%s", artifactModel.Repository, uuid.New().String())
 	now := time.Now().Unix()
 	artifactModel.Created = now
 	artifactModel.Status = model.StatusNew
@@ -41,7 +42,7 @@ func (db *Store) Artifacts(
 	sourceBranch string,
 	sha string,
 	limit, offset int,
-	since,until *time.Time) ([]*model.Artifact, error) {
+	since, until *time.Time) ([]*model.Artifact, error) {
 
 	filters := []string{}
 	args := []interface{}{}
@@ -82,7 +83,7 @@ func (db *Store) Artifacts(
 	limitAndOffset := fmt.Sprintf("LIMIT %d OFFSET %d", limit, offset)
 
 	query := fmt.Sprintf(`
-SELECT id, repository, branch, pr, source_branch, created, blob, status, sha
+SELECT id, repository, branch, pr, source_branch, created, blob, status, status_desc, sha
 FROM artifacts
 %s
 ORDER BY created desc
@@ -100,10 +101,17 @@ func (db *Store) UnprocessedArtifacts() (events []*model.Artifact, err error) {
 	return events, err
 }
 
+// UpdateArtifactStatus updates an artifact status in the database
+func (db *Store) UpdateArtifactStatus(id string, status string, desc string) error {
+	stmt := sql.Stmt(db.driver, sql.UpdateArtifactStatus)
+	_, err := db.Exec(stmt, status, desc, id)
+	return err
+}
+
 func addFilter(filters []string, filter string) []string {
 	if len(filters) == 0 {
-		return append(filters, "WHERE " + filter)
+		return append(filters, "WHERE "+filter)
 	}
 
-	return append(filters, "AND " + filter)
+	return append(filters, "AND "+filter)
 }

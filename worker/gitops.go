@@ -1,6 +1,7 @@
 package worker
 
 import (
+	"fmt"
 	"github.com/gimlet-io/gimletd/cmd/config"
 	"github.com/gimlet-io/gimletd/model"
 	"github.com/gimlet-io/gimletd/store"
@@ -32,13 +33,39 @@ func (w *GitopsWorker) Run() {
 			continue
 		}
 
-		w.process(artifacts, w.store)
+		for _, artifact := range artifacts {
+			err = process(artifact)
+
+			if err != nil {
+				logrus.Errorf("error in processing artifact: %s", err.Error())
+				artifact.Status = model.StatusError
+				artifact.StatusDesc = err.Error()
+			} else {
+				artifact.Status = model.StatusProcessed
+			}
+
+			err = w.store.UpdateArtifactStatus(
+				artifact.ID,
+				artifact.Status,
+				artifact.StatusDesc,
+			)
+			if err != nil {
+				logrus.Warnf("could not update event status %v", err)
+			}
+		}
+
 		time.Sleep(100 * time.Millisecond)
 	}
 }
 
-func (w *GitopsWorker) process(artifacts []*model.Artifact, dao *store.Store) {
-	for _, artifact := range artifacts {
-		logrus.Info(artifact.Created)
+func process(artifactModel *model.Artifact) error {
+	artifact, err := model.ToArtifact(artifactModel)
+	if err != nil {
+		return fmt.Errorf("cannot parse artifact %s", err.Error())
 	}
+
+	for _, env := range artifact.Environments {
+		logrus.Info(env.Deploy)
+	}
+	return nil
 }

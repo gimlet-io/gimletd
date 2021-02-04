@@ -17,6 +17,7 @@ package ddl
 const createTableUsers = "create-table-users"
 const createTableArtifacts = "create-table-artifacts"
 const addColumnArtifactsStatus = "add-column-artifacts-status"
+const addColumnArtifactsStatusDesc = "add-column-artifacts-status-desc"
 const addColumnArtifactsSHA = "add-column-artifacts-sha"
 
 type migration struct {
@@ -56,6 +57,11 @@ UNIQUE(id)
 			name: addColumnArtifactsStatus,
 			stmt: `
 ALTER TABLE artifacts ADD COLUMN status TEXT DEFAULT 'new';
+`,
+		}, {
+			name: addColumnArtifactsStatusDesc,
+			stmt: `
+ALTER TABLE artifacts ADD COLUMN status_desc TEXT DEFAULT '';
 `,
 		},
 		{

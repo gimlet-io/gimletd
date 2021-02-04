@@ -17,7 +17,6 @@ func TestArtifactCRUD(t *testing.T) {
 
 	artifactStr := `
 {
-  "id": "my-app-b2ab0f7a-ca0e-45cf-83a0-cadd94dddeac",
   "version": {
     "repositoryName": "my-app",
     "sha": "ea9ab7cc31b2599bf4afcfd639da516ca27a4780",

@@ -18,6 +18,7 @@ type Artifact struct {
 	Created      int64  `json:"created,omitempty"  meddler:"created"`
 	Blob         string `json:"blob,omitempty"  meddler:"blob"`
 	Status       string `json:"status"  meddler:"status"`
+	StatusDesc   string `json:"statusDesc"  meddler:"status_desc"`
 	SHA          string `json:"sha"  meddler:"sha"`
 }
 

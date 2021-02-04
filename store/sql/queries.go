@@ -19,6 +19,7 @@ const SelectUserByLogin = "select-user-by-login"
 const SelectAllUser = "select-all-user"
 const DeleteUser = "deleteUser"
 const SelectUnprocessedArtifacts = "select-unprocessed-artifacts"
+const UpdateArtifactStatus = "update-artifact-status"
 
 var queries = map[string]map[string]string{
 	"sqlite3": {
@@ -36,9 +37,11 @@ FROM users;
 `, DeleteUser: `
 DELETE FROM users where login = ?;
 `, SelectUnprocessedArtifacts: `
-SELECT id, repository, branch, pr, source_branch, created, blob, status, sha
+SELECT id, repository, branch, pr, source_branch, created, blob, status, status_desc, sha
 FROM artifacts
 WHERE status='new' order by created ASC limit 10;
+`, UpdateArtifactStatus:`
+UPDATE artifacts SET status = ?, status_desc = ? WHERE id = ?;
 `,
 	},
 	"postgres": {},
