@@ -68,7 +68,7 @@ func (db *Store) Artifacts(
 		args = append(args, sourceBranch)
 	}
 	if sha != "" {
-		filters = addFilter(filters, fmt.Sprintf("branch = %s", sha))
+		filters = addFilter(filters, fmt.Sprintf("sha = %s", sha))
 		args = append(args, sha)
 	}
 
@@ -82,7 +82,7 @@ func (db *Store) Artifacts(
 	limitAndOffset := fmt.Sprintf("LIMIT %d OFFSET %d", limit, offset)
 
 	query := fmt.Sprintf(`
-SELECT id, repository, branch, pr, source_branch, created, blob, status
+SELECT id, repository, branch, pr, source_branch, created, blob, status, sha
 FROM artifacts
 %s
 ORDER BY created desc

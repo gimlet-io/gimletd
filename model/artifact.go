@@ -18,6 +18,7 @@ type Artifact struct {
 	Created      int64  `json:"created,omitempty"  meddler:"created"`
 	Blob         string `json:"blob,omitempty"  meddler:"blob"`
 	Status       string `json:"status"  meddler:"status"`
+	SHA          string `json:"sha"  meddler:"sha"`
 }
 
 func ToArtifactModel(artifact artifact.Artifact) (*Artifact, error) {
@@ -33,6 +34,7 @@ func ToArtifactModel(artifact artifact.Artifact) (*Artifact, error) {
 		PR:           artifact.Version.PR,
 		SourceBranch: artifact.Version.SourceBranch,
 		Blob:         string(artifactStr),
+		SHA:          artifact.Version.SHA,
 	}, nil
 }
 

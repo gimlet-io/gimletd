@@ -36,7 +36,7 @@ FROM users;
 `, DeleteUser: `
 DELETE FROM users where login = ?;
 `, SelectUnprocessedArtifacts: `
-SELECT id, repository, branch, pr, source_branch, created, blob, status
+SELECT id, repository, branch, pr, source_branch, created, blob, status, sha
 FROM artifacts
 WHERE status='new' order by created ASC limit 10;
 `,
