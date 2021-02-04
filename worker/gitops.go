@@ -2,7 +2,9 @@ package worker
 
 import (
 	"fmt"
+	"github.com/gimlet-io/gimletd/artifact"
 	"github.com/gimlet-io/gimletd/cmd/config"
+	"github.com/gimlet-io/gimletd/manifest"
 	"github.com/gimlet-io/gimletd/model"
 	"github.com/gimlet-io/gimletd/store"
 	"github.com/sirupsen/logrus"
@@ -65,7 +67,35 @@ func process(artifactModel *model.Artifact) error {
 	}
 
 	for _, env := range artifact.Environments {
-		logrus.Info(env.Deploy)
+		if deployTrigger(artifact, env.Deploy) {
+			
+		}
 	}
 	return nil
+}
+
+func deployTrigger(artifact *artifact.Artifact, deployPolicy *manifest.Deploy) bool {
+	if deployPolicy == nil {
+		return false
+	}
+
+	if deployPolicy.Branch == "" &&
+		deployPolicy.Event == "" {
+		return false
+	}
+
+	if deployPolicy.Branch != "" &&
+		deployPolicy.Branch != artifact.Version.Branch {
+		return false
+	}
+
+	if deployPolicy.Event != "" {
+		if deployPolicy.Event != manifest.PREvent {
+			return false
+		} else if !artifact.Version.PR {
+			return false
+		}
+	}
+
+	return true
 }

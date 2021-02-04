@@ -1,7 +1,7 @@
 package artifact
 
 import (
-	"github.com/gimlet-io/gimlet-cli/manifest"
+	"github.com/gimlet-io/gimletd/manifest"
 )
 
 type Version struct {
