@@ -8,6 +8,7 @@ import (
 	"github.com/gimlet-io/gimletd/model"
 	"github.com/gimlet-io/gimletd/store"
 	"github.com/sirupsen/logrus"
+	"sigs.k8s.io/yaml"
 	"time"
 )
 
@@ -68,7 +69,16 @@ func process(artifactModel *model.Artifact) error {
 
 	for _, env := range artifact.Environments {
 		if deployTrigger(artifact, env.Deploy) {
-			
+			manifestString, err := yaml.Marshal(env)
+			if err != nil {
+				return fmt.Errorf("cannot serialize manifest %s", err.Error())
+			}
+
+			templatedManifests, err := manifest.HelmTemplate(string(manifestString), map[string]string{})
+			fmt.Println(templatedManifests)
+			// TODO write
+			//  use go-git and in-memory fs
+			//  need a git working copy
 		}
 	}
 	return nil
