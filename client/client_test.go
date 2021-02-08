@@ -49,14 +49,13 @@ func Test_artifact(t *testing.T) {
 	client := NewClient(server.URL, auther)
 
 	savedArtifact, err := client.ArtifactPost(&artifact.Artifact{
-		ID: "id",
 		Version: artifact.Version{
 			SHA:            "sha",
 			RepositoryName: "my-app",
 		},
 	})
 	assert.Nil(t, err)
-	assert.Equal(t, "id", savedArtifact.ID)
+	assert.Equal(t, "sha", savedArtifact.Version.SHA)
 
 	artifacts, err := client.ArtifactsGet(
 		"", "",

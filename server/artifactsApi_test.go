@@ -84,7 +84,7 @@ func Test_getArtifactsLimitOffset(t *testing.T) {
 	err = json.Unmarshal([]byte(body), &response)
 	assert.Nil(t, err)
 	assert.Equal(t, len(response), 1)
-	assert.Equal(t, response[0].ID, "my-app-2")
+	assert.Equal(t, "2", response[0].Version.SHA)
 }
 
 func Test_getArtifactsBranch(t *testing.T) {
@@ -128,10 +128,9 @@ func Test_getArtifactsSince(t *testing.T) {
 
 	artifactStr := `
 {
-  "id": "id-since",
   "version": {
     "repositoryName": "my-app",
-    "sha": "ea9ab7cc31b2599bf4afcfd639da516ca27a4780",
+    "sha": "sha-since",
     "branch": "master",
     "authorName": "Jane Doe",
     "authorEmail": "jane@doe.org",
@@ -169,7 +168,7 @@ func Test_getArtifactsSince(t *testing.T) {
 	err = json.Unmarshal([]byte(body), &response)
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(response))
-	assert.Equal(t, "id-since", response[0].ID)
+	assert.Equal(t, "sha-since", response[0].Version.SHA)
 }
 
 func setupArtifacts(store *store.Store) {
