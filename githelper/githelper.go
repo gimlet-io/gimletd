@@ -1,0 +1,136 @@
+package githelper
+
+import (
+	"fmt"
+	"github.com/gimlet-io/gimlet-cli/commands"
+	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing/object"
+	"path/filepath"
+	"strings"
+	"time"
+)
+
+func NothingToCommit(repo *git.Repository) (bool, error) {
+	worktree, err := repo.Worktree()
+	if err != nil {
+		return false, err
+	}
+
+	status, err := worktree.Status()
+	if err != nil {
+		return false, err
+	}
+
+	return status.IsClean(), nil
+}
+
+func Commit(repo *git.Repository, message string) error {
+	worktree, err := repo.Worktree()
+	if err != nil {
+		return err
+	}
+
+	_, err = worktree.Commit(message, &git.CommitOptions{
+		Author: &object.Signature{
+			Name:  "Gimlet CLI",
+			Email: "cli@gimlet.io",
+			When:  time.Now(),
+		},
+	})
+
+	return err
+}
+
+func DelDir(repo *git.Repository, path string) error {
+	worktree, err := repo.Worktree()
+	if err != nil {
+		return err
+	}
+
+	files, err := worktree.Filesystem.ReadDir(path)
+	if err != nil {
+		return err
+	}
+
+	for _, file := range files {
+		if file.IsDir() {
+			DelDir(repo, file.Name())
+		}
+
+		_, err = worktree.Remove(filepath.Join(path, file.Name()))
+		if err != nil {
+			return err
+		}
+	}
+
+	_, err = worktree.Remove(path)
+
+	return err
+}
+
+func StageFolder(repo *git.Repository, folder string) error {
+	worktree, err := repo.Worktree()
+	if err != nil {
+		return err
+	}
+
+	return worktree.AddWithOptions(&git.AddOptions{
+		Glob: folder + "/*",
+	})
+}
+
+func CommitFilesToGit(repo *git.Repository, files map[string]string, env string, app string, message string) error {
+	empty, err := NothingToCommit(repo)
+	if err != nil {
+		return fmt.Errorf("cannot get git state %s", err)
+	}
+	if !empty {
+		return fmt.Errorf("there are staged changes in the gitops repo. Commit them first then try again")
+	}
+
+	w, err := repo.Worktree()
+	if err != nil {
+		return fmt.Errorf("cannot get worktree %s", err)
+	}
+	err = w.Filesystem.MkdirAll(filepath.Join(env, app), commands.Dir_RWX_RX_R)
+	if err != nil {
+		return fmt.Errorf("cannot create dir %s", err)
+	}
+
+	for path, content := range files {
+		if !strings.HasSuffix(content, "\n") {
+			content = content + "\n"
+		}
+
+		err = stageFile(w, content, filepath.Join(env, app, filepath.Base(path)))
+		if err != nil {
+			return fmt.Errorf("cannot stage file %s", err)
+		}
+	}
+
+	empty, err = NothingToCommit(repo)
+	if err != nil {
+		return err
+	}
+	if empty {
+		return nil
+	}
+
+	gitMessage := fmt.Sprintf("[Gimlet CLI write] %s/%s %s", env, app, message)
+	return Commit(repo, gitMessage)
+}
+
+func stageFile(worktree *git.Worktree, content string, path string) error {
+	createdFile, err := worktree.Filesystem.Create(path)
+	if err != nil {
+		return err
+	}
+	_, err = createdFile.Write([]byte(content))
+	if err != nil {
+		return err
+	}
+	err = createdFile.Close()
+
+	_, err = worktree.Add(path)
+	return err
+}

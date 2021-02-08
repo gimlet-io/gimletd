@@ -8,6 +8,8 @@ import (
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	helmCLI "helm.sh/helm/v3/pkg/cli"
+	"path/filepath"
+	"strings"
 	"text/template"
 )
 
@@ -83,4 +85,34 @@ func HelmTemplate(manifestString string, vars map[string]string) (string, error)
 	}
 
 	return rel.Manifest, nil
+}
+
+func SplitHelmOutput(input map[string]string) map[string]string {
+	if len(input) != 1 {
+		return input
+	}
+
+	const separator = "---\n# Source: "
+
+	files := map[string]string{}
+
+	for _, content := range input {
+		if !strings.Contains(content, separator) {
+			return input
+		}
+
+		parts := strings.Split(content, separator)
+		for _, p := range parts {
+			p := strings.TrimSpace(p)
+			if p == "" {
+				continue
+			}
+
+			filePath := strings.Split(p, "\n")[0]
+			fileName := filepath.Base(filePath)
+			files[fileName] = strings.Join(strings.Split(p, "\n")[1:], "\n")
+		}
+	}
+
+	return files
 }
