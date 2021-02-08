@@ -4,17 +4,21 @@ import (
 	"fmt"
 	"github.com/gimlet-io/gimletd/artifact"
 	"github.com/gimlet-io/gimletd/cmd/config"
+	"github.com/gimlet-io/gimletd/githelper"
 	"github.com/gimlet-io/gimletd/manifest"
 	"github.com/gimlet-io/gimletd/model"
 	"github.com/gimlet-io/gimletd/store"
+	"github.com/go-git/go-git/v5"
 	"github.com/sirupsen/logrus"
 	"sigs.k8s.io/yaml"
 	"time"
 )
 
 type GitopsWorker struct {
-	store  *store.Store
-	config *config.Config
+	store         *store.Store
+	config        *config.Config
+	gitopsRepoUrl string
+	gitDeployKey  string
 }
 
 func NewGitopsWorker(
@@ -37,7 +41,14 @@ func (w *GitopsWorker) Run() {
 		}
 
 		for _, artifact := range artifacts {
-			err = process(artifact)
+			repo, err := githelper.CloneToMemory(w.gitopsRepoUrl, w.gitDeployKey)
+
+			if err == nil {
+				err = process(repo, artifact)
+				if err == nil {
+					err = githelper.Push(repo, w.gitDeployKey)
+				}
+			}
 
 			if err != nil {
 				logrus.Errorf("error in processing artifact: %s", err.Error())
@@ -61,7 +72,7 @@ func (w *GitopsWorker) Run() {
 	}
 }
 
-func process(artifactModel *model.Artifact) error {
+func process(repo *git.Repository, artifactModel *model.Artifact) error {
 	artifact, err := model.ToArtifact(artifactModel)
 	if err != nil {
 		return fmt.Errorf("cannot parse artifact %s", err.Error())
@@ -75,10 +86,8 @@ func process(artifactModel *model.Artifact) error {
 			}
 
 			templatedManifests, err := manifest.HelmTemplate(string(manifestString), map[string]string{})
-			fmt.Println(templatedManifests)
-			// TODO write
-			//  use go-git and in-memory fs
-			//  need a git working copy
+			files := manifest.SplitHelmOutput(map[string]string{"manifest.yaml": templatedManifests})
+			githelper.CommitFilesToGit(repo, files, env.Env, env.App, "automated deploy")
 		}
 	}
 	return nil

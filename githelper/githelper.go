@@ -3,12 +3,41 @@ package githelper
 import (
 	"fmt"
 	"github.com/gimlet-io/gimlet-cli/commands"
+	"github.com/go-git/go-billy/v5/memfs"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/object"
+	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
+	"github.com/go-git/go-git/v5/storage/memory"
 	"path/filepath"
 	"strings"
 	"time"
 )
+
+// CloneToMemory checks out a repo to an in-memory filesystem
+func CloneToMemory(url string, privateKey string) (*git.Repository, error) {
+	publicKeys, err := ssh.NewPublicKeys("git", []byte(privateKey), "")
+	if err != nil {
+		return nil, fmt.Errorf("cannot generate public key from private: %s", err.Error())
+	}
+
+	fs := memfs.New()
+	return git.Clone(memory.NewStorage(), fs, &git.CloneOptions{
+		URL:   url,
+		Depth: 1,
+		Auth:  publicKeys,
+	})
+}
+
+func Push(repo *git.Repository, privateKey string) error {
+	publicKeys, err := ssh.NewPublicKeys("git", []byte(privateKey), "")
+	if err != nil {
+		return fmt.Errorf("cannot generate public key from private: %s", err.Error())
+	}
+
+	return repo.Push(&git.PushOptions{
+		Auth:  publicKeys,
+	})
+}
 
 func NothingToCommit(repo *git.Repository) (bool, error) {
 	worktree, err := repo.Worktree()
@@ -116,7 +145,7 @@ func CommitFilesToGit(repo *git.Repository, files map[string]string, env string,
 		return nil
 	}
 
-	gitMessage := fmt.Sprintf("[Gimlet CLI write] %s/%s %s", env, app, message)
+	gitMessage := fmt.Sprintf("[Gimlet] %s/%s %s", env, app, message)
 	return Commit(repo, gitMessage)
 }
 
