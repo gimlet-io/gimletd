@@ -10,3 +10,5 @@ bin
 
 gimletd.sqlite
 .env
+deploykey
+deploykey.pub

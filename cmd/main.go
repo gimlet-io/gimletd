@@ -40,8 +40,17 @@ func main() {
 		panic(err)
 	}
 
-	gitopsWorker := worker.NewGitopsWorker(store, config)
-	go gitopsWorker.Run()
+	if config.GitopsRepoUrl != "" &&
+		config.GitopsRepoDeployKeyPath != "" {
+		gitopsWorker := worker.NewGitopsWorker(
+			store,
+			config.GitopsRepoUrl,
+			config.GitopsRepoDeployKeyPath,
+		)
+		go gitopsWorker.Run()
+	} else {
+		logrus.Warn("Not starting GitOps worker. GITOPS_REPO_SSH_ADDRESS and GITOPS_REPO_DEPLOY_KEY_PATH must be set to start GitOps worker")
+	}
 
 	r := server.SetupRouter(config, store)
 	err = http.ListenAndServe(":8888", r)

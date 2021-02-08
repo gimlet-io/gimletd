@@ -24,6 +24,7 @@ func (db *Store) CreateArtifact(artifactModel *model.Artifact) (*model.Artifact,
 	if err != nil {
 		return nil, fmt.Errorf("couldn't deserialize artifact: %s", err)
 	}
+	a.ID = artifactModel.ID
 	a.Created = now
 
 	artifactStr, err := json.Marshal(a)

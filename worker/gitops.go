@@ -3,7 +3,6 @@ package worker
 import (
 	"fmt"
 	"github.com/gimlet-io/gimletd/artifact"
-	"github.com/gimlet-io/gimletd/cmd/config"
 	"github.com/gimlet-io/gimletd/githelper"
 	"github.com/gimlet-io/gimletd/manifest"
 	"github.com/gimlet-io/gimletd/model"
@@ -15,19 +14,20 @@ import (
 )
 
 type GitopsWorker struct {
-	store         *store.Store
-	config        *config.Config
-	gitopsRepoUrl string
-	gitDeployKey  string
+	store               *store.Store
+	gitopsRepoUrl       string
+	gitopsRepoDeployKeyPath string
 }
 
 func NewGitopsWorker(
 	store *store.Store,
-	config *config.Config,
+	gitopsRepoUrl string,
+	gitopsRepoDeployKeyPath string,
 ) *GitopsWorker {
 	return &GitopsWorker{
-		store:  store,
-		config: config,
+		store:               store,
+		gitopsRepoUrl:       gitopsRepoUrl,
+		gitopsRepoDeployKeyPath: gitopsRepoDeployKeyPath,
 	}
 }
 
@@ -41,12 +41,12 @@ func (w *GitopsWorker) Run() {
 		}
 
 		for _, artifact := range artifacts {
-			repo, err := githelper.CloneToMemory(w.gitopsRepoUrl, w.gitDeployKey)
+			repo, err := githelper.CloneToMemory(w.gitopsRepoUrl, w.gitopsRepoDeployKeyPath)
 
 			if err == nil {
 				err = process(repo, artifact)
 				if err == nil {
-					err = githelper.Push(repo, w.gitDeployKey)
+					err = githelper.Push(repo, w.gitopsRepoDeployKeyPath)
 				}
 			}
 

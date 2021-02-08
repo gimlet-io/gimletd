@@ -8,6 +8,7 @@ require (
 	github.com/gimlet-io/gimlet-cli v0.4.0
 	github.com/go-chi/chi v1.5.1
 	github.com/go-chi/cors v1.1.1
+	github.com/go-git/go-billy/v5 v5.0.0
 	github.com/go-git/go-git/v5 v5.2.0
 	github.com/go-sql-driver/mysql v1.4.1
 	github.com/google/uuid v1.1.1

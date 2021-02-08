@@ -30,10 +30,12 @@ func (c *Config) String() string {
 }
 
 type Config struct {
-	Debug           bool `envconfig:"DEBUG"`
-	Logging         Logging
-	Host            string
-	Database        Database
+	Debug               bool `envconfig:"DEBUG"`
+	Logging             Logging
+	Host                string `envconfig:"HOST"`
+	Database            Database
+	GitopsRepoUrl       string `envconfig:"GITOPS_REPO_SSH_ADDRESS"`
+	GitopsRepoDeployKeyPath string `envconfig:"GITOPS_REPO_DEPLOY_KEY_PATH"`
 }
 
 type Database struct {

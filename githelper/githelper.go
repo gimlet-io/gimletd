@@ -5,6 +5,7 @@ import (
 	"github.com/gimlet-io/gimlet-cli/commands"
 	"github.com/go-git/go-billy/v5/memfs"
 	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
 	"github.com/go-git/go-git/v5/storage/memory"
@@ -14,29 +15,43 @@ import (
 )
 
 // CloneToMemory checks out a repo to an in-memory filesystem
-func CloneToMemory(url string, privateKey string) (*git.Repository, error) {
-	publicKeys, err := ssh.NewPublicKeys("git", []byte(privateKey), "")
+func CloneToMemory(url string, privateKeyPath string) (*git.Repository, error) {
+	publicKeys, err := ssh.NewPublicKeysFromFile("git", privateKeyPath, "")
 	if err != nil {
 		return nil, fmt.Errorf("cannot generate public key from private: %s", err.Error())
 	}
 
 	fs := memfs.New()
-	return git.Clone(memory.NewStorage(), fs, &git.CloneOptions{
+	repo, err := git.Clone(memory.NewStorage(), fs, &git.CloneOptions{
 		URL:   url,
 		Depth: 1,
 		Auth:  publicKeys,
 	})
+
+	if strings.Contains(err.Error(), "remote repository is empty") {
+		repo, _ := git.Init(memory.NewStorage(), memfs.New())
+		_, err = repo.CreateRemote(&config.RemoteConfig{Name: "origin", URLs: []string{url}})
+		return repo, err
+	}
+
+	return repo, err
 }
 
-func Push(repo *git.Repository, privateKey string) error {
-	publicKeys, err := ssh.NewPublicKeys("git", []byte(privateKey), "")
+func Push(repo *git.Repository, privateKeyPath string) error {
+	publicKeys, err := ssh.NewPublicKeysFromFile("git", privateKeyPath, "")
 	if err != nil {
 		return fmt.Errorf("cannot generate public key from private: %s", err.Error())
 	}
 
-	return repo.Push(&git.PushOptions{
+	err = repo.Push(&git.PushOptions{
 		Auth:  publicKeys,
 	})
+
+	if err == git.NoErrAlreadyUpToDate {
+		return nil
+	}
+
+	return nil
 }
 
 func NothingToCommit(repo *git.Repository) (bool, error) {
