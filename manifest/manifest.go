@@ -18,23 +18,23 @@ const TagEvent = "tag"
 const PREvent = "pr"
 
 type Manifest struct {
-	App       string                 `yaml:"app"`
-	Env       string                 `yaml:"env"`
-	Namespace string                 `yaml:"namespace"`
-	Deploy    *Deploy                 `yaml:"deploy"`
-	Chart     Chart                  `yaml:"chart"`
-	Values    map[string]interface{} `yaml:"values"`
+	App       string                 `yaml:"app" json:"app"`
+	Env       string                 `yaml:"env" json:"env"`
+	Namespace string                 `yaml:"namespace" json:"namespace"`
+	Deploy    *Deploy                `yaml:"deploy" json:"deploy"`
+	Chart     Chart                  `yaml:"chart" json:"chart"`
+	Values    map[string]interface{} `yaml:"values" json:"values"`
 }
 
 type Chart struct {
-	Repository string `yaml:"repository"`
-	Name       string `yaml:"name"`
-	Version    string `yaml:"version"`
+	Repository string `yaml:"repository" json:"repository"`
+	Name       string `yaml:"name" json:"name"`
+	Version    string `yaml:"version" json:"version"`
 }
 
 type Deploy struct {
-	Branch string `yaml:"branch"` //master| '^(master|hotfix\/.+)$'
-	Event  string `yaml:"event"`  //push/tag/pr
+	Branch string `yaml:"branch" json:"branch"` //master| '^(master|hotfix\/.+)$'
+	Event  string `yaml:"event" json:"event"`   //push/tag/pr
 }
 
 func HelmTemplate(manifestString string, vars map[string]string) (string, error) {
