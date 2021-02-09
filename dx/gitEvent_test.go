@@ -16,9 +16,9 @@ event: push
 	err := yaml.Unmarshal([]byte(yamlStr), &deployTrigger)
 	assert.Nil(t, err)
 	assert.True(t, deployTrigger.Branch == "main", "should parse branch")
-	assert.True(t, deployTrigger.Event == Push, "should parse event")
+	assert.True(t, *deployTrigger.Event == Push, "should parse event")
 
-	marshalled, err := yaml.Marshal(Deploy{Branch: "main"})
+	marshalled, err := yaml.Marshal(Deploy{Branch: "main", Event: PushPtr()})
 	assert.Nil(t, err)
 	assert.Equal(t,
 		`branch: main
