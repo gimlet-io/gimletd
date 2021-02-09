@@ -3,6 +3,7 @@ package dx
 import (
 	"bytes"
 	"encoding/json"
+	"gopkg.in/yaml.v3"
 )
 
 // GitEvent represents the git event that produced the artifact
@@ -45,6 +46,26 @@ func (s GitEvent) MarshalJSON() ([]byte, error) {
 func (s *GitEvent) UnmarshalJSON(b []byte) error {
 	var j string
 	err := json.Unmarshal(b, &j)
+	if err != nil {
+		return err
+	}
+	// Note that if the string cannot be found then it will be set to the zero value, 'Push' in this case.
+	*s = toID[j]
+	return nil
+}
+
+// MarshalYAML marshals the enum as a quoted yaml string
+func (s GitEvent) MarshalYAML() ([]byte, error) {
+	buffer := bytes.NewBufferString(`"`)
+	buffer.WriteString(toString[s])
+	buffer.WriteString(`"`)
+	return buffer.Bytes(), nil
+}
+
+// UnmarshalYAML unmarshals a quoted yaml string to the enum value
+func (s *GitEvent) UnmarshalYAML(b []byte) error {
+	var j string
+	err := yaml.Unmarshal(b, &j)
 	if err != nil {
 		return err
 	}
