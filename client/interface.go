@@ -35,7 +35,7 @@ type Client interface {
 	// ArtifactsGet returns all artifacts in the database within the given constraints
 	ArtifactsGet(
 		app, branch string,
-		pr bool,
+		event *dx.GitEvent,
 		sourceBranch string,
 		sha string,
 		limit, offset int,

@@ -59,7 +59,7 @@ func Test_artifact(t *testing.T) {
 
 	artifacts, err := client.ArtifactsGet(
 		"", "",
-		false,
+		nil,
 		"",
 		"",
 		0, 0,

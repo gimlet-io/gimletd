@@ -70,7 +70,7 @@ func (c *client) ArtifactPost(in *dx.Artifact) (*dx.Artifact, error) {
 // ArtifactsGet creates a new user account.
 func (c *client) ArtifactsGet(
 	app, branch string,
-	pr bool,
+	event *dx.GitEvent,
 	sourceBranch string,
 	sha string,
 	limit, offset int,
@@ -98,8 +98,8 @@ func (c *client) ArtifactsGet(
 	if branch != "" {
 		params = append(params, fmt.Sprintf("branch=%s", branch))
 	}
-	if pr {
-		params = append(params, fmt.Sprintf("pr=%t", pr))
+	if event != nil {
+		params = append(params, fmt.Sprintf("event=%s", event))
 	}
 	if sourceBranch != "" {
 		params = append(params, fmt.Sprintf("sourceBranch=%s", sourceBranch))

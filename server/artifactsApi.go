@@ -52,7 +52,7 @@ func getArtifacts(w http.ResponseWriter, r *http.Request) {
 	var since, until *time.Time
 
 	var app, branch string
-	var pr bool
+	var event *dx.GitEvent
 	var sourceBranch string
 	var sha string
 
@@ -103,13 +103,18 @@ func getArtifacts(w http.ResponseWriter, r *http.Request) {
 	if val, ok := params["sha"]; ok {
 		sha = val[0]
 	}
-	if val, ok := params["pr"]; ok {
-		pr = val[0] == "true"
+	if val, ok := params["event"]; ok {
+		event = dx.PushPtr()
+		err := event.UnmarshalJSON([]byte(`"` + val[0] + `"`))
+		if err != nil {
+			http.Error(w, http.StatusText(http.StatusBadRequest)+" - "+err.Error(), http.StatusBadRequest)
+			return
+		}
 	}
 
 	artifactModels, err := store.Artifacts(
 		app, branch,
-		pr,
+		event,
 		sourceBranch,
 		sha,
 		limit, offset, since, until)

@@ -39,7 +39,7 @@ func (db *Store) CreateArtifact(artifactModel *model.Artifact) (*model.Artifact,
 // Artifacts returns all artifacts in the database within the given constraints
 func (db *Store) Artifacts(
 	app, branch string,
-	pr bool,
+	event *dx.GitEvent,
 	sourceBranch string,
 	sha string,
 	limit, offset int,
@@ -74,8 +74,10 @@ func (db *Store) Artifacts(
 		args = append(args, sha)
 	}
 
-	if pr {
-		filters = addFilter(filters, fmt.Sprintf(" pr = %t", pr))
+	if event != nil {
+		var intRep int
+		intRep = int(*event)
+		filters = addFilter(filters, fmt.Sprintf(" event = %d", intRep))
 	}
 
 	if limit == 0 || offset == 0 {

@@ -118,6 +118,22 @@ func Test_getArtifactsApp(t *testing.T) {
 	assert.Equal(t, 2, len(response))
 }
 
+func Test_getArtifactsPR(t *testing.T) {
+	store := store.NewTest()
+	setupArtifacts(store)
+
+	_, body, err := testEndpoint(getArtifacts, func(ctx context.Context) context.Context {
+		ctx = context.WithValue(ctx, "store", store)
+		return ctx
+	}, "/path?event=pr")
+	assert.Nil(t, err)
+	var response []*dx.Artifact
+	err = json.Unmarshal([]byte(body), &response)
+	assert.Nil(t, err)
+	assert.Equal(t, 1, len(response))
+	assert.Equal(t, "2", response[0].Version.SHA)
+}
+
 func Test_getArtifactsSince(t *testing.T) {
 	store := store.NewTest()
 	setupArtifacts(store)
@@ -212,6 +228,7 @@ func setupArtifacts(store *store.Store) {
   "version": {
     "repositoryName": "my-app",
     "sha": "2",
+	"event": "pr",
     "branch": "bugfix-123",
     "authorName": "Jane Doe",
     "authorEmail": "jane@doe.org",
