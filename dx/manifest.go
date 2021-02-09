@@ -29,8 +29,8 @@ type Chart struct {
 }
 
 type Deploy struct {
-	Branch string    `yaml:"branch,omitempty" json:"branch,omitempty"` //master| '^(master|hotfix\/.+)$'
-	Event  *GitEvent `yaml:"event,omitempty" json:"event,omitempty"`
+	Branch string   `yaml:"branch,omitempty" json:"branch,omitempty"` //master| '^(master|hotfix\/.+)$'
+	Event  GitEvent `yaml:"event" json:"event,omitempty"`
 }
 
 func HelmTemplate(manifestString string, vars map[string]string) (string, error) {

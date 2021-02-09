@@ -42,7 +42,7 @@ func (s GitEvent) MarshalJSON() ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
-// UnmarshalJSON unmarshals a quoted json string to the enum value
+// UnmarshalJSON unmarshalls a quoted json string to the enum value
 func (s *GitEvent) UnmarshalJSON(b []byte) error {
 	var j string
 	err := json.Unmarshal(b, &j)
@@ -55,17 +55,14 @@ func (s *GitEvent) UnmarshalJSON(b []byte) error {
 }
 
 // MarshalYAML marshals the enum as a quoted yaml string
-func (s GitEvent) MarshalYAML() ([]byte, error) {
-	buffer := bytes.NewBufferString(`"`)
-	buffer.WriteString(toString[s])
-	buffer.WriteString(`"`)
-	return buffer.Bytes(), nil
+func (s GitEvent) MarshalYAML() (interface{}, error) {
+	return toString[s], nil
 }
 
-// UnmarshalYAML unmarshals a quoted yaml string to the enum value
-func (s *GitEvent) UnmarshalYAML(b []byte) error {
+// UnmarshalYAML unmarshalls a quoted yaml string to the enum value
+func (s *GitEvent) UnmarshalYAML(n *yaml.Node) error {
 	var j string
-	err := yaml.Unmarshal(b, &j)
+	err := yaml.Unmarshal([]byte(n.Value), &j)
 	if err != nil {
 		return err
 	}
