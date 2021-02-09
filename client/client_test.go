@@ -2,8 +2,8 @@ package client
 
 import (
 	"encoding/base32"
-	"github.com/gimlet-io/gimletd/artifact"
 	"github.com/gimlet-io/gimletd/cmd/config"
+	"github.com/gimlet-io/gimletd/dx"
 	"github.com/gimlet-io/gimletd/model"
 	"github.com/gimlet-io/gimletd/server"
 	"github.com/gimlet-io/gimletd/server/token"
@@ -48,8 +48,8 @@ func Test_artifact(t *testing.T) {
 
 	client := NewClient(server.URL, auther)
 
-	savedArtifact, err := client.ArtifactPost(&artifact.Artifact{
-		Version: artifact.Version{
+	savedArtifact, err := client.ArtifactPost(&dx.Artifact{
+		Version: dx.Version{
 			SHA:            "sha",
 			RepositoryName: "my-app",
 		},

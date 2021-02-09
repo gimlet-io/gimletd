@@ -3,7 +3,7 @@ package store
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/gimlet-io/gimletd/artifact"
+	"github.com/gimlet-io/gimletd/dx"
 	"github.com/gimlet-io/gimletd/model"
 	"github.com/gimlet-io/gimletd/store/sql"
 	"github.com/google/uuid"
@@ -19,7 +19,7 @@ func (db *Store) CreateArtifact(artifactModel *model.Artifact) (*model.Artifact,
 	artifactModel.Created = now
 	artifactModel.Status = model.StatusNew
 
-	var a artifact.Artifact
+	var a dx.Artifact
 	err := json.Unmarshal([]byte(artifactModel.Blob), &a)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't deserialize artifact: %s", err)
@@ -84,7 +84,7 @@ func (db *Store) Artifacts(
 	limitAndOffset := fmt.Sprintf("LIMIT %d OFFSET %d", limit, offset)
 
 	query := fmt.Sprintf(`
-SELECT id, repository, branch, pr, source_branch, created, blob, status, status_desc, sha
+SELECT id, repository, branch, event, source_branch, target_branch, tag, created, blob, status, status_desc, sha
 FROM artifacts
 %s
 ORDER BY created desc

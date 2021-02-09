@@ -16,9 +16,6 @@ package ddl
 
 const createTableUsers = "create-table-users"
 const createTableArtifacts = "create-table-artifacts"
-const addColumnArtifactsStatus = "add-column-artifacts-status"
-const addColumnArtifactsStatusDesc = "add-column-artifacts-status-desc"
-const addColumnArtifactsSHA = "add-column-artifacts-sha"
 
 type migration struct {
 	name string
@@ -46,28 +43,17 @@ CREATE TABLE IF NOT EXISTS artifacts (
 id            TEXT,
 repository    TEXT,
 branch        TEXT,
-pr            BOOLEAN,
+event         TEXT,
 source_branch TEXT,
+target_branch TEXT,
+tag           TEXT,
 created       INTEGER,
 blob          TEXT,
+status        TEXT DEFAULT 'new',
+status_desc   TEXT DEFAULT '',
+sha           TEXT,
 UNIQUE(id)
 );
-`,
-		}, {
-			name: addColumnArtifactsStatus,
-			stmt: `
-ALTER TABLE artifacts ADD COLUMN status TEXT DEFAULT 'new';
-`,
-		}, {
-			name: addColumnArtifactsStatusDesc,
-			stmt: `
-ALTER TABLE artifacts ADD COLUMN status_desc TEXT DEFAULT '';
-`,
-		},
-		{
-			name: addColumnArtifactsSHA,
-			stmt: `
-ALTER TABLE artifacts ADD COLUMN sha TEXT;
 `,
 		},
 	},

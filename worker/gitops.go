@@ -2,9 +2,8 @@ package worker
 
 import (
 	"fmt"
-	"github.com/gimlet-io/gimletd/artifact"
+	"github.com/gimlet-io/gimletd/dx"
 	"github.com/gimlet-io/gimletd/githelper"
-	"github.com/gimlet-io/gimletd/manifest"
 	"github.com/gimlet-io/gimletd/model"
 	"github.com/gimlet-io/gimletd/store"
 	"github.com/go-git/go-git/v5"
@@ -14,8 +13,8 @@ import (
 )
 
 type GitopsWorker struct {
-	store               *store.Store
-	gitopsRepoUrl       string
+	store                   *store.Store
+	gitopsRepoUrl           string
 	gitopsRepoDeployKeyPath string
 }
 
@@ -25,8 +24,8 @@ func NewGitopsWorker(
 	gitopsRepoDeployKeyPath string,
 ) *GitopsWorker {
 	return &GitopsWorker{
-		store:               store,
-		gitopsRepoUrl:       gitopsRepoUrl,
+		store:                   store,
+		gitopsRepoUrl:           gitopsRepoUrl,
 		gitopsRepoDeployKeyPath: gitopsRepoDeployKeyPath,
 	}
 }
@@ -85,33 +84,31 @@ func process(repo *git.Repository, artifactModel *model.Artifact) error {
 				return fmt.Errorf("cannot serialize manifest %s", err.Error())
 			}
 
-			templatedManifests, err := manifest.HelmTemplate(string(manifestString), map[string]string{})
-			files := manifest.SplitHelmOutput(map[string]string{"manifest.yaml": templatedManifests})
+			templatedManifests, err := dx.HelmTemplate(string(manifestString), map[string]string{})
+			files := dx.SplitHelmOutput(map[string]string{"manifest.yaml": templatedManifests})
 			githelper.CommitFilesToGit(repo, files, env.Env, env.App, "automated deploy")
 		}
 	}
 	return nil
 }
 
-func deployTrigger(artifact *artifact.Artifact, deployPolicy *manifest.Deploy) bool {
+func deployTrigger(artifactToCheck *dx.Artifact, deployPolicy *dx.Deploy) bool {
 	if deployPolicy == nil {
 		return false
 	}
 
 	if deployPolicy.Branch == "" &&
-		deployPolicy.Event == "" {
+		deployPolicy.Event == nil {
 		return false
 	}
 
 	if deployPolicy.Branch != "" &&
-		deployPolicy.Branch != artifact.Version.Branch {
+		deployPolicy.Branch != artifactToCheck.Version.Branch {
 		return false
 	}
 
-	if deployPolicy.Event != "" {
-		if deployPolicy.Event != manifest.PREvent {
-			return false
-		} else if !artifact.Version.PR {
+	if deployPolicy.Event != nil {
+		if *deployPolicy.Event != artifactToCheck.Version.Event {
 			return false
 		}
 	}

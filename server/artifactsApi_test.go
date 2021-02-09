@@ -3,7 +3,7 @@ package server
 import (
 	"context"
 	"encoding/json"
-	"github.com/gimlet-io/gimletd/artifact"
+	"github.com/gimlet-io/gimletd/dx"
 	"github.com/gimlet-io/gimletd/model"
 	"github.com/gimlet-io/gimletd/store"
 	"github.com/stretchr/testify/assert"
@@ -40,7 +40,7 @@ func Test_saveArtifact(t *testing.T) {
 }
 `
 
-	var a artifact.Artifact
+	var a dx.Artifact
 	json.Unmarshal([]byte(artifactStr), &a)
 
 	_, body, err := testEndpoint(saveArtifact, func(ctx context.Context) context.Context {
@@ -49,7 +49,7 @@ func Test_saveArtifact(t *testing.T) {
 	}, "/path")
 	assert.Nil(t, err)
 
-	var response artifact.Artifact
+	var response dx.Artifact
 	err = json.Unmarshal([]byte(body), &response)
 	assert.Nil(t, err)
 	assert.NotEqual(t, response.Created, 0, "should set created time")
@@ -65,7 +65,7 @@ func Test_getArtifacts(t *testing.T) {
 		return ctx
 	}, "/path")
 	assert.Nil(t, err)
-	var response []*artifact.Artifact
+	var response []*dx.Artifact
 	err = json.Unmarshal([]byte(body), &response)
 	assert.Nil(t, err)
 	assert.Equal(t, len(response), 2)
@@ -80,7 +80,7 @@ func Test_getArtifactsLimitOffset(t *testing.T) {
 		return ctx
 	}, "/path?limit=1&offset=1")
 	assert.Nil(t, err)
-	var response []*artifact.Artifact
+	var response []*dx.Artifact
 	err = json.Unmarshal([]byte(body), &response)
 	assert.Nil(t, err)
 	assert.Equal(t, len(response), 1)
@@ -96,7 +96,7 @@ func Test_getArtifactsBranch(t *testing.T) {
 		return ctx
 	}, "/path?branch=bugfix-123")
 	assert.Nil(t, err)
-	var response []*artifact.Artifact
+	var response []*dx.Artifact
 	err = json.Unmarshal([]byte(body), &response)
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(response))
@@ -112,7 +112,7 @@ func Test_getArtifactsApp(t *testing.T) {
 		return ctx
 	}, "/path?app=my-app")
 	assert.Nil(t, err)
-	var response []*artifact.Artifact
+	var response []*dx.Artifact
 	err = json.Unmarshal([]byte(body), &response)
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(response))
@@ -148,7 +148,7 @@ func Test_getArtifactsSince(t *testing.T) {
 }
 `
 
-	var a artifact.Artifact
+	var a dx.Artifact
 	json.Unmarshal([]byte(artifactStr), &a)
 	artifactModel, err := model.ToArtifactModel(a)
 	if err != nil {
@@ -164,7 +164,7 @@ func Test_getArtifactsSince(t *testing.T) {
 		return ctx
 	}, "/artifacts?since=" + url.QueryEscape(since.Format(time.RFC3339)))
 	assert.Equal(t, http.StatusOK, code)
-	var response []*artifact.Artifact
+	var response []*dx.Artifact
 	err = json.Unmarshal([]byte(body), &response)
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(response))
@@ -195,7 +195,7 @@ func setupArtifacts(store *store.Store) {
 }
 `
 
-	var a artifact.Artifact
+	var a dx.Artifact
 	json.Unmarshal([]byte(artifactStr), &a)
 	artifactModel, err := model.ToArtifactModel(a)
 	if err != nil {

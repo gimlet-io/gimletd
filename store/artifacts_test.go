@@ -2,7 +2,7 @@ package store
 
 import (
 	"encoding/json"
-	"github.com/gimlet-io/gimletd/artifact"
+	"github.com/gimlet-io/gimletd/dx"
 	"github.com/gimlet-io/gimletd/model"
 	"testing"
 
@@ -21,6 +21,7 @@ func TestArtifactCRUD(t *testing.T) {
     "repositoryName": "my-app",
     "sha": "ea9ab7cc31b2599bf4afcfd639da516ca27a4780",
     "branch": "master",
+	"event": "pr",
     "authorName": "Jane Doe",
     "authorEmail": "jane@doe.org",
     "committerName": "Jane Doe",
@@ -37,7 +38,7 @@ func TestArtifactCRUD(t *testing.T) {
 }
 `
 
-	var a artifact.Artifact
+	var a dx.Artifact
 	json.Unmarshal([]byte(artifactStr), &a)
 
 	aModel, err := model.ToArtifactModel(a)
@@ -46,6 +47,7 @@ func TestArtifactCRUD(t *testing.T) {
 	savedArtifact, err := s.CreateArtifact(aModel)
 	assert.Nil(t, err)
 	assert.NotEqual(t, savedArtifact.Created, 0)
+	assert.Equal(t, savedArtifact.Event, dx.PR)
 
 	artifacts, err := s.Artifacts("", "", false, "", "", 0, 0, nil, nil)
 	assert.Nil(t, err)

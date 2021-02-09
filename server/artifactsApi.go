@@ -2,7 +2,7 @@ package server
 
 import (
 	"encoding/json"
-	"github.com/gimlet-io/gimletd/artifact"
+	"github.com/gimlet-io/gimletd/dx"
 	"github.com/gimlet-io/gimletd/model"
 	"github.com/gimlet-io/gimletd/store"
 	"github.com/sirupsen/logrus"
@@ -12,7 +12,7 @@ import (
 )
 
 func saveArtifact(w http.ResponseWriter, r *http.Request) {
-	var artifact artifact.Artifact
+	var artifact dx.Artifact
 	json.NewDecoder(r.Body).Decode(&artifact)
 
 	ctx := r.Context()
@@ -119,7 +119,7 @@ func getArtifacts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	artifacts := []*artifact.Artifact{}
+	artifacts := []*dx.Artifact{}
 	for _, a := range artifactModels {
 		artifact, err := model.ToArtifact(a)
 		if err != nil {

@@ -16,7 +16,7 @@
 package client
 
 import (
-	"github.com/gimlet-io/gimletd/artifact"
+	"github.com/gimlet-io/gimletd/dx"
 	"net/http"
 	"time"
 )
@@ -30,7 +30,7 @@ type Client interface {
 	SetAddress(string)
 
 	// ArtifactPost creates a new artifact.
-	ArtifactPost(artifact *artifact.Artifact) (*artifact.Artifact, error)
+	ArtifactPost(artifact *dx.Artifact) (*dx.Artifact, error)
 
 	// ArtifactsGet returns all artifacts in the database within the given constraints
 	ArtifactsGet(
@@ -40,5 +40,5 @@ type Client interface {
 		sha string,
 		limit, offset int,
 		since, until *time.Time,
-	) ([]*artifact.Artifact, error)
+	) ([]*dx.Artifact, error)
 }

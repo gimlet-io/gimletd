@@ -16,8 +16,7 @@ package worker
 
 import (
 	"encoding/json"
-	"github.com/gimlet-io/gimletd/artifact"
-	"github.com/gimlet-io/gimletd/manifest"
+	"github.com/gimlet-io/gimletd/dx"
 	"github.com/gimlet-io/gimletd/model"
 	"github.com/go-git/go-billy/v5/memfs"
 	"github.com/go-git/go-git/v5"
@@ -28,7 +27,7 @@ import (
 )
 
 func Test_process(t *testing.T) {
-	var a artifact.Artifact
+	var a dx.Artifact
 	json.Unmarshal([]byte(`
 {
   "version": {
@@ -84,57 +83,70 @@ func Test_process(t *testing.T) {
 
 func Test_deployTrigger(t *testing.T) {
 	triggered := deployTrigger(
-		&artifact.Artifact{}, nil)
+		&dx.Artifact{}, nil)
 	assert.False(t, triggered, "Empty deploy policy should not trigger a deploy")
 
 	triggered = deployTrigger(
-		&artifact.Artifact{}, &manifest.Deploy{})
+		&dx.Artifact{}, &dx.Deploy{})
 	assert.False(t, triggered, "Empty deploy policy should not trigger a deploy")
 
 	triggered = deployTrigger(
-		&artifact.Artifact{
-			Version: artifact.Version{
+		&dx.Artifact{
+			Version: dx.Version{
 				Branch: "master",
 			},
 		},
-		&manifest.Deploy{
+		&dx.Deploy{
 			Branch: "notMaster",
 		})
 	assert.False(t, triggered, "Branch mismatch should not trigger a deploy")
 
 	triggered = deployTrigger(
-		&artifact.Artifact{
-			Version: artifact.Version{
+		&dx.Artifact{
+			Version: dx.Version{
 				Branch: "master",
 			},
 		},
-		&manifest.Deploy{
+		&dx.Deploy{
 			Branch: "master",
 		})
 	assert.True(t, triggered, "Matching branch should trigger a deploy")
 
 	triggered = deployTrigger(
-		&artifact.Artifact{},
-		&manifest.Deploy{
-			Event: manifest.PushEvent,
+		&dx.Artifact{},
+		&dx.Deploy{
+			Event: dx.PushPtr(),
 		})
-	assert.False(t, triggered, "Not yet supported")
+	assert.True(t, triggered, "Default Push event should trigger a deploy")
 
 	triggered = deployTrigger(
-		&artifact.Artifact{Version: artifact.Version{
-
-		}},
-		&manifest.Deploy{
-			Event: manifest.PREvent,
-		})
-	assert.False(t, triggered, "Not matching PR event should not trigger a deploy")
+		&dx.Artifact{},
+		&dx.Deploy{},
+	)
+	assert.False(t, triggered, "Non matching event should not trigger a deploy, default is Push in the Artifact")
 
 	triggered = deployTrigger(
-		&artifact.Artifact{Version: artifact.Version{
-			PR: true,
+		&dx.Artifact{},
+		&dx.Deploy{
+			Event: dx.PRPtr(),
+		})
+	assert.False(t, triggered, "Non matching event should not trigger a deploy")
+
+	triggered = deployTrigger(
+		&dx.Artifact{Version: dx.Version{
+			Event: dx.PR,
 		}},
-		&manifest.Deploy{
-			Event: manifest.PREvent,
+		&dx.Deploy{
+			Event: dx.PRPtr(),
+		})
+	assert.True(t, triggered, "Should trigger a PR deploy")
+
+	triggered = deployTrigger(
+		&dx.Artifact{Version: dx.Version{
+			Event: dx.Tag,
+		}},
+		&dx.Deploy{
+			Event: dx.TagPtr(),
 		})
 	assert.True(t, triggered, "Should trigger a PR deploy")
 }

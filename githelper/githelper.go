@@ -28,7 +28,7 @@ func CloneToMemory(url string, privateKeyPath string) (*git.Repository, error) {
 		Auth:  publicKeys,
 	})
 
-	if strings.Contains(err.Error(), "remote repository is empty") {
+	if err != nil && strings.Contains(err.Error(), "remote repository is empty") {
 		repo, _ := git.Init(memory.NewStorage(), memfs.New())
 		_, err = repo.CreateRemote(&config.RemoteConfig{Name: "origin", URLs: []string{url}})
 		return repo, err

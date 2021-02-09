@@ -1,4 +1,4 @@
-package manifest
+package dx
 
 import (
 	"bytes"
@@ -13,15 +13,11 @@ import (
 	"text/template"
 )
 
-const PushEvent = "push"
-const TagEvent = "tag"
-const PREvent = "pr"
-
 type Manifest struct {
 	App       string                 `yaml:"app" json:"app"`
 	Env       string                 `yaml:"env" json:"env"`
 	Namespace string                 `yaml:"namespace" json:"namespace"`
-	Deploy    *Deploy                `yaml:"deploy" json:"deploy"`
+	Deploy    *Deploy                `yaml:"deploy,omitempty" json:"deploy"`
 	Chart     Chart                  `yaml:"chart" json:"chart"`
 	Values    map[string]interface{} `yaml:"values" json:"values"`
 }
@@ -33,8 +29,8 @@ type Chart struct {
 }
 
 type Deploy struct {
-	Branch string `yaml:"branch" json:"branch"` //master| '^(master|hotfix\/.+)$'
-	Event  string `yaml:"event" json:"event"`   //push/tag/pr
+	Branch string    `yaml:"branch,omitempty" json:"branch,omitempty"` //master| '^(master|hotfix\/.+)$'
+	Event  *GitEvent `yaml:"event,omitempty" json:"event,omitempty"`
 }
 
 func HelmTemplate(manifestString string, vars map[string]string) (string, error) {

@@ -19,7 +19,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/gimlet-io/gimletd/artifact"
+	"github.com/gimlet-io/gimletd/dx"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -60,8 +60,8 @@ func (c *client) SetAddress(addr string) {
 }
 
 // ArtifactPost creates a new user account.
-func (c *client) ArtifactPost(in *artifact.Artifact) (*artifact.Artifact, error) {
-	out := new(artifact.Artifact)
+func (c *client) ArtifactPost(in *dx.Artifact) (*dx.Artifact, error) {
+	out := new(dx.Artifact)
 	uri := fmt.Sprintf(pathArtifact, c.addr)
 	err := c.post(uri, in, out)
 	return out, err
@@ -75,7 +75,7 @@ func (c *client) ArtifactsGet(
 	sha string,
 	limit, offset int,
 	since, until *time.Time,
-) ([]*artifact.Artifact, error) {
+) ([]*dx.Artifact, error) {
 	uri := fmt.Sprintf(pathArtifacts, c.addr)
 
 	var params []string
@@ -127,17 +127,17 @@ func (c *client) ArtifactsGet(
 	bodyString := string(bodyBytes)
 
 	if bodyString == "[]" { // json deserializer breaks on empty arrays / objects
-		return []*artifact.Artifact{}, nil
+		return []*dx.Artifact{}, nil
 	}
 
-	var out []*artifact.Artifact
+	var out []*dx.Artifact
 	err = json.Unmarshal(bodyBytes, &out)
 	if err != nil {
 		return nil, err
 	}
 
 	if out == nil {
-		return []*artifact.Artifact{}, nil
+		return []*dx.Artifact{}, nil
 	}
 
 	return out, err
