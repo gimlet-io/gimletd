@@ -84,7 +84,7 @@ func process(repo *git.Repository, artifactModel *model.Artifact) error {
 				return fmt.Errorf("cannot serialize manifest %s", err.Error())
 			}
 
-			templatedManifests, err := dx.HelmTemplate(string(manifestString), map[string]string{})
+			templatedManifests, err := dx.HelmTemplate(string(manifestString), artifact.Context)
 			files := dx.SplitHelmOutput(map[string]string{"manifest.yaml": templatedManifests})
 			githelper.CommitFilesToGit(repo, files, env.Env, env.App, "automated deploy")
 		}
