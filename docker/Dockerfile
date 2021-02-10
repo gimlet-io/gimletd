@@ -8,6 +8,8 @@ ADD bin/gimletd-linux-x86_64 /bin/gimletd
 
 RUN addgroup -S gimletd && adduser -S gimletd -G gimletd
 
+ADD docker/known_hosts /etc/ssh/ssh_known_hosts
+
 RUN mkdir /var/lib/gimletd
 RUN chown gimletd:gimletd /var/lib/gimletd
 
