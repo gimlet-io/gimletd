@@ -17,7 +17,7 @@ type Manifest struct {
 	App       string                 `yaml:"app" json:"app"`
 	Env       string                 `yaml:"env" json:"env"`
 	Namespace string                 `yaml:"namespace" json:"namespace"`
-	Deploy    *Deploy                `yaml:"deploy,omitempty" json:"deploy"`
+	Deploy    *Deploy                `yaml:"deploy,omitempty" json:"deploy,omitempty"`
 	Chart     Chart                  `yaml:"chart" json:"chart"`
 	Values    map[string]interface{} `yaml:"values" json:"values"`
 }
