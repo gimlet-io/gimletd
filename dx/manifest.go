@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/Masterminds/sprig/v3"
-	"gopkg.in/yaml.v3"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	helmCLI "helm.sh/helm/v3/pkg/cli"
 	"path/filepath"
+	"sigs.k8s.io/yaml"
 	"strings"
 	"text/template"
 )
@@ -33,24 +33,27 @@ type Deploy struct {
 	Event  *GitEvent `yaml:"event,omitempty" json:"event,omitempty"`
 }
 
-func HelmTemplate(manifestString string, vars map[string]string) (string, error) {
+func (m *Manifest) ResolveVars(vars map[string]string) error {
+	manifestString, err := yaml.Marshal(m)
+	if err != nil {
+		return fmt.Errorf("cannot marshal manifest %s", err.Error())
+	}
+
 	tpl, err := template.New("").Funcs(sprig.TxtFuncMap()).Parse(string(manifestString))
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	var templated bytes.Buffer
 	err = tpl.Execute(&templated, vars)
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	var m Manifest
-	err = yaml.Unmarshal(templated.Bytes(), &m)
-	if err != nil {
-		return "", fmt.Errorf("cannot parse manifest")
-	}
+	return yaml.Unmarshal(templated.Bytes(), m)
+}
 
+func HelmTemplate(m Manifest) (string, error) {
 	actionConfig := new(action.Configuration)
 	client := action.NewInstall(actionConfig)
 

@@ -8,7 +8,6 @@ import (
 	"github.com/gimlet-io/gimletd/store"
 	"github.com/go-git/go-git/v5"
 	"github.com/sirupsen/logrus"
-	"sigs.k8s.io/yaml"
 	"time"
 )
 
@@ -79,12 +78,14 @@ func process(repo *git.Repository, artifactModel *model.Artifact) error {
 
 	for _, env := range artifact.Environments {
 		if deployTrigger(artifact, env.Deploy) {
-			manifestString, err := yaml.Marshal(env)
+			err = env.ResolveVars(artifact.Context)
 			if err != nil {
-				return fmt.Errorf("cannot serialize manifest %s", err.Error())
+				return fmt.Errorf("cannot resolve manifest vars %s", err.Error())
 			}
-
-			templatedManifests, err := dx.HelmTemplate(string(manifestString), artifact.Context)
+			templatedManifests, err := dx.HelmTemplate(*env)
+			if err != nil {
+				return fmt.Errorf("cannot run helm template %s", err.Error())
+			}
 			files := dx.SplitHelmOutput(map[string]string{"manifest.yaml": templatedManifests})
 			githelper.CommitFilesToGit(repo, files, env.Env, env.App, "automated deploy")
 		}
