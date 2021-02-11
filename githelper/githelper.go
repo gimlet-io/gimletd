@@ -9,6 +9,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
 	"github.com/go-git/go-git/v5/storage/memory"
+	"io/ioutil"
 	"path/filepath"
 	"strings"
 	"time"
@@ -177,4 +178,24 @@ func stageFile(worktree *git.Worktree, content string, path string) error {
 
 	_, err = worktree.Add(path)
 	return err
+}
+
+// Content returns the content of a file
+func Content(repo *git.Repository, path string) (string, error) {
+	worktree, err := repo.Worktree()
+	if err != nil {
+		return "", err
+	}
+
+	f, err := worktree.Filesystem.Open(path)
+	if err != nil {
+		return "", nil
+	}
+	defer f.Close()
+
+	content, err := ioutil.ReadAll(f)
+	if err != nil {
+		return "", err
+	}
+	return string(content), nil
 }
