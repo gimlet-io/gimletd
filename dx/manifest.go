@@ -135,17 +135,17 @@ func CloneChartFromRepo(m Manifest, privateKeyPath string) (string, error) {
 		return "", fmt.Errorf("cannot create tmp file: %s", err)
 	}
 
-	var publicKeys *ssh.PublicKeys
+	opts := &git.CloneOptions{
+		URL: gitUrl,
+	}
 	if privateKeyPath != "" {
-		publicKeys, err = ssh.NewPublicKeysFromFile("git", privateKeyPath, "")
+		publicKeys, err := ssh.NewPublicKeysFromFile("git", privateKeyPath, "")
 		if err != nil {
 			return "", fmt.Errorf("cannot generate public key from private: %s", err.Error())
 		}
+		opts.Auth = publicKeys
 	}
-	repo, err := git.PlainClone(tmpChartDir, false, &git.CloneOptions{
-		URL: gitUrl,
-		Auth: publicKeys,
-	})
+	repo, err := git.PlainClone(tmpChartDir, false, opts)
 	if err != nil {
 		return "", fmt.Errorf("cannot clone chart git repo: %s", err)
 	}
