@@ -4,9 +4,15 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/Masterminds/sprig/v3"
+	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
+	giturl "github.com/whilp/git-urls"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	helmCLI "helm.sh/helm/v3/pkg/cli"
+	"io/ioutil"
+	"net/url"
 	"path/filepath"
 	"sigs.k8s.io/yaml"
 	"strings"
@@ -114,4 +120,68 @@ func SplitHelmOutput(input map[string]string) map[string]string {
 	}
 
 	return files
+}
+
+func CloneChartFromRepo(m Manifest, privateKeyPath string) (string, error) {
+	gitAddress, err := giturl.ParseScp(m.Chart.Name)
+	if err != nil {
+		return "", fmt.Errorf("cannot parse chart's git address: %s", err)
+	}
+	gitUrl := strings.ReplaceAll(m.Chart.Name, gitAddress.RawQuery, "")
+	gitUrl = strings.ReplaceAll(gitUrl, "?", "")
+
+	tmpChartDir, err := ioutil.TempDir("", "gimlet-git-chart")
+	if err != nil {
+		return "", fmt.Errorf("cannot create tmp file: %s", err)
+	}
+
+	var publicKeys *ssh.PublicKeys
+	if privateKeyPath != "" {
+		publicKeys, err = ssh.NewPublicKeysFromFile("git", privateKeyPath, "")
+		if err != nil {
+			return "", fmt.Errorf("cannot generate public key from private: %s", err.Error())
+		}
+	}
+	repo, err := git.PlainClone(tmpChartDir, false, &git.CloneOptions{
+		URL: gitUrl,
+		Auth: publicKeys,
+	})
+	if err != nil {
+		return "", fmt.Errorf("cannot clone chart git repo: %s", err)
+	}
+	worktree, err := repo.Worktree()
+	if err != nil {
+		return "", fmt.Errorf("cannot get worktree: %s", err)
+	}
+
+	params, _ := url.ParseQuery(gitAddress.RawQuery)
+	if v, found := params["path"]; found {
+		tmpChartDir = tmpChartDir + v[0]
+	}
+	if v, found := params["sha"]; found {
+		err = worktree.Checkout(&git.CheckoutOptions{
+			Hash: plumbing.NewHash(v[0]),
+		})
+		if err != nil {
+			return "", fmt.Errorf("cannot checkout sha: %s", err)
+		}
+	}
+	if v, found := params["tag"]; found {
+		err = worktree.Checkout(&git.CheckoutOptions{
+			Branch: plumbing.NewTagReferenceName(v[0]),
+		})
+		if err != nil {
+			return "", fmt.Errorf("cannot checkout tag: %s", err)
+		}
+	}
+	if v, found := params["branch"]; found {
+		err = worktree.Checkout(&git.CheckoutOptions{
+			Branch: plumbing.NewBranchReferenceName(v[0]),
+		})
+		if err != nil {
+			return "", fmt.Errorf("cannot checkout branch: %s", err)
+		}
+	}
+
+	return tmpChartDir, nil
 }

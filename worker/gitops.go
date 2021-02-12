@@ -8,6 +8,8 @@ import (
 	"github.com/gimlet-io/gimletd/store"
 	"github.com/go-git/go-git/v5"
 	"github.com/sirupsen/logrus"
+	"os"
+	"strings"
 	"time"
 )
 
@@ -42,7 +44,7 @@ func (w *GitopsWorker) Run() {
 			repo, err := githelper.CloneToMemory(w.gitopsRepoUrl, w.gitopsRepoDeployKeyPath)
 
 			if err == nil {
-				err = process(repo, artifact)
+				err = process(repo, artifact, w.gitopsRepoDeployKeyPath)
 				if err == nil {
 					err = githelper.Push(repo, w.gitopsRepoDeployKeyPath)
 				}
@@ -70,7 +72,7 @@ func (w *GitopsWorker) Run() {
 	}
 }
 
-func process(repo *git.Repository, artifactModel *model.Artifact) error {
+func process(repo *git.Repository, artifactModel *model.Artifact, sshPrivateKeyPathForChartClone string) error {
 	artifact, err := model.ToArtifact(artifactModel)
 	if err != nil {
 		return fmt.Errorf("cannot parse artifact %s", err.Error())
@@ -82,6 +84,16 @@ func process(repo *git.Repository, artifactModel *model.Artifact) error {
 			if err != nil {
 				return fmt.Errorf("cannot resolve manifest vars %s", err.Error())
 			}
+
+			if strings.HasPrefix(env.Chart.Name, "git@") {
+				tmpChartDir, err := dx.CloneChartFromRepo(*env, sshPrivateKeyPathForChartClone)
+				if err != nil {
+					return fmt.Errorf("cannot fetch chart from git %s", err.Error())
+				}
+				env.Chart.Name = tmpChartDir
+				defer os.RemoveAll(tmpChartDir)
+			}
+
 			templatedManifests, err := dx.HelmTemplate(*env)
 			if err != nil {
 				return fmt.Errorf("cannot run helm template %s", err.Error())

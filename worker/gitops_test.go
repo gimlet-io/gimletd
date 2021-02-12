@@ -77,7 +77,7 @@ func Test_process(t *testing.T) {
 	repo, _ := git.Init(memory.NewStorage(), memfs.New())
 	_, err := repo.CreateRemote(&config.RemoteConfig{Name: "origin", URLs: []string{""}})
 
-	err = process(repo, artifactModel)
+	err = process(repo, artifactModel, "")
 	assert.Nil(t, err)
 }
 
