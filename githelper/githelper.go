@@ -69,13 +69,13 @@ func NothingToCommit(repo *git.Repository) (bool, error) {
 	return status.IsClean(), nil
 }
 
-func Commit(repo *git.Repository, message string) error {
+func Commit(repo *git.Repository, message string) (string, error) {
 	worktree, err := repo.Worktree()
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	_, err = worktree.Commit(message, &git.CommitOptions{
+	sha, err := worktree.Commit(message, &git.CommitOptions{
 		Author: &object.Signature{
 			Name:  "Gimlet CLI",
 			Email: "cli@gimlet.io",
@@ -83,7 +83,11 @@ func Commit(repo *git.Repository, message string) error {
 		},
 	})
 
-	return err
+	if err != nil {
+		return "", err
+	}
+
+	return sha.String(), nil
 }
 
 func DelDir(repo *git.Repository, path string) error {
@@ -124,22 +128,22 @@ func StageFolder(repo *git.Repository, folder string) error {
 	})
 }
 
-func CommitFilesToGit(repo *git.Repository, files map[string]string, env string, app string, message string) error {
+func CommitFilesToGit(repo *git.Repository, files map[string]string, env string, app string, message string) (string, error) {
 	empty, err := NothingToCommit(repo)
 	if err != nil {
-		return fmt.Errorf("cannot get git state %s", err)
+		return "", fmt.Errorf("cannot get git state %s", err)
 	}
 	if !empty {
-		return fmt.Errorf("there are staged changes in the gitops repo. Commit them first then try again")
+		return "", fmt.Errorf("there are staged changes in the gitops repo. Commit them first then try again")
 	}
 
 	w, err := repo.Worktree()
 	if err != nil {
-		return fmt.Errorf("cannot get worktree %s", err)
+		return "", fmt.Errorf("cannot get worktree %s", err)
 	}
 	err = w.Filesystem.MkdirAll(filepath.Join(env, app), commands.Dir_RWX_RX_R)
 	if err != nil {
-		return fmt.Errorf("cannot create dir %s", err)
+		return "", fmt.Errorf("cannot create dir %s", err)
 	}
 
 	for path, content := range files {
@@ -149,16 +153,16 @@ func CommitFilesToGit(repo *git.Repository, files map[string]string, env string,
 
 		err = stageFile(w, content, filepath.Join(env, app, filepath.Base(path)))
 		if err != nil {
-			return fmt.Errorf("cannot stage file %s", err)
+			return "", fmt.Errorf("cannot stage file %s", err)
 		}
 	}
 
 	empty, err = NothingToCommit(repo)
 	if err != nil {
-		return err
+		return "", err
 	}
 	if empty {
-		return nil
+		return "", nil
 	}
 
 	gitMessage := fmt.Sprintf("[Gimlet] %s/%s %s", env, app, message)

@@ -17,7 +17,6 @@ package worker
 import (
 	"encoding/json"
 	"github.com/gimlet-io/gimletd/dx"
-	"github.com/gimlet-io/gimletd/model"
 	"github.com/go-git/go-billy/v5/memfs"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
@@ -26,7 +25,7 @@ import (
 	"testing"
 )
 
-func Test_process(t *testing.T) {
+func Test_gitopsTemplateAndWrite(t *testing.T) {
 	var a dx.Artifact
 	json.Unmarshal([]byte(`
 {
@@ -72,12 +71,11 @@ func Test_process(t *testing.T) {
   ]
 }
 `), &a)
-	artifactModel, _ := model.ToArtifactModel(a)
 
 	repo, _ := git.Init(memory.NewStorage(), memfs.New())
 	_, err := repo.CreateRemote(&config.RemoteConfig{Name: "origin", URLs: []string{""}})
 
-	err = process(repo, artifactModel, "")
+	_, err = gitopsTemplateAndWrite(repo, a.Context, a.Environments[0], "")
 	assert.Nil(t, err)
 }
 

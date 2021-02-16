@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/gimlet-io/gimletd/cmd/config"
 	"github.com/gimlet-io/gimletd/model"
+	"github.com/gimlet-io/gimletd/notifications"
 	"github.com/gimlet-io/gimletd/server"
 	"github.com/gimlet-io/gimletd/server/token"
 	"github.com/gimlet-io/gimletd/store"
@@ -40,12 +41,15 @@ func main() {
 		panic(err)
 	}
 
+	notificationsManager := &notifications.ManagerImpl{}
+
 	if config.GitopsRepoUrl != "" &&
 		config.GitopsRepoDeployKeyPath != "" {
 		gitopsWorker := worker.NewGitopsWorker(
 			store,
 			config.GitopsRepoUrl,
 			config.GitopsRepoDeployKeyPath,
+			notificationsManager,
 		)
 		go gitopsWorker.Run()
 	} else {

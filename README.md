@@ -72,3 +72,15 @@ curl -i \
 ```
 
 Save the returned user token from the result.
+
+## Notifications
+
+### Create a Slack app
+
+To generate a new Slack token visit the https://api.slack.com/apps page and follow these steps:
+
+- Create a new application. "App Name" is Gimlet, pick your workspace as "Development Slack Workspace"
+- Navigate to "OAuth & Permissions" on the left sidebar
+- Under "Bot Token Scopes", add scopes `chat:write`, `chat:write.customize` and `chat:write.public`
+- Click the "Install App to Workspace" button on the top of the page
+- Once you installed the app, save "Bot User OAuth Access Token" in Gimlet above
