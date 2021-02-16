@@ -41,7 +41,13 @@ func main() {
 		panic(err)
 	}
 
-	notificationsManager := &notifications.ManagerImpl{}
+	notificationsManager := notifications.NewManager(
+		config.Notifications.Provider,
+		config.Notifications.Token,
+		config.Notifications.DefaultChannel,
+		config.Notifications.ChannelMapping,
+	)
+	go notificationsManager.Run()
 
 	if config.GitopsRepoUrl != "" &&
 		config.GitopsRepoDeployKeyPath != "" {

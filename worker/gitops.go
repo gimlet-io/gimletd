@@ -82,10 +82,8 @@ func process(
 		}
 
 		event := &notifications.GitopsEvent{
-			Repo:        artifact.Version.RepositoryName,
-			Env:         env.Env,
-			App:         env.App,
-			TriggerRef:  artifact.Version.SHA,
+			Manifest:    env,
+			Artifact:    artifact,
 			TriggeredBy: "policy",
 			Status:      notifications.Success,
 			GitopsRepo:  gitopsRepoUrl,
@@ -109,8 +107,10 @@ func process(
 			return
 		}
 
-		event.GitopsRef = sha
-		notificationsManager.Broadcast(event)
+		if sha != "" { // if there was no changes to push
+			event.GitopsRef = sha
+			notificationsManager.Broadcast(event)
+		}
 	}
 
 	administerSuccess(store, artifactModel)

@@ -84,3 +84,10 @@ To generate a new Slack token visit the https://api.slack.com/apps page and foll
 - Under "Bot Token Scopes", add scopes `chat:write`, `chat:write.customize` and `chat:write.public`
 - Click the "Install App to Workspace" button on the top of the page
 - Once you installed the app, save "Bot User OAuth Access Token" in Gimlet above
+
+```
+NOTIFICATIONS_PROVIDER=slack
+NOTIFICATIONS_TOKEN=<Bot User OAuth Access Token>
+NOTIFICATIONS_DEFAULT_CHANNEL=testing
+NOTIFICATIONS_CHANNEL_MAPPING=prod=alerts,staging=staging
+```
