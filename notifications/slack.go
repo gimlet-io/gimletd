@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"github.com/sirupsen/logrus"
 	"io/ioutil"
-	"log"
 	"net/http"
+	"strings"
 )
 
 const markdown = "mrkdwn"
@@ -71,10 +71,20 @@ func (s *slack) post(msg *slackMessage) error {
 	}
 
 	body, err := ioutil.ReadAll(res.Body)
-	logrus.Info(string(body))
+	var parsed map[string]interface{}
+	err = json.Unmarshal(body, &parsed)
+	if err != nil {
+		return fmt.Errorf("cannot parse slack response: %s", err)
+	}
+	if val, ok := parsed["ok"]; ok {
+		if val != true {
+			logrus.Info(string(body))
+		}
+	} else {
+		logrus.Info(string(body))
+	}
 
 	if res.StatusCode != 200 {
-		log.Print("Could not post to slack, status: ", res.Status)
 		return fmt.Errorf("could not post to slack, status: %d", res.StatusCode)
 	}
 
@@ -90,25 +100,60 @@ func (s *slack) newSlackMessage(event *GitopsEvent) (*slackMessage, error) {
 	msg := &slackMessage{
 		Channel: channel,
 		Text:    "",
-		Blocks:  nil,
+		Blocks:  []Block{},
 	}
 
 	if event.Status == Failure {
-		msg.Text = fmt.Sprintf(
-			"Rolling out %s of %s to %s, revision <%s>, failed to update gitops manifests :exclamation:",
-			event.Manifest.App,
-			event.Artifact.Version.RepositoryName,
-			event.Manifest.Env,
-			event.Artifact.Version.URL,
+		msg.Text = fmt.Sprintf("Failed to roll out %s of %s", event.Manifest.App, event.Artifact.Version.RepositoryName)
+		msg.Blocks = append(msg.Blocks,
+			Block{
+				Type: section,
+				Text: &Text{
+					Type: markdown,
+					Text: msg.Text,
+				},
+			},
+		)
+		msg.Blocks = append(msg.Blocks,
+			Block{
+				Type: contextString,
+				Elements: []Text{
+					{
+						Type: markdown,
+						Text: fmt.Sprintf(":exclamation: *Error* :exclamation: \n%s", event.StatusDesc),
+					},
+				},
+			},
+		)
+		msg.Blocks = append(msg.Blocks,
+			Block{
+				Type: contextString,
+				Elements: []Text{
+					{Type: markdown, Text: fmt.Sprintf(":dart: %s", strings.Title(event.Manifest.Env))},
+					{Type: markdown, Text: fmt.Sprintf(":clipboard: %s", event.Artifact.Version.URL)},
+				},
+			},
 		)
 	} else {
-		msg.Text = fmt.Sprintf(
-			"Rolling out %s of %s to %s, revision <%s>, gitops manifests are now updated <%s> :clipboard:",
-			event.Manifest.App,
-			event.Artifact.Version.RepositoryName,
-			event.Manifest.Env,
-			event.Artifact.Version.URL,
-			s.commitLink(event.GitopsRepo, event.GitopsRef),
+		msg.Text = fmt.Sprintf("Rolling out %s of %s", event.Manifest.App, event.Artifact.Version.RepositoryName)
+		msg.Blocks = append(msg.Blocks,
+			Block{
+				Type: section,
+				Text: &Text{
+					Type: markdown,
+					Text: msg.Text,
+				},
+			},
+		)
+		msg.Blocks = append(msg.Blocks,
+			Block{
+				Type: contextString,
+				Elements: []Text{
+					{Type: markdown, Text: fmt.Sprintf(":dart: %s", strings.Title(event.Manifest.Env))},
+					{Type: markdown, Text: fmt.Sprintf(":clipboard: %s", event.Artifact.Version.URL)},
+					{Type: markdown, Text: fmt.Sprintf(":paperclip: %s", s.commitLink(event.GitopsRepo, event.GitopsRef))},
+				},
+			},
 		)
 	}
 
@@ -116,5 +161,8 @@ func (s *slack) newSlackMessage(event *GitopsEvent) (*slackMessage, error) {
 }
 
 func (s *slack) commitLink(repo string, ref string) string {
+	if len(ref) < 8 {
+		return ""
+	}
 	return fmt.Sprintf(githubCommitLinkFormat, repo, ref, ref[0:7])
 }
