@@ -1,5 +1,6 @@
 package notifications
 
 type provider interface {
-	send(event *GitopsEvent) error
+	send(msg Message) error
 }
+

@@ -41,7 +41,7 @@ func saveArtifact(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte(artifactStr))
+	w.Write(artifactStr)
 }
 
 func getArtifacts(w http.ResponseWriter, r *http.Request) {

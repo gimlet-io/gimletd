@@ -26,12 +26,12 @@ type GitopsEvent struct {
 }
 
 type Manager interface {
-	Broadcast(event *GitopsEvent)
+	Broadcast(msg Message)
 }
 
 type ManagerImpl struct {
 	provider  provider
-	broadcast chan *GitopsEvent
+	broadcast chan Message
 }
 
 func NewManager(
@@ -57,18 +57,21 @@ func NewManager(
 				defaultChannel: defaultChannel,
 				channelMapping: channelMap,
 			},
-			broadcast: make(chan *GitopsEvent),
+			broadcast: make(chan Message),
 		}
 	}
 
 	return &ManagerImpl{
 		provider:  nil,
-		broadcast: make(chan *GitopsEvent),
+		broadcast: make(chan Message),
 	}
 }
 
-func (m *ManagerImpl) Broadcast(event *GitopsEvent) {
-	m.broadcast <- event
+func (m *ManagerImpl) Broadcast(msg Message) {
+	select {
+	case m.broadcast <- msg:
+	default:
+	}
 }
 
 func (m *ManagerImpl) Run() {

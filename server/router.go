@@ -2,6 +2,7 @@ package server
 
 import (
 	"github.com/gimlet-io/gimletd/cmd/config"
+	"github.com/gimlet-io/gimletd/notifications"
 	"github.com/gimlet-io/gimletd/server/session"
 	"github.com/gimlet-io/gimletd/store"
 	"github.com/go-chi/chi"
@@ -14,6 +15,7 @@ import (
 func SetupRouter(
 	config *config.Config,
 	store *store.Store,
+	notificationsManager notifications.Manager,
 ) *chi.Mux {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
@@ -24,6 +26,7 @@ func SetupRouter(
 	r.Use(middleware.Timeout(60 * time.Second))
 
 	r.Use(middleware.WithValue("store", store))
+	r.Use(middleware.WithValue("notificationsManager", notificationsManager))
 
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   []string{"http://localhost:8888", config.Host},
@@ -39,6 +42,7 @@ func SetupRouter(
 		r.Use(session.MustUser())
 		r.Post("/api/artifact", saveArtifact)
 		r.Get("/api/artifacts", getArtifacts)
+		r.Post("/api/flux-events", fluxEvent)
 	})
 
 	r.Group(func(r chi.Router) {
@@ -50,7 +54,7 @@ func SetupRouter(
 		r.Get("/api/users", getUsers)
 	})
 
-	r.Get("/", func (w http.ResponseWriter, r *http.Request) {
+	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
 

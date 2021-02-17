@@ -62,7 +62,7 @@ func main() {
 		logrus.Warn("Not starting GitOps worker. GITOPS_REPO_SSH_ADDRESS and GITOPS_REPO_DEPLOY_KEY_PATH must be set to start GitOps worker")
 	}
 
-	r := server.SetupRouter(config, store)
+	r := server.SetupRouter(config, store, notificationsManager)
 	err = http.ListenAndServe(":8888", r)
 	if err != nil {
 		panic(err)

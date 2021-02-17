@@ -8,7 +8,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"io/ioutil"
 	"net/http"
-	"strings"
 )
 
 const markdown = "mrkdwn"
@@ -41,11 +40,17 @@ type Text struct {
 	Text string `json:"text"`
 }
 
-func (s *slack) send(event *GitopsEvent) error {
-	slackMessage, err := s.newSlackMessage(event)
+func (s *slack) send(msg Message) error {
+	slackMessage, err := msg.AsSlackMessage()
 	if err != nil {
 		return fmt.Errorf("cannot create slack message: %s", err)
 	}
+
+	channel := s.defaultChannel
+	if ch, ok := s.channelMapping[msg.Env()]; ok {
+		channel = ch
+	}
+	slackMessage.Channel = channel
 
 	return s.post(slackMessage)
 }
@@ -91,76 +96,7 @@ func (s *slack) post(msg *slackMessage) error {
 	return nil
 }
 
-func (s *slack) newSlackMessage(event *GitopsEvent) (*slackMessage, error) {
-	channel := s.defaultChannel
-	if ch, ok := s.channelMapping[event.Manifest.Env]; ok {
-		channel = ch
-	}
-
-	msg := &slackMessage{
-		Channel: channel,
-		Text:    "",
-		Blocks:  []Block{},
-	}
-
-	if event.Status == Failure {
-		msg.Text = fmt.Sprintf("Failed to roll out %s of %s", event.Manifest.App, event.Artifact.Version.RepositoryName)
-		msg.Blocks = append(msg.Blocks,
-			Block{
-				Type: section,
-				Text: &Text{
-					Type: markdown,
-					Text: msg.Text,
-				},
-			},
-		)
-		msg.Blocks = append(msg.Blocks,
-			Block{
-				Type: contextString,
-				Elements: []Text{
-					{
-						Type: markdown,
-						Text: fmt.Sprintf(":exclamation: *Error* :exclamation: \n%s", event.StatusDesc),
-					},
-				},
-			},
-		)
-		msg.Blocks = append(msg.Blocks,
-			Block{
-				Type: contextString,
-				Elements: []Text{
-					{Type: markdown, Text: fmt.Sprintf(":dart: %s", strings.Title(event.Manifest.Env))},
-					{Type: markdown, Text: fmt.Sprintf(":clipboard: %s", event.Artifact.Version.URL)},
-				},
-			},
-		)
-	} else {
-		msg.Text = fmt.Sprintf("Rolling out %s of %s", event.Manifest.App, event.Artifact.Version.RepositoryName)
-		msg.Blocks = append(msg.Blocks,
-			Block{
-				Type: section,
-				Text: &Text{
-					Type: markdown,
-					Text: msg.Text,
-				},
-			},
-		)
-		msg.Blocks = append(msg.Blocks,
-			Block{
-				Type: contextString,
-				Elements: []Text{
-					{Type: markdown, Text: fmt.Sprintf(":dart: %s", strings.Title(event.Manifest.Env))},
-					{Type: markdown, Text: fmt.Sprintf(":clipboard: %s", event.Artifact.Version.URL)},
-					{Type: markdown, Text: fmt.Sprintf(":paperclip: %s", s.commitLink(event.GitopsRepo, event.GitopsRef))},
-				},
-			},
-		)
-	}
-
-	return msg, nil
-}
-
-func (s *slack) commitLink(repo string, ref string) string {
+func commitLink(repo string, ref string) string {
 	if len(ref) < 8 {
 		return ""
 	}

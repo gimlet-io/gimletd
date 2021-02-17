@@ -97,7 +97,7 @@ func process(
 
 			event.Status = notifications.Failure
 			event.StatusDesc = err.Error()
-			notificationsManager.Broadcast(event)
+			notificationsManager.Broadcast(notifications.MessageFromGitOpsEvent(event))
 			return
 		}
 
@@ -109,7 +109,7 @@ func process(
 
 		if sha != "" { // if there was no changes to push
 			event.GitopsRef = sha
-			notificationsManager.Broadcast(event)
+			notificationsManager.Broadcast(notifications.MessageFromGitOpsEvent(event))
 		}
 	}
 
