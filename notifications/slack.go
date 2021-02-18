@@ -14,8 +14,8 @@ const markdown = "mrkdwn"
 const section = "section"
 const contextString = "context"
 
-const githubCommitLinkFormat = "https://github.com/%s/commit/%s|%s"
-const bitbucketServerLinkFormat = "http://%s/projects/%s/repos/%s/commits/%s|%s"
+const githubCommitLinkFormat = "<https://github.com/%s/commit/%s|%s>"
+const bitbucketServerLinkFormat = "<http://%s/projects/%s/repos/%s/commits/%s|%s>"
 
 type slack struct {
 	token          string
@@ -44,6 +44,10 @@ func (s *slack) send(msg Message) error {
 	slackMessage, err := msg.AsSlackMessage()
 	if err != nil {
 		return fmt.Errorf("cannot create slack message: %s", err)
+	}
+
+	if slackMessage == nil {
+		return nil
 	}
 
 	channel := s.defaultChannel

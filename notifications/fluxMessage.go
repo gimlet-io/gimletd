@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/fluxcd/pkg/recorder"
 	"strings"
-	"time"
 )
 
 type fluxMessage struct {
@@ -12,23 +11,23 @@ type fluxMessage struct {
 }
 
 func (fm *fluxMessage) AsSlackMessage() (*slackMessage, error) {
+	if fm.event.Reason == "Progressing" {
+		return nil, nil
+	}
+
 	msg := &slackMessage{
 		Text:   "",
 		Blocks: []Block{},
 	}
 
-	msg.Text = fmt.Sprintf(
-		"%s: %s - %s/%s: %s - %s",
-		fm.event.Timestamp.Format(time.RFC3339),
-		fm.event.InvolvedObject.Kind,
-		fm.event.InvolvedObject.Namespace,
-		fm.event.InvolvedObject.Name,
-		fm.event.Message,
-		fm.event.Reason,
-	)
-	if fm.event.Severity == "error" {
-		msg.Text = ":exclamation: :exclamation:" + msg.Text
+	if fm.event.Reason == "ReconciliationSucceeded" {
+		msg.Text = ":white_check_mark: Gitops changes applied"
 	}
+
+	if fm.event.Reason == "ValidationFailed" {
+		msg.Text = ":exclamation: Gitops apply failed"
+	}
+
 	msg.Blocks = append(msg.Blocks,
 		Block{
 			Type: section,
@@ -39,19 +38,42 @@ func (fm *fluxMessage) AsSlackMessage() (*slackMessage, error) {
 		},
 	)
 
-	var sb strings.Builder
-	for key, value := range fm.event.Metadata {
-		sb.WriteString(key + ": " + value)
-	}
-
-	if len(sb.String()) > 0 {
+	if rev, ok := fm.event.Metadata["revision"]; ok {
 		msg.Blocks = append(msg.Blocks,
 			Block{
 				Type: contextString,
 				Elements: []Text{
 					{
 						Type: markdown,
-						Text: sb.String(),
+						Text: fmt.Sprintf(":clipboard: %s", commitLink("owner/repo", parseRev(rev))),
+					},
+				},
+			},
+		)
+	}
+
+	//if fm.event.Reason == "ReconciliationSucceeded" {
+	//	msg.Blocks = append(msg.Blocks,
+	//		Block{
+	//			Type: contextString,
+	//			Elements: []Text{
+	//				{
+	//					Type: markdown,
+	//					Text: fm.event.Message,
+	//				},
+	//			},
+	//		},
+	//	)
+	//}
+
+	if fm.event.Reason == "ValidationFailed" {
+		msg.Blocks = append(msg.Blocks,
+			Block{
+				Type: contextString,
+				Elements: []Text{
+					{
+						Type: markdown,
+						Text: extractValidationError(fm.event.Message),
 					},
 				},
 			},
@@ -59,6 +81,30 @@ func (fm *fluxMessage) AsSlackMessage() (*slackMessage, error) {
 	}
 
 	return msg, nil
+}
+
+func extractValidationError(msg string) string {
+	errors := ""
+	lines := strings.Split(msg, "\n")
+	for _, line := range lines {
+		if line != "" &&
+			!strings.HasSuffix(line, "created") && !strings.HasSuffix(line, "created (dry run)") &&
+			!strings.HasSuffix(line, "configured") && !strings.HasSuffix(line, "configured (dry run)") &&
+			!strings.HasSuffix(line, "unchanged") && !strings.HasSuffix(line, "unchanged (dry run)") {
+			errors += line + "\n"
+		}
+	}
+
+	return errors
+}
+
+func parseRev(rev string) string {
+	parts := strings.Split(rev, "/")
+	if len(parts) != 2 {
+		return "n/a"
+	}
+
+	return parts[1]
 }
 
 func (fm *fluxMessage) Env() string {
