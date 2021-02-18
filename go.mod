@@ -5,6 +5,7 @@ go 1.14
 require (
 	github.com/Masterminds/sprig/v3 v3.1.0
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
+	github.com/fluxcd/pkg/recorder v0.0.6
 	github.com/gimlet-io/gimlet-cli v0.4.0
 	github.com/go-chi/chi v1.5.1
 	github.com/go-chi/cors v1.1.1
@@ -25,5 +26,7 @@ require (
 	gopkg.in/yaml.v2 v2.3.0
 	gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776
 	helm.sh/helm/v3 v3.4.1
+	k8s.io/api v0.19.3
+	k8s.io/apimachinery v0.19.3
 	sigs.k8s.io/yaml v1.2.0
 )

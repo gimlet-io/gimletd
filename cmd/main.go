@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/gimlet-io/gimletd/cmd/config"
 	"github.com/gimlet-io/gimletd/model"
+	"github.com/gimlet-io/gimletd/notifications"
 	"github.com/gimlet-io/gimletd/server"
 	"github.com/gimlet-io/gimletd/server/token"
 	"github.com/gimlet-io/gimletd/store"
@@ -40,19 +41,28 @@ func main() {
 		panic(err)
 	}
 
+	notificationsManager := notifications.NewManager(
+		config.Notifications.Provider,
+		config.Notifications.Token,
+		config.Notifications.DefaultChannel,
+		config.Notifications.ChannelMapping,
+	)
+	go notificationsManager.Run()
+
 	if config.GitopsRepoUrl != "" &&
 		config.GitopsRepoDeployKeyPath != "" {
 		gitopsWorker := worker.NewGitopsWorker(
 			store,
 			config.GitopsRepoUrl,
 			config.GitopsRepoDeployKeyPath,
+			notificationsManager,
 		)
 		go gitopsWorker.Run()
 	} else {
 		logrus.Warn("Not starting GitOps worker. GITOPS_REPO_SSH_ADDRESS and GITOPS_REPO_DEPLOY_KEY_PATH must be set to start GitOps worker")
 	}
 
-	r := server.SetupRouter(config, store)
+	r := server.SetupRouter(config, store, notificationsManager)
 	err = http.ListenAndServe(":8888", r)
 	if err != nil {
 		panic(err)

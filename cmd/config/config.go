@@ -30,12 +30,13 @@ func (c *Config) String() string {
 }
 
 type Config struct {
-	Debug               bool `envconfig:"DEBUG"`
-	Logging             Logging
-	Host                string `envconfig:"HOST"`
-	Database            Database
-	GitopsRepoUrl       string `envconfig:"GITOPS_REPO_SSH_ADDRESS"`
+	Debug                   bool `envconfig:"DEBUG"`
+	Logging                 Logging
+	Host                    string `envconfig:"HOST"`
+	Database                Database
+	GitopsRepoUrl           string `envconfig:"GITOPS_REPO_SSH_ADDRESS"`
 	GitopsRepoDeployKeyPath string `envconfig:"GITOPS_REPO_DEPLOY_KEY_PATH"`
+	Notifications           Notifications
 }
 
 type Database struct {
@@ -50,4 +51,11 @@ type Logging struct {
 	Color  bool `envconfig:"LOGS_COLOR"`
 	Pretty bool `envconfig:"LOGS_PRETTY"`
 	Text   bool `envconfig:"LOGS_TEXT"`
+}
+
+type Notifications struct {
+	Provider       string `envconfig:"NOTIFICATIONS_PROVIDER"`
+	Token          string `envconfig:"NOTIFICATIONS_TOKEN"`
+	DefaultChannel string `envconfig:"NOTIFICATIONS_DEFAULT_CHANNEL"`
+	ChannelMapping string `envconfig:"NOTIFICATIONS_CHANNEL_MAPPING"`
 }
