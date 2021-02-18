@@ -91,3 +91,47 @@ NOTIFICATIONS_TOKEN=<Bot User OAuth Access Token>
 NOTIFICATIONS_DEFAULT_CHANNEL=testing
 NOTIFICATIONS_CHANNEL_MAPPING=prod=alerts,staging=staging
 ```
+
+### Configure Flux in the gitops repo to notify GimletD
+
+Generate a Gimlet user for Flux:
+
+```bash
+curl -i \
+    -H "Content-Type: application/json" \
+    -H "Accept: application/json" \
+    -X POST -d '{"login":"flux"}' \
+    http://localhost:8888/api/user\?access_token\=$GIMLET_ADMIN_TOKEN
+```
+
+Create the notifications.yaml file under `<your-env>/flux/notifications.yaml`
+
+```yaml
+apiVersion: notification.toolkit.fluxcd.io/v1beta1
+kind: Provider
+metadata:
+  name: gimletd
+  namespace: flux-system
+spec:
+  type: generic
+  address: https://gimletd.<your-company-com>/api/flux-events?access_token=<token>
+---
+apiVersion: notification.toolkit.fluxcd.io/v1beta1
+kind: Alert
+metadata:
+  name: all-kustomizations
+  namespace: flux-system
+spec:
+  providerRef:
+    name: gimletd
+  eventSeverity: info
+  eventSources:
+    - kind: Kustomization
+      namespace: flux-system
+      name: '*'
+  suspend: false
+```
+
+Then you will see the notifications reaching Slack:
+
+![](docs/notifs.png)
