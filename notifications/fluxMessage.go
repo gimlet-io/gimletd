@@ -3,6 +3,7 @@ package notifications
 import (
 	"fmt"
 	"github.com/fluxcd/pkg/recorder"
+	githubLib "github.com/google/go-github/v33/github"
 	"strings"
 )
 
@@ -111,8 +112,20 @@ func (fm *fluxMessage) Env() string {
 	return "TODO"
 }
 
+func (fm *fluxMessage) AsGithubStatus() (*githubLib.RepoStatus, error) {
+	return nil, nil
+}
+
 func MessageFromFluxEvent(event *recorder.Event) Message {
 	return &fluxMessage{
 		event: event,
 	}
+}
+
+func (fm *fluxMessage) RepositoryName() string {
+	return ""
+}
+
+func (fm *fluxMessage) SHA() string {
+	return ""
 }

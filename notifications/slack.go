@@ -17,7 +17,7 @@ const contextString = "context"
 const githubCommitLinkFormat = "<https://github.com/%s/commit/%s|%s>"
 const bitbucketServerLinkFormat = "<http://%s/projects/%s/repos/%s/commits/%s|%s>"
 
-type slack struct {
+type slackProvider struct {
 	token          string
 	defaultChannel string
 	channelMapping map[string]string
@@ -40,7 +40,7 @@ type Text struct {
 	Text string `json:"text"`
 }
 
-func (s *slack) send(msg Message) error {
+func (s *slackProvider) send(msg Message) error {
 	slackMessage, err := msg.AsSlackMessage()
 	if err != nil {
 		return fmt.Errorf("cannot create slack message: %s", err)
@@ -59,7 +59,7 @@ func (s *slack) send(msg Message) error {
 	return s.post(slackMessage)
 }
 
-func (s *slack) post(msg *slackMessage) error {
+func (s *slackProvider) post(msg *slackMessage) error {
 	b := new(bytes.Buffer)
 	err := json.NewEncoder(b).Encode(msg)
 	if err != nil {

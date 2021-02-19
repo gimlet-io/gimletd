@@ -2,8 +2,13 @@ package notifications
 
 import (
 	"fmt"
+	githubLib "github.com/google/go-github/v33/github"
 	"strings"
+	"time"
 )
+
+const githubCommitLink = "https://github.com/%s/commit/%s"
+const contextFormat = "gitops/%s@%s"
 
 type gitopsMessage struct {
 	event *GitopsEvent
@@ -76,8 +81,35 @@ func (gm *gitopsMessage) Env() string {
 	return gm.event.Manifest.Env
 }
 
+func (gm *gitopsMessage) AsGithubStatus() (*githubLib.RepoStatus, error) {
+	state := "success"
+	if gm.event.Status == Failure {
+		state = "failure"
+	}
+
+	context := fmt.Sprintf(contextFormat, gm.event.Manifest.Env, time.Now().Format(time.RFC3339))
+	desc := gm.event.StatusDesc
+
+	targetURL := githubCommitLink
+
+	return &githubLib.RepoStatus{
+		State:       &state,
+		Context:     &context,
+		Description: &desc,
+		TargetURL:   &targetURL,
+	}, nil
+}
+
 func MessageFromGitOpsEvent(event *GitopsEvent) Message {
 	return &gitopsMessage{
 		event: event,
 	}
+}
+
+func (gm *gitopsMessage) RepositoryName() string {
+	return gm.event.Artifact.Version.RepositoryName
+}
+
+func (gm *gitopsMessage) SHA() string {
+	return gm.event.Artifact.Version.SHA
 }

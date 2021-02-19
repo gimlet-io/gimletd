@@ -37,6 +37,7 @@ type Config struct {
 	GitopsRepoUrl           string `envconfig:"GITOPS_REPO_SSH_ADDRESS"`
 	GitopsRepoDeployKeyPath string `envconfig:"GITOPS_REPO_DEPLOY_KEY_PATH"`
 	Notifications           Notifications
+	GithubStatusToken       string `envconfig:"GITHUB_STATUS_TOKEN"` // a Github Personal Access Token with repo:status perm
 }
 
 type Database struct {

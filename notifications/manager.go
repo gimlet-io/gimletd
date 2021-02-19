@@ -27,42 +27,17 @@ type GitopsEvent struct {
 
 type Manager interface {
 	Broadcast(msg Message)
+	AddProvider(provider string, token string, defaultChannel string, channelMapping string)
 }
 
 type ManagerImpl struct {
-	provider  provider
+	provider  []provider
 	broadcast chan Message
 }
 
-func NewManager(
-	provider string,
-	token string,
-	defaultChannel string,
-	channelMapping string,
-) *ManagerImpl {
-	if provider == "slack" {
-
-		channelMap := map[string]string{}
-		if channelMapping != "" {
-			pairs := strings.Split(channelMapping, ",")
-			for _, p := range pairs {
-				keyValue := strings.Split(p, "=")
-				channelMap[keyValue[0]] = keyValue[1]
-			}
-		}
-
-		return &ManagerImpl{
-			provider: &slack{
-				token:          token,
-				defaultChannel: defaultChannel,
-				channelMapping: channelMap,
-			},
-			broadcast: make(chan Message),
-		}
-	}
-
+func NewManager() *ManagerImpl {
 	return &ManagerImpl{
-		provider:  nil,
+		provider:  []provider{},
 		broadcast: make(chan Message),
 	}
 }
@@ -74,6 +49,31 @@ func (m *ManagerImpl) Broadcast(msg Message) {
 	}
 }
 
+func (m *ManagerImpl) AddProvider(providerType string, token string, defaultChannel string, channelMapping string) {
+	if providerType == "slack" {
+		channelMap := map[string]string{}
+		if channelMapping != "" {
+			pairs := strings.Split(channelMapping, ",")
+			for _, p := range pairs {
+				keyValue := strings.Split(p, "=")
+				channelMap[keyValue[0]] = keyValue[1]
+			}
+		}
+
+		m.provider = append(m.provider,
+			&slackProvider{
+				token:          token,
+				defaultChannel: defaultChannel,
+				channelMapping: channelMap,
+			},
+		)
+	}
+
+	if providerType == "github" {
+		m.provider = append(m.provider, newGithubProvider(token))
+	}
+}
+
 func (m *ManagerImpl) Run() {
 	if m.provider == nil {
 		return
@@ -82,12 +82,14 @@ func (m *ManagerImpl) Run() {
 	for {
 		select {
 		case message := <-m.broadcast:
-			go func() {
-				err := m.provider.send(message)
-				if err != nil {
-					logrus.Warnf("cannot send notification: %s ", err)
-				}
-			}()
+			for _, p := range m.provider {
+				go func() {
+					err := p.send(message)
+					if err != nil {
+						logrus.Warnf("cannot send notification: %s ", err)
+					}
+				}()
+			}
 		}
 	}
 }

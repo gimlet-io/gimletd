@@ -4,7 +4,6 @@ import (
 	"encoding/base32"
 	"github.com/gimlet-io/gimletd/cmd/config"
 	"github.com/gimlet-io/gimletd/model"
-	"github.com/gimlet-io/gimletd/notifications"
 	"github.com/gimlet-io/gimletd/server/token"
 	"github.com/gimlet-io/gimletd/store"
 	"github.com/gorilla/securecookie"
@@ -20,7 +19,7 @@ func Test_MustUser(t *testing.T) {
 	router := SetupRouter(
 		&config.Config{},
 		store,
-		notifications.NewManager("", "", "#channel", ""),
+		nil,
 	)
 	server := httptest.NewServer(router)
 	defer server.Close()

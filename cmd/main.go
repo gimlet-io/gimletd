@@ -41,12 +41,16 @@ func main() {
 		panic(err)
 	}
 
-	notificationsManager := notifications.NewManager(
+	notificationsManager := notifications.NewManager()
+	notificationsManager.AddProvider(
 		config.Notifications.Provider,
 		config.Notifications.Token,
 		config.Notifications.DefaultChannel,
 		config.Notifications.ChannelMapping,
 	)
+	if config.GithubStatusToken != "" {
+		notificationsManager.AddProvider("github", config.GithubStatusToken, "", "")
+	}
 	go notificationsManager.Run()
 
 	if config.GitopsRepoUrl != "" &&
