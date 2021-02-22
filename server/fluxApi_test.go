@@ -44,6 +44,7 @@ func Test_fluxEvent(t *testing.T) {
 
 	_, _, err := testPostEndpoint(fluxEvent, func(ctx context.Context) context.Context {
 		ctx = context.WithValue(ctx, "notificationsManager", notificationsManager)
+		ctx = context.WithValue(ctx, "gitopsRepo", "my/gitops")
 		return ctx
 	}, "/path", string(body))
 	assert.Nil(t, err)
