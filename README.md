@@ -142,3 +142,7 @@ spec:
 Then you will see the notifications reaching Slack:
 
 ![](docs/notifs.png)
+
+### Configure Github Status lines on Gitops write
+
+Set `GITHUB_STATUS_TOKEN` with a Github Personal Access Token with `repo:status` permission.
