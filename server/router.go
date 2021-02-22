@@ -27,6 +27,7 @@ func SetupRouter(
 
 	r.Use(middleware.WithValue("store", store))
 	r.Use(middleware.WithValue("notificationsManager", notificationsManager))
+	r.Use(middleware.WithValue("gitopsRepo", config.GitopsRepo))
 
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   []string{"http://localhost:8888", config.Host},

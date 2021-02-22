@@ -13,7 +13,8 @@ func fluxEvent(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 	notificationsManager := ctx.Value("notificationsManager").(notifications.Manager)
-	notificationsManager.Broadcast(notifications.MessageFromFluxEvent(&event))
+	gitopsRepo := ctx.Value("gitopsRepo").(string)
+	notificationsManager.Broadcast(notifications.MessageFromFluxEvent(gitopsRepo, &event))
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(""))

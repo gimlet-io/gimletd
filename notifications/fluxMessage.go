@@ -8,7 +8,8 @@ import (
 )
 
 type fluxMessage struct {
-	event *recorder.Event
+	event      *recorder.Event
+	gitopsRepo string
 }
 
 func (fm *fluxMessage) AsSlackMessage() (*slackMessage, error) {
@@ -46,7 +47,7 @@ func (fm *fluxMessage) AsSlackMessage() (*slackMessage, error) {
 				Elements: []Text{
 					{
 						Type: markdown,
-						Text: fmt.Sprintf(":clipboard: %s", commitLink("owner/repo", parseRev(rev))),
+						Text: fmt.Sprintf(":clipboard: %s", commitLink(fm.gitopsRepo, parseRev(rev))),
 					},
 				},
 			},
@@ -116,9 +117,10 @@ func (fm *fluxMessage) AsGithubStatus() (*githubLib.RepoStatus, error) {
 	return nil, nil
 }
 
-func MessageFromFluxEvent(event *recorder.Event) Message {
+func MessageFromFluxEvent(gitopsRepo string, event *recorder.Event) Message {
 	return &fluxMessage{
-		event: event,
+		event:      event,
+		gitopsRepo: gitopsRepo,
 	}
 }
 
