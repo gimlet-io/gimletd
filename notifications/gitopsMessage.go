@@ -82,21 +82,23 @@ func (gm *gitopsMessage) Env() string {
 }
 
 func (gm *gitopsMessage) AsGithubStatus() (*githubLib.RepoStatus, error) {
-	state := "success"
-	if gm.event.Status == Failure {
-		state = "failure"
-	}
-
 	context := fmt.Sprintf(contextFormat, gm.event.Manifest.Env, time.Now().Format(time.RFC3339))
 	desc := gm.event.StatusDesc
 
+	state := "success"
 	targetURL := fmt.Sprintf(githubCommitLink, gm.event.GitopsRepo, gm.event.GitopsRef)
+	targetURLPtr := &targetURL
+
+	if gm.event.Status == Failure {
+		state = "failure"
+		targetURLPtr = nil
+	}
 
 	return &githubLib.RepoStatus{
 		State:       &state,
 		Context:     &context,
 		Description: &desc,
-		TargetURL:   &targetURL,
+		TargetURL:   targetURLPtr,
 	}, nil
 }
 
