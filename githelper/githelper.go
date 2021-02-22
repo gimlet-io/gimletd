@@ -15,8 +15,11 @@ import (
 	"time"
 )
 
+const gitSSHAddressFormat = "git@github.com:%s.git"
+
 // CloneToMemory checks out a repo to an in-memory filesystem
-func CloneToMemory(url string, privateKeyPath string) (*git.Repository, error) {
+func CloneToMemory(repoName string, privateKeyPath string) (*git.Repository, error) {
+	url := fmt.Sprintf(gitSSHAddressFormat, repoName)
 	publicKeys, err := ssh.NewPublicKeysFromFile("git", privateKeyPath, "")
 	if err != nil {
 		return nil, fmt.Errorf("cannot generate public key from private: %s", err.Error())

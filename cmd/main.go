@@ -53,17 +53,17 @@ func main() {
 	}
 	go notificationsManager.Run()
 
-	if config.GitopsRepoUrl != "" &&
+	if config.GitopsRepo != "" &&
 		config.GitopsRepoDeployKeyPath != "" {
 		gitopsWorker := worker.NewGitopsWorker(
 			store,
-			config.GitopsRepoUrl,
+			config.GitopsRepo,
 			config.GitopsRepoDeployKeyPath,
 			notificationsManager,
 		)
 		go gitopsWorker.Run()
 	} else {
-		logrus.Warn("Not starting GitOps worker. GITOPS_REPO_SSH_ADDRESS and GITOPS_REPO_DEPLOY_KEY_PATH must be set to start GitOps worker")
+		logrus.Warn("Not starting GitOps worker. GITOPS_REPO and GITOPS_REPO_DEPLOY_KEY_PATH must be set to start GitOps worker")
 	}
 
 	r := server.SetupRouter(config, store, notificationsManager)

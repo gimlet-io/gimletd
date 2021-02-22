@@ -16,20 +16,20 @@ import (
 
 type GitopsWorker struct {
 	store                   *store.Store
-	gitopsRepoUrl           string
+	gitopsRepo              string
 	gitopsRepoDeployKeyPath string
 	notificationsManager    notifications.Manager
 }
 
 func NewGitopsWorker(
 	store *store.Store,
-	gitopsRepoUrl string,
+	gitopsRepo string,
 	gitopsRepoDeployKeyPath string,
 	notificationsManager notifications.Manager,
 ) *GitopsWorker {
 	return &GitopsWorker{
 		store:                   store,
-		gitopsRepoUrl:           gitopsRepoUrl,
+		gitopsRepo:              gitopsRepo,
 		gitopsRepoDeployKeyPath: gitopsRepoDeployKeyPath,
 		notificationsManager:    notificationsManager,
 	}
@@ -46,7 +46,7 @@ func (w *GitopsWorker) Run() {
 
 		for _, artifactModel := range artifactModels {
 			process(w.store,
-				w.gitopsRepoUrl,
+				w.gitopsRepo,
 				w.gitopsRepoDeployKeyPath,
 				artifactModel,
 				w.notificationsManager,
@@ -59,7 +59,7 @@ func (w *GitopsWorker) Run() {
 
 func process(
 	store *store.Store,
-	gitopsRepoUrl string,
+	gitopsRepo string,
 	gitopsRepoDeployKeyPath string,
 	artifactModel *model.Artifact,
 	notificationsManager notifications.Manager,
@@ -75,7 +75,7 @@ func process(
 			continue
 		}
 
-		repo, err := githelper.CloneToMemory(gitopsRepoUrl, gitopsRepoDeployKeyPath)
+		repo, err := githelper.CloneToMemory(gitopsRepo, gitopsRepoDeployKeyPath)
 		if err != nil {
 			administerError(err, artifactModel, store)
 			return
@@ -86,7 +86,7 @@ func process(
 			Artifact:    artifact,
 			TriggeredBy: "policy",
 			Status:      notifications.Success,
-			GitopsRepo:  gitopsRepoUrl,
+			GitopsRepo:  gitopsRepo,
 		}
 
 		sha, err := gitopsTemplateAndWrite(repo, artifact.Context, env, gitopsRepoDeployKeyPath)
@@ -107,7 +107,7 @@ func process(
 			return
 		}
 
-		if sha != "" { // if there was no changes to push
+		if sha != "" { // if there was changes to push
 			event.GitopsRef = sha
 			notificationsManager.Broadcast(notifications.MessageFromGitOpsEvent(event))
 		}

@@ -75,20 +75,16 @@ func (m *ManagerImpl) AddProvider(providerType string, token string, defaultChan
 }
 
 func (m *ManagerImpl) Run() {
-	if m.provider == nil {
-		return
-	}
-
 	for {
 		select {
 		case message := <-m.broadcast:
 			for _, p := range m.provider {
-				go func() {
+				go func(p provider) {
 					err := p.send(message)
 					if err != nil {
 						logrus.Warnf("cannot send notification: %s ", err)
 					}
-				}()
+				}(p)
 			}
 		}
 	}

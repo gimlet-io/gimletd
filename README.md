@@ -73,6 +73,13 @@ curl -i \
 
 Save the returned user token from the result.
 
+## Gitops worker config
+
+```
+GITOPS_REPO=laszlocph/gimletd-test
+GITOPS_REPO_DEPLOY_KEY_PATH=deploykey # read-only deploykey for the gitops repo
+```
+
 ## Notifications
 
 ### Create a Slack app

@@ -34,7 +34,7 @@ type Config struct {
 	Logging                 Logging
 	Host                    string `envconfig:"HOST"`
 	Database                Database
-	GitopsRepoUrl           string `envconfig:"GITOPS_REPO_SSH_ADDRESS"`
+	GitopsRepo              string `envconfig:"GITOPS_REPO"`
 	GitopsRepoDeployKeyPath string `envconfig:"GITOPS_REPO_DEPLOY_KEY_PATH"`
 	Notifications           Notifications
 	GithubStatusToken       string `envconfig:"GITHUB_STATUS_TOKEN"` // a Github Personal Access Token with repo:status perm
