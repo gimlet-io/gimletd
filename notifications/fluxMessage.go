@@ -23,7 +23,11 @@ func (fm *fluxMessage) AsSlackMessage() (*slackMessage, error) {
 	}
 
 	if fm.event.Reason == "ReconciliationSucceeded" {
-		msg.Text = ":white_check_mark: Gitops changes applied"
+		rev := ""
+		if val, ok := fm.event.Metadata["revision"]; ok {
+			rev = val
+		}
+		msg.Text = fmt.Sprintf("Gitops changes applied :heavy_check_mark: %s", commitLink(fm.gitopsRepo, parseRev(rev)))
 	}
 
 	if fm.event.Reason == "ValidationFailed" {
@@ -39,20 +43,6 @@ func (fm *fluxMessage) AsSlackMessage() (*slackMessage, error) {
 			},
 		},
 	)
-
-	if rev, ok := fm.event.Metadata["revision"]; ok {
-		msg.Blocks = append(msg.Blocks,
-			Block{
-				Type: contextString,
-				Elements: []Text{
-					{
-						Type: markdown,
-						Text: fmt.Sprintf(":clipboard: %s", commitLink(fm.gitopsRepo, parseRev(rev))),
-					},
-				},
-			},
-		)
-	}
 
 	//if fm.event.Reason == "ReconciliationSucceeded" {
 	//	msg.Blocks = append(msg.Blocks,
