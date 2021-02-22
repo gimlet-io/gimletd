@@ -30,14 +30,15 @@ func (c *Config) String() string {
 }
 
 type Config struct {
-	Debug                   bool `envconfig:"DEBUG"`
-	Logging                 Logging
-	Host                    string `envconfig:"HOST"`
-	Database                Database
-	GitopsRepo              string `envconfig:"GITOPS_REPO"`
-	GitopsRepoDeployKeyPath string `envconfig:"GITOPS_REPO_DEPLOY_KEY_PATH"`
-	Notifications           Notifications
-	GithubStatusToken       string `envconfig:"GITHUB_STATUS_TOKEN"` // a Github Personal Access Token with repo:status perm
+	Debug                          bool `envconfig:"DEBUG"`
+	Logging                        Logging
+	Host                           string `envconfig:"HOST"`
+	Database                       Database
+	GitopsRepo                     string `envconfig:"GITOPS_REPO"`
+	GitopsRepoDeployKeyPath        string `envconfig:"GITOPS_REPO_DEPLOY_KEY_PATH"`
+	Notifications                  Notifications
+	GithubStatusToken              string `envconfig:"GITHUB_STATUS_TOKEN"` // a Github Personal Access Token with repo:status perm
+	GithubChartAccessDeployKeyPath string `envconfig:"GITOPS_CHART_ACCESS_DEPLOY_KEY_PATH"`
 }
 
 type Database struct {

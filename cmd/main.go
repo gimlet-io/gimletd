@@ -59,6 +59,7 @@ func main() {
 			store,
 			config.GitopsRepo,
 			config.GitopsRepoDeployKeyPath,
+			config.GithubChartAccessDeployKeyPath,
 			notificationsManager,
 		)
 		go gitopsWorker.Run()

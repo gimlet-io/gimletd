@@ -15,23 +15,26 @@ import (
 )
 
 type GitopsWorker struct {
-	store                   *store.Store
-	gitopsRepo              string
-	gitopsRepoDeployKeyPath string
-	notificationsManager    notifications.Manager
+	store                          *store.Store
+	gitopsRepo                     string
+	gitopsRepoDeployKeyPath        string
+	githubChartAccessDeployKeyPath string
+	notificationsManager           notifications.Manager
 }
 
 func NewGitopsWorker(
 	store *store.Store,
 	gitopsRepo string,
 	gitopsRepoDeployKeyPath string,
+	githubChartAccessDeployKeyPath string,
 	notificationsManager notifications.Manager,
 ) *GitopsWorker {
 	return &GitopsWorker{
-		store:                   store,
-		gitopsRepo:              gitopsRepo,
-		gitopsRepoDeployKeyPath: gitopsRepoDeployKeyPath,
-		notificationsManager:    notificationsManager,
+		store:                          store,
+		gitopsRepo:                     gitopsRepo,
+		gitopsRepoDeployKeyPath:        gitopsRepoDeployKeyPath,
+		notificationsManager:           notificationsManager,
+		githubChartAccessDeployKeyPath: githubChartAccessDeployKeyPath,
 	}
 }
 
@@ -48,6 +51,7 @@ func (w *GitopsWorker) Run() {
 			process(w.store,
 				w.gitopsRepo,
 				w.gitopsRepoDeployKeyPath,
+				w.githubChartAccessDeployKeyPath,
 				artifactModel,
 				w.notificationsManager,
 			)
@@ -61,6 +65,7 @@ func process(
 	store *store.Store,
 	gitopsRepo string,
 	gitopsRepoDeployKeyPath string,
+	githubChartAccessDeployKeyPath string,
 	artifactModel *model.Artifact,
 	notificationsManager notifications.Manager,
 ) {
@@ -89,7 +94,7 @@ func process(
 			GitopsRepo:  gitopsRepo,
 		}
 
-		sha, err := gitopsTemplateAndWrite(repo, artifact.Context, env, gitopsRepoDeployKeyPath)
+		sha, err := gitopsTemplateAndWrite(repo, artifact.Context, env, githubChartAccessDeployKeyPath)
 		if err != nil {
 			event.Status = notifications.Failure
 			event.StatusDesc = err.Error()
