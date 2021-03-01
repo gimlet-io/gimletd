@@ -41,4 +41,12 @@ type Client interface {
 		limit, offset int,
 		since, until *time.Time,
 	) ([]*dx.Artifact, error)
+
+	// ReleasesGet returns all releases from the gitops repo within the given constraints
+	ReleasesGet(
+		app string,
+		env string,
+		limit, offset int,
+		since, until *time.Time,
+	) ([]*dx.Release, error)
 }

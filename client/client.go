@@ -32,6 +32,7 @@ import (
 const (
 	pathArtifact  = "%s/api/artifact"
 	pathArtifacts = "%s/api/artifacts"
+	pathReleases  = "%s/api/releases"
 )
 
 type client struct {
@@ -138,6 +139,71 @@ func (c *client) ArtifactsGet(
 
 	if out == nil {
 		return []*dx.Artifact{}, nil
+	}
+
+	return out, err
+}
+
+// ReleasesGet creates a new user account.
+func (c *client) ReleasesGet(
+	app string,
+	env string,
+	limit, offset int,
+	since, until *time.Time,
+) ([]*dx.Release, error) {
+	uri := fmt.Sprintf(pathReleases, c.addr)
+
+	var params []string
+
+	if limit != 0 {
+		params = append(params, fmt.Sprintf("limit=%d", limit))
+	}
+	if offset != 0 {
+		params = append(params, fmt.Sprintf("offset=%d", offset))
+	}
+	if since != nil {
+		params = append(params, fmt.Sprintf("since=%s", url.QueryEscape(since.Format(time.RFC3339))))
+	}
+	if until != nil {
+		params = append(params, fmt.Sprintf("until=%s", url.QueryEscape(until.Format(time.RFC3339))))
+	}
+	if app != "" {
+		params = append(params, fmt.Sprintf("app=%s", app))
+	}
+	if env != "" {
+		params = append(params, fmt.Sprintf("app=%s", app))
+	}
+
+	var paramsStr string
+	if len(params) > 0 {
+		paramsStr = strings.Join(params, "&")
+		paramsStr = "?" + paramsStr
+	}
+
+	body, err := c.open(uri+paramsStr, "GET", nil)
+	if err != nil {
+		return nil, err
+	}
+	defer body.Close()
+
+	bodyBytes, err := ioutil.ReadAll(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyString := string(bodyBytes)
+
+	if bodyString == "[]" { // json deserializer breaks on empty arrays / objects
+		return []*dx.Release{}, nil
+	}
+
+	var out []*dx.Release
+	err = json.Unmarshal(bodyBytes, &out)
+	if err != nil {
+		return nil, err
+	}
+
+	if out == nil {
+		return []*dx.Release{}, nil
 	}
 
 	return out, err
