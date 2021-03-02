@@ -1,6 +1,8 @@
 package githelper
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"github.com/gimlet-io/gimlet-cli/commands"
 	"github.com/gimlet-io/gimletd/dx"
@@ -10,6 +12,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
 	"github.com/go-git/go-git/v5/storage/memory"
+	"github.com/sirupsen/logrus"
 	"io/ioutil"
 	"path/filepath"
 	"strings"
@@ -211,13 +214,37 @@ func Content(repo *git.Repository, path string) (string, error) {
 func Releases(repo *git.Repository, app string, env string) ([]*dx.Release, error) {
 	releases := []*dx.Release{}
 
-	path := fmt.Sprintf("%s/%s/", env, app)
+	path := fmt.Sprintf("%s/%s", env, app)
 	commits, err := repo.Log(&git.LogOptions{Path: &path})
 	if err != nil {
 		return nil, err
 	}
 
 	err = commits.ForEach(func(c *object.Commit) error {
+		releaseFile, err := c.File(path + "/release.json")
+		if err != nil {
+			logrus.Warnf("no release file for %s: %s", c.Hash.String(), err)
+			releases = append(releases, relaseFromCommit(c, app, env))
+		}
+
+		buf := new(bytes.Buffer)
+		reader, err := releaseFile.Blob.Reader()
+		if err != nil {
+			logrus.Warnf("cannot parse release file for %s: %s", c.Hash.String(), err)
+			releases = append(releases, relaseFromCommit(c, app, env))
+		}
+
+		buf.ReadFrom(reader)
+		releaseBytes := buf.Bytes()
+
+		var release *dx.Release
+		err = json.Unmarshal(releaseBytes, &release)
+		if err != nil {
+			logrus.Warnf("cannot parse release file for %s: %s", c.Hash.String(), err)
+			releases = append(releases, relaseFromCommit(c, app, env))
+		}
+		releases = append(releases, release)
+
 		return nil
 	})
 	if err != nil && err.Error() != "EOF" {
@@ -225,4 +252,13 @@ func Releases(repo *git.Repository, app string, env string) ([]*dx.Release, erro
 	}
 
 	return releases, nil
+}
+
+func relaseFromCommit(c *object.Commit, app string, env string) *dx.Release {
+	return &dx.Release{
+		App:       app,
+		Env:       env,
+		Created:   c.Committer.When.Unix(),
+		GitopsRef: c.Hash.String(),
+	}
 }
