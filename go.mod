@@ -31,3 +31,5 @@ require (
 	k8s.io/apimachinery v0.19.3
 	sigs.k8s.io/yaml v1.2.0
 )
+
+replace github.com/go-git/go-git/v5 => github.com/gimlet-io/go-git/v5 v5.2.1-0.20210122134038-45142aa695dd

@@ -2,7 +2,7 @@ package server
 
 import (
 	"encoding/json"
-	"github.com/gimlet-io/gimletd/dx"
+	"github.com/gimlet-io/gimletd/githelper"
 	"github.com/sirupsen/logrus"
 	"net/http"
 	"strconv"
@@ -57,15 +57,28 @@ func getReleases(w http.ResponseWriter, r *http.Request) {
 		env = val[0]
 	}
 
-	// TODO getting releases from gitops repo
 	logrus.Println(limit)
 	logrus.Println(offset)
 	logrus.Println(since)
 	logrus.Println(until)
-	logrus.Println(app)
-	logrus.Println(env)
-	
-	releases := []*dx.Release{}
+
+	ctx := r.Context()
+	gitopsRepo := ctx.Value("gitopsRepo").(string)
+	gitopsRepoDeployKeyPath := ctx.Value("gitopsRepoDeployKeyPath").(string)
+
+	repo, err := githelper.CloneToMemory(gitopsRepo, gitopsRepoDeployKeyPath)
+	if err != nil {
+		logrus.Errorf("cannot clone gitops repo: %s", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	releases, err := githelper.Releases(repo, env, app)
+	if err != nil {
+		logrus.Errorf("cannot get releases: %s", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
 
 	releasesStr, err := json.Marshal(releases)
 	if err != nil {

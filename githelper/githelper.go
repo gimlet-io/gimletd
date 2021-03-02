@@ -3,6 +3,7 @@ package githelper
 import (
 	"fmt"
 	"github.com/gimlet-io/gimlet-cli/commands"
+	"github.com/gimlet-io/gimletd/dx"
 	"github.com/go-git/go-billy/v5/memfs"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
@@ -205,4 +206,23 @@ func Content(repo *git.Repository, path string) (string, error) {
 		return "", err
 	}
 	return string(content), nil
+}
+
+func Releases(repo *git.Repository, app string, env string) ([]*dx.Release, error) {
+	releases := []*dx.Release{}
+
+	path := fmt.Sprintf("%s/%s/", env, app)
+	commits, err := repo.Log(&git.LogOptions{Path: &path})
+	if err != nil {
+		return nil, err
+	}
+
+	err = commits.ForEach(func(c *object.Commit) error {
+		return nil
+	})
+	if err != nil && err.Error() != "EOF" {
+		return nil, err
+	}
+
+	return releases, nil
 }
