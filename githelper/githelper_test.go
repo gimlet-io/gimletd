@@ -19,15 +19,15 @@ func Test_Releases(t *testing.T) {
 func initHistory() *git.Repository {
 	repo, _ := git.Init(memory.NewStorage(), memfs.New())
 
-	//CommitFilesToGit(
-	//	repo,
-	//	map[string]string{
-	//		"release.json": `{"app":"fosdem-2021","env":"staging","artifactId":"my-app-94578d91-ef9a-413d-9afb-602256d2b124","repositoryName":"laszlocph/gimletd-test","sha":"d7aa20d7055999200b52c4ffd146d5c7c415e3e7","branch":"master","triggeredBy":"policy","gitopsRef":"","gitopsRepo":""}`,
-	//	},
-	//	"staging",
-	//	"my-app2",
-	//	"1st commit",
-	//)
+	CommitFilesToGit(
+		repo,
+		map[string]string{
+			"release.json": `{"app":"fosdem-2021","env":"staging","artifactId":"my-app-94578d91-ef9a-413d-9afb-602256d2b124","repositoryName":"laszlocph/gimletd-test","sha":"d7aa20d7055999200b52c4ffd146d5c7c415e3e7","branch":"master","triggeredBy":"policy","gitopsRef":"","gitopsRepo":""}`,
+		},
+		"staging",
+		"my-app2",
+		"1st commit",
+	)
 	CommitFilesToGit(
 		repo,
 		map[string]string{
