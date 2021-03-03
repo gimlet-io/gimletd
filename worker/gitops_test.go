@@ -75,7 +75,7 @@ func Test_gitopsTemplateAndWrite(t *testing.T) {
 	repo, _ := git.Init(memory.NewStorage(), memfs.New())
 	_, err := repo.CreateRemote(&config.RemoteConfig{Name: "origin", URLs: []string{""}})
 
-	_, err = gitopsTemplateAndWrite(repo, a.Context, a.Environments[0], "")
+	_, err = gitopsTemplateAndWrite(repo, a.Context, a.Environments[0], &dx.Release{}, "")
 	assert.Nil(t, err)
 }
 

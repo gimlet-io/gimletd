@@ -1,6 +1,7 @@
 package worker
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/gimlet-io/gimletd/dx"
 	"github.com/gimlet-io/gimletd/githelper"
@@ -80,7 +81,7 @@ func process(
 			continue
 		}
 
-		repo, err := githelper.CloneToMemory(gitopsRepo, gitopsRepoDeployKeyPath)
+		repo, err := githelper.CloneToMemory(gitopsRepo, gitopsRepoDeployKeyPath, true)
 		if err != nil {
 			administerError(err, artifactModel, store)
 			return
@@ -94,7 +95,21 @@ func process(
 			GitopsRepo:  gitopsRepo,
 		}
 
-		sha, err := gitopsTemplateAndWrite(repo, artifact.Context, env, githubChartAccessDeployKeyPath)
+		releaseMeta := &dx.Release{
+			App:         env.App,
+			Env:         env.Env,
+			ArtifactID:  artifact.ID,
+			Version:     &artifact.Version,
+			TriggeredBy: "policy",
+		}
+
+		sha, err := gitopsTemplateAndWrite(
+			repo,
+			artifact.Context,
+			env,
+			releaseMeta,
+			githubChartAccessDeployKeyPath,
+		)
 		if err != nil {
 			event.Status = notifications.Failure
 			event.StatusDesc = err.Error()
@@ -145,7 +160,13 @@ func administerError(err error, artifactModel *model.Artifact, store *store.Stor
 	updateArtifactModel(store, artifactModel)
 }
 
-func gitopsTemplateAndWrite(repo *git.Repository, context map[string]string, env *dx.Manifest, sshPrivateKeyPathForChartClone string) (string, error) {
+func gitopsTemplateAndWrite(
+	repo *git.Repository,
+	context map[string]string,
+	env *dx.Manifest,
+	release *dx.Release,
+	sshPrivateKeyPathForChartClone string,
+) (string, error) {
 	err := env.ResolveVars(context)
 	if err != nil {
 		return "", fmt.Errorf("cannot resolve manifest vars %s", err.Error())
@@ -165,6 +186,13 @@ func gitopsTemplateAndWrite(repo *git.Repository, context map[string]string, env
 		return "", fmt.Errorf("cannot run helm template %s", err.Error())
 	}
 	files := dx.SplitHelmOutput(map[string]string{"manifest.yaml": templatedManifests})
+
+	releaseString, err := json.Marshal(release)
+	if err != nil {
+		return "", fmt.Errorf("cannot marshal release meta data %s", err.Error())
+	}
+	files["release.json"] = string(releaseString)
+
 	sha, err := githelper.CommitFilesToGit(repo, files, env.Env, env.App, "automated deploy")
 	if err != nil {
 		return "", fmt.Errorf("cannot write to git %s", err.Error())

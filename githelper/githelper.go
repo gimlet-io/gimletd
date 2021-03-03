@@ -1,14 +1,18 @@
 package githelper
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"github.com/gimlet-io/gimlet-cli/commands"
+	"github.com/gimlet-io/gimletd/dx"
 	"github.com/go-git/go-billy/v5/memfs"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
 	"github.com/go-git/go-git/v5/storage/memory"
+	"github.com/sirupsen/logrus"
 	"io/ioutil"
 	"path/filepath"
 	"strings"
@@ -18,7 +22,7 @@ import (
 const gitSSHAddressFormat = "git@github.com:%s.git"
 
 // CloneToMemory checks out a repo to an in-memory filesystem
-func CloneToMemory(repoName string, privateKeyPath string) (*git.Repository, error) {
+func CloneToMemory(repoName string, privateKeyPath string, shallow bool) (*git.Repository, error) {
 	url := fmt.Sprintf(gitSSHAddressFormat, repoName)
 	publicKeys, err := ssh.NewPublicKeysFromFile("git", privateKeyPath, "")
 	if err != nil {
@@ -26,11 +30,14 @@ func CloneToMemory(repoName string, privateKeyPath string) (*git.Repository, err
 	}
 
 	fs := memfs.New()
-	repo, err := git.Clone(memory.NewStorage(), fs, &git.CloneOptions{
-		URL:   url,
-		Depth: 1,
-		Auth:  publicKeys,
-	})
+	opts := &git.CloneOptions{
+		URL:  url,
+		Auth: publicKeys,
+	}
+	if shallow {
+		opts.Depth = 1
+	}
+	repo, err := git.Clone(memory.NewStorage(), fs, opts)
 
 	if err != nil && strings.Contains(err.Error(), "remote repository is empty") {
 		repo, _ := git.Init(memory.NewStorage(), memfs.New())
@@ -48,7 +55,7 @@ func Push(repo *git.Repository, privateKeyPath string) error {
 	}
 
 	err = repo.Push(&git.PushOptions{
-		Auth:  publicKeys,
+		Auth: publicKeys,
 	})
 
 	if err == git.NoErrAlreadyUpToDate {
@@ -205,4 +212,70 @@ func Content(repo *git.Repository, path string) (string, error) {
 		return "", err
 	}
 	return string(content), nil
+}
+
+func Releases(
+	repo *git.Repository,
+	app, env string,
+	since, until *time.Time,
+) ([]*dx.Release, error) {
+	releases := []*dx.Release{}
+
+	path := fmt.Sprintf("%s/%s", env, app)
+	commits, err := repo.Log(
+		&git.LogOptions{
+			Path: &path,
+			Since: since,
+			Until: until,
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	err = commits.ForEach(func(c *object.Commit) error {
+		releaseFile, err := c.File(path + "/release.json")
+		if err != nil {
+			logrus.Debugf("no release file for %s: %s", c.Hash.String(), err)
+			releases = append(releases, relaseFromCommit(c, app, env))
+			return nil
+		}
+
+		buf := new(bytes.Buffer)
+		reader, err := releaseFile.Blob.Reader()
+		if err != nil {
+			logrus.Warnf("cannot parse release file for %s: %s", c.Hash.String(), err)
+			releases = append(releases, relaseFromCommit(c, app, env))
+			return nil
+		}
+
+		buf.ReadFrom(reader)
+		releaseBytes := buf.Bytes()
+
+		var release *dx.Release
+		err = json.Unmarshal(releaseBytes, &release)
+		if err != nil {
+			logrus.Warnf("cannot parse release file for %s: %s", c.Hash.String(), err)
+			releases = append(releases, relaseFromCommit(c, app, env))
+		}
+		release.Created = c.Committer.When.Unix()
+		release.GitopsRef = c.Hash.String()
+		releases = append(releases, release)
+
+		return nil
+	})
+	if err != nil && err.Error() != "EOF" {
+		return nil, err
+	}
+
+	return releases, nil
+}
+
+func relaseFromCommit(c *object.Commit, app string, env string) *dx.Release {
+	return &dx.Release{
+		App:       app,
+		Env:       env,
+		Created:   c.Committer.When.Unix(),
+		GitopsRef: c.Hash.String(),
+	}
 }
