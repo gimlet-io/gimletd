@@ -214,11 +214,21 @@ func Content(repo *git.Repository, path string) (string, error) {
 	return string(content), nil
 }
 
-func Releases(repo *git.Repository, app string, env string) ([]*dx.Release, error) {
+func Releases(
+	repo *git.Repository,
+	app, env string,
+	since, until *time.Time,
+) ([]*dx.Release, error) {
 	releases := []*dx.Release{}
 
 	path := fmt.Sprintf("%s/%s", env, app)
-	commits, err := repo.Log(&git.LogOptions{Path: &path})
+	commits, err := repo.Log(
+		&git.LogOptions{
+			Path: &path,
+			Since: since,
+			Until: until,
+		},
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -226,7 +236,7 @@ func Releases(repo *git.Repository, app string, env string) ([]*dx.Release, erro
 	err = commits.ForEach(func(c *object.Commit) error {
 		releaseFile, err := c.File(path + "/release.json")
 		if err != nil {
-			logrus.Warnf("no release file for %s: %s", c.Hash.String(), err)
+			logrus.Debugf("no release file for %s: %s", c.Hash.String(), err)
 			releases = append(releases, relaseFromCommit(c, app, env))
 			return nil
 		}
@@ -249,7 +259,7 @@ func Releases(repo *git.Repository, app string, env string) ([]*dx.Release, erro
 			releases = append(releases, relaseFromCommit(c, app, env))
 		}
 		release.Created = c.Committer.When.Unix()
-		release.GitopsRef=c.Hash.String()
+		release.GitopsRef = c.Hash.String()
 		releases = append(releases, release)
 
 		return nil

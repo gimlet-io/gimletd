@@ -11,7 +11,7 @@ import (
 func Test_Releases(t *testing.T) {
 	repo := initHistory()
 
-	releases, err := Releases(repo, "my-app", "staging")
+	releases, err := Releases(repo, "my-app", "staging", nil, nil)
 	assert.Nil(t, err)
 	assert.Equal(t, 3, len(releases),"should get all releases")
 }
