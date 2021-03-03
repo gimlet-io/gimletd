@@ -22,7 +22,7 @@ import (
 const gitSSHAddressFormat = "git@github.com:%s.git"
 
 // CloneToMemory checks out a repo to an in-memory filesystem
-func CloneToMemory(repoName string, privateKeyPath string) (*git.Repository, error) {
+func CloneToMemory(repoName string, privateKeyPath string, shallow bool) (*git.Repository, error) {
 	url := fmt.Sprintf(gitSSHAddressFormat, repoName)
 	publicKeys, err := ssh.NewPublicKeysFromFile("git", privateKeyPath, "")
 	if err != nil {
@@ -30,11 +30,14 @@ func CloneToMemory(repoName string, privateKeyPath string) (*git.Repository, err
 	}
 
 	fs := memfs.New()
-	repo, err := git.Clone(memory.NewStorage(), fs, &git.CloneOptions{
-		URL:   url,
-		Depth: 1,
-		Auth:  publicKeys,
-	})
+	opts := &git.CloneOptions{
+		URL:  url,
+		Auth: publicKeys,
+	}
+	if shallow {
+		opts.Depth = 1
+	}
+	repo, err := git.Clone(memory.NewStorage(), fs, opts)
 
 	if err != nil && strings.Contains(err.Error(), "remote repository is empty") {
 		repo, _ := git.Init(memory.NewStorage(), memfs.New())
@@ -52,7 +55,7 @@ func Push(repo *git.Repository, privateKeyPath string) error {
 	}
 
 	err = repo.Push(&git.PushOptions{
-		Auth:  publicKeys,
+		Auth: publicKeys,
 	})
 
 	if err == git.NoErrAlreadyUpToDate {
@@ -225,6 +228,7 @@ func Releases(repo *git.Repository, app string, env string) ([]*dx.Release, erro
 		if err != nil {
 			logrus.Warnf("no release file for %s: %s", c.Hash.String(), err)
 			releases = append(releases, relaseFromCommit(c, app, env))
+			return nil
 		}
 
 		buf := new(bytes.Buffer)
@@ -232,6 +236,7 @@ func Releases(repo *git.Repository, app string, env string) ([]*dx.Release, erro
 		if err != nil {
 			logrus.Warnf("cannot parse release file for %s: %s", c.Hash.String(), err)
 			releases = append(releases, relaseFromCommit(c, app, env))
+			return nil
 		}
 
 		buf.ReadFrom(reader)
@@ -243,6 +248,8 @@ func Releases(repo *git.Repository, app string, env string) ([]*dx.Release, erro
 			logrus.Warnf("cannot parse release file for %s: %s", c.Hash.String(), err)
 			releases = append(releases, relaseFromCommit(c, app, env))
 		}
+		release.Created = c.Committer.When.Unix()
+		release.GitopsRef=c.Hash.String()
 		releases = append(releases, release)
 
 		return nil

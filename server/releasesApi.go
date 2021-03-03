@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/gimlet-io/gimletd/githelper"
 	"github.com/sirupsen/logrus"
 	"net/http"
@@ -52,9 +53,15 @@ func getReleases(w http.ResponseWriter, r *http.Request) {
 
 	if val, ok := params["app"]; ok {
 		app = val[0]
+	} else {
+		http.Error(w, fmt.Sprintf("%s: %s", http.StatusText(http.StatusBadRequest), "app parameter is mandatory"), http.StatusBadRequest)
+		return
 	}
 	if val, ok := params["env"]; ok {
 		env = val[0]
+	} else {
+		http.Error(w, fmt.Sprintf("%s: %s", http.StatusText(http.StatusBadRequest), "env parameter is mandatory"), http.StatusBadRequest)
+		return
 	}
 
 	logrus.Println(limit)
@@ -66,18 +73,22 @@ func getReleases(w http.ResponseWriter, r *http.Request) {
 	gitopsRepo := ctx.Value("gitopsRepo").(string)
 	gitopsRepoDeployKeyPath := ctx.Value("gitopsRepoDeployKeyPath").(string)
 
-	repo, err := githelper.CloneToMemory(gitopsRepo, gitopsRepoDeployKeyPath)
+	repo, err := githelper.CloneToMemory(gitopsRepo, gitopsRepoDeployKeyPath, false)
 	if err != nil {
 		logrus.Errorf("cannot clone gitops repo: %s", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
-	releases, err := githelper.Releases(repo, env, app)
+	releases, err := githelper.Releases(repo, app, env)
 	if err != nil {
 		logrus.Errorf("cannot get releases: %s", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
+	}
+
+	for _, r := range releases {
+		r.GitopsRepo = gitopsRepo
 	}
 
 	releasesStr, err := json.Marshal(releases)

@@ -81,7 +81,7 @@ func process(
 			continue
 		}
 
-		repo, err := githelper.CloneToMemory(gitopsRepo, gitopsRepoDeployKeyPath)
+		repo, err := githelper.CloneToMemory(gitopsRepo, gitopsRepoDeployKeyPath, true)
 		if err != nil {
 			administerError(err, artifactModel, store)
 			return
