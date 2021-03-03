@@ -171,7 +171,7 @@ func (c *client) ReleasesGet(
 		params = append(params, fmt.Sprintf("app=%s", app))
 	}
 	if env != "" {
-		params = append(params, fmt.Sprintf("app=%s", app))
+		params = append(params, fmt.Sprintf("env=%s", env))
 	}
 
 	var paramsStr string
