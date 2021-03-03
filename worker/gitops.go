@@ -96,13 +96,11 @@ func process(
 		}
 
 		releaseMeta := &dx.Release{
-			App:            env.App,
-			Env:            env.Env,
-			ArtifactID:     artifact.ID,
-			RepositoryName: artifact.Version.RepositoryName,
-			SHA:            artifact.Version.SHA,
-			Branch:         artifact.Version.Branch,
-			TriggeredBy:    "policy",
+			App:         env.App,
+			Env:         env.Env,
+			ArtifactID:  artifact.ID,
+			Version:     &artifact.Version,
+			TriggeredBy: "policy",
 		}
 
 		sha, err := gitopsTemplateAndWrite(
