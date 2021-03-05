@@ -49,4 +49,7 @@ type Client interface {
 		limit, offset int,
 		since, until *time.Time,
 	) ([]*dx.Release, error)
+
+	// ReleasesPost releases the given artifact to the given environment
+	ReleasesPost(env string, artifactID string) error
 }
