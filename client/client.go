@@ -209,6 +209,12 @@ func (c *client) ReleasesGet(
 	return out, err
 }
 
+// ReleasesPost releases the given artifact to the given environment
+func (c *client) ReleasesPost(env string, artifactID string) error {
+	uri := fmt.Sprintf(pathReleases + "?env=%s&artifact=%s", c.addr, env, artifactID)
+	return c.post(uri, nil, nil)
+}
+
 func (c *client) get(rawURL string, out interface{}) error {
 	return c.do(rawURL, "GET", nil, out)
 }

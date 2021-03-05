@@ -94,3 +94,27 @@ func getReleases(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write(releasesStr)
 }
+
+func release(w http.ResponseWriter, r *http.Request) {
+	params := r.URL.Query()
+
+	var env, artifactID string
+
+	if val, ok := params["env"]; ok {
+		env = val[0]
+	} else {
+		http.Error(w, fmt.Sprintf("%s: %s", http.StatusText(http.StatusBadRequest), "env parameter is mandatory"), http.StatusBadRequest)
+		return
+	}
+	if val, ok := params["artifact"]; ok {
+		artifactID = val[0]
+	} else {
+		http.Error(w, fmt.Sprintf("%s: %s", http.StatusText(http.StatusBadRequest), "artifact parameter is mandatory"), http.StatusBadRequest)
+		return
+	}
+
+	fmt.Println(env)
+	fmt.Println(artifactID)
+
+	w.WriteHeader(http.StatusCreated)
+}

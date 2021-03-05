@@ -45,6 +45,7 @@ func SetupRouter(
 		r.Post("/api/artifact", saveArtifact)
 		r.Get("/api/artifacts", getArtifacts)
 		r.Get("/api/releases", getReleases)
+		r.Post("/api/releases", release)
 		r.Post("/api/flux-events", fluxEvent)
 	})
 
