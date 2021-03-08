@@ -2,6 +2,7 @@ package model
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/gimlet-io/gimletd/dx"
 )
 
@@ -28,16 +29,16 @@ type Event struct {
 	TargetBranch string      `json:"targetBranch,omitempty"  meddler:"target_branch"`
 	Tag          string      `json:"tag,omitempty"  meddler:"tag"`
 	SHA          string      `json:"sha"  meddler:"sha"`
+	ArtifactID   string      `json:"artifactID"  meddler:"artifact_id"`
 }
 
 func ToEvent(artifact dx.Artifact) (*Event, error) {
 	artifactStr, err := json.Marshal(artifact)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cannot serialize artifact: %s", err)
 	}
 
 	return &Event{
-		ID:           artifact.ID,
 		Type:         TypeArtifact,
 		Repository:   artifact.Version.RepositoryName,
 		Branch:       artifact.Version.Branch,
@@ -47,6 +48,7 @@ func ToEvent(artifact dx.Artifact) (*Event, error) {
 		Tag:          artifact.Version.Tag,
 		Blob:         string(artifactStr),
 		SHA:          artifact.Version.SHA,
+		ArtifactID:   artifact.ID,
 	}, nil
 }
 

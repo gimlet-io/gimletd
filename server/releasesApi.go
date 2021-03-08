@@ -3,7 +3,10 @@ package server
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/gimlet-io/gimletd/dx"
 	"github.com/gimlet-io/gimletd/githelper"
+	"github.com/gimlet-io/gimletd/model"
+	"github.com/gimlet-io/gimletd/store"
 	"github.com/sirupsen/logrus"
 	"net/http"
 	"time"
@@ -96,10 +99,12 @@ func getReleases(w http.ResponseWriter, r *http.Request) {
 }
 
 func release(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	store := ctx.Value("store").(*store.Store)
+	user := ctx.Value("user").(*model.User)
+
 	params := r.URL.Query()
-
 	var env, artifactID string
-
 	if val, ok := params["env"]; ok {
 		env = val[0]
 	} else {
@@ -113,8 +118,28 @@ func release(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Println(env)
-	fmt.Println(artifactID)
+	releaseRequestStr, err := json.Marshal(dx.ReleaseRequest{
+		Env:         env,
+		ArtifactID:  artifactID,
+		TriggeredBy: user.Login,
+	})
+	if err != nil {
+		http.Error(w, fmt.Sprintf("%s - cannot serialize release request: %s", http.StatusText(http.StatusInternalServerError), err), http.StatusInternalServerError)
+		return
+	}
+
+	artifact, err := store.Artifact(artifactID)
+	http.Error(w, fmt.Sprintf("%s - cannot find artifact with id %s", http.StatusText(http.StatusNotFound), artifactID), http.StatusNotFound)
+
+	_, err = store.CreateEvent(&model.Event{
+		Type:       model.TypeUser,
+		Blob:       string(releaseRequestStr),
+		Repository: artifact.Repository,
+	})
+	if err != nil {
+		http.Error(w, fmt.Sprintf("%s - cannot save release request: %s", http.StatusText(http.StatusInternalServerError), err), http.StatusInternalServerError)
+		return
+	}
 
 	w.WriteHeader(http.StatusCreated)
 }

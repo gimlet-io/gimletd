@@ -2,9 +2,11 @@ package server
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/gimlet-io/gimletd/dx"
 	"github.com/gimlet-io/gimletd/model"
 	"github.com/gimlet-io/gimletd/store"
+	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 	"net/http"
 	"strconv"
@@ -12,11 +14,13 @@ import (
 )
 
 func saveArtifact(w http.ResponseWriter, r *http.Request) {
-	var artifact dx.Artifact
-	json.NewDecoder(r.Body).Decode(&artifact)
-
 	ctx := r.Context()
 	store := ctx.Value("store").(*store.Store)
+
+	var artifact dx.Artifact
+	json.NewDecoder(r.Body).Decode(&artifact)
+	artifact.ID = fmt.Sprintf("%s-%s", artifact.Version.RepositoryName, uuid.New().String())
+	artifact.Created = time.Now().Unix()
 
 	event, err := model.ToEvent(artifact)
 	if err != nil {

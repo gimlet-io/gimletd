@@ -39,7 +39,7 @@ FROM users;
 DELETE FROM users where login = ?;
 `,
 		SelectUnprocessedEvents: `
-SELECT id, created, type, blob, status, status_desc, sha, repository, branch, event, source_branch, target_branch, tag
+SELECT id, created, type, blob, status, status_desc, sha, repository, branch, event, source_branch, target_branch, tag, artifact_id
 FROM events
 WHERE status='new' order by created ASC limit 10;
 `,

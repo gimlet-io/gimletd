@@ -5,12 +5,19 @@ type Release struct {
 	App string `json:"app"`
 	Env string `json:"env"`
 
-	ArtifactID string   `json:"artifactId"`
+	ArtifactID  string `json:"artifactId"`
 	TriggeredBy string `json:"triggeredBy"`
 
-	Version    *Version `json:"version"`
+	Version *Version `json:"version"`
 
-	GitopsRef   string `json:"gitopsRef"`
-	GitopsRepo  string `json:"gitopsRepo"`
-	Created     int64  `json:"created,omitempty"`
+	GitopsRef  string `json:"gitopsRef"`
+	GitopsRepo string `json:"gitopsRepo"`
+	Created    int64  `json:"created,omitempty"`
+}
+
+// ReleaseRequest contains all metadata about the release intent
+type ReleaseRequest struct {
+	Env         string `json:"env"`
+	ArtifactID  string `json:"artifactId"`
+	TriggeredBy string `json:"triggeredBy"`
 }

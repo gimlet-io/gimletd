@@ -1,7 +1,6 @@
 package store
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/gimlet-io/gimletd/dx"
 	"github.com/gimlet-io/gimletd/model"
@@ -14,25 +13,9 @@ import (
 
 // CreateEvent stores a new event in the database
 func (db *Store) CreateEvent(event *model.Event) (*model.Event, error) {
-	event.ID = fmt.Sprintf("%s-%s", event.Repository, uuid.New().String())
-	now := time.Now().Unix()
-	event.Created = now
+	event.ID = uuid.New().String()
+	event.Created = time.Now().Unix()
 	event.Status = model.StatusNew
-
-	var a dx.Artifact
-	err := json.Unmarshal([]byte(event.Blob), &a)
-	if err != nil {
-		return nil, fmt.Errorf("couldn't deserialize artifact: %s", err)
-	}
-	a.ID = event.ID
-	a.Created = now
-
-	artifactStr, err := json.Marshal(a)
-	if err != nil {
-		return nil, fmt.Errorf("couldn't serialize artifact: %s", err)
-	}
-	event.Blob = string(artifactStr)
-
 	return event, meddler.Insert(db, "events", event)
 }
 
@@ -89,7 +72,7 @@ func (db *Store) Artifacts(
 	limitAndOffset := fmt.Sprintf("LIMIT %d OFFSET %d", limit, offset)
 
 	query := fmt.Sprintf(`
-SELECT id, repository, branch, event, source_branch, target_branch, tag, created, blob, status, status_desc, sha
+SELECT id, repository, branch, event, source_branch, target_branch, tag, created, blob, status, status_desc, sha, artifact_id
 FROM events
 %s
 ORDER BY created desc
@@ -97,6 +80,19 @@ ORDER BY created desc
 
 	var data []*model.Event
 	err := meddler.QueryAll(db, &data, query, args...)
+	return data, err
+}
+
+// Artifact returns an artifact by id
+func (db *Store) Artifact(id string) (*model.Event, error) {
+	query := fmt.Sprintf(`
+SELECT id, repository, branch, event, source_branch, target_branch, tag, created, blob, status, status_desc, sha, artifact_id
+FROM events
+WHERE artifact_id = ?;
+`)
+
+	var data *model.Event
+	err := meddler.QueryRow(db, &data, query, id)
 	return data, err
 }
 

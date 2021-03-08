@@ -53,6 +53,7 @@ source_branch TEXT,
 target_branch TEXT,
 tag           TEXT,
 sha           TEXT,
+artifact_id   TEXT,
 UNIQUE(id)
 );
 `,
