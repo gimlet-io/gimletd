@@ -1,7 +1,6 @@
 package store
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/gimlet-io/gimletd/dx"
 	"github.com/gimlet-io/gimletd/model"
@@ -12,41 +11,28 @@ import (
 	"time"
 )
 
-// CreateArtifact stores a new artifact in the database
-func (db *Store) CreateArtifact(artifactModel *model.Artifact) (*model.Artifact, error) {
-	artifactModel.ID = fmt.Sprintf("%s-%s", artifactModel.Repository, uuid.New().String())
-	now := time.Now().Unix()
-	artifactModel.Created = now
-	artifactModel.Status = model.StatusNew
-
-	var a dx.Artifact
-	err := json.Unmarshal([]byte(artifactModel.Blob), &a)
-	if err != nil {
-		return nil, fmt.Errorf("couldn't deserialize artifact: %s", err)
-	}
-	a.ID = artifactModel.ID
-	a.Created = now
-
-	artifactStr, err := json.Marshal(a)
-	if err != nil {
-		return nil, fmt.Errorf("couldn't serialize artifact: %s", err)
-	}
-	artifactModel.Blob = string(artifactStr)
-
-	return artifactModel, meddler.Insert(db, "artifacts", artifactModel)
+// CreateEvent stores a new event in the database
+func (db *Store) CreateEvent(event *model.Event) (*model.Event, error) {
+	event.ID = uuid.New().String()
+	event.Created = time.Now().Unix()
+	event.Status = model.StatusNew
+	return event, meddler.Insert(db, "events", event)
 }
 
-// Artifacts returns all artifacts in the database within the given constraints
+// Artifacts returns all events in the database within the given constraints
 func (db *Store) Artifacts(
 	app, branch string,
-	event *dx.GitEvent,
+	gitEvent *dx.GitEvent,
 	sourceBranch string,
 	sha string,
 	limit, offset int,
-	since, until *time.Time) ([]*model.Artifact, error) {
+	since, until *time.Time) ([]*model.Event, error) {
 
 	filters := []string{}
 	args := []interface{}{}
+
+	filters = addFilter(filters, "type = ?")
+	args = append(args, model.TypeArtifact)
 
 	if since != nil {
 		filters = addFilter(filters, "created >= ?")
@@ -74,9 +60,9 @@ func (db *Store) Artifacts(
 		args = append(args, sha)
 	}
 
-	if event != nil {
+	if gitEvent != nil {
 		var intRep int
-		intRep = int(*event)
+		intRep = int(*gitEvent)
 		filters = addFilter(filters, fmt.Sprintf(" event = %d", intRep))
 	}
 
@@ -86,27 +72,40 @@ func (db *Store) Artifacts(
 	limitAndOffset := fmt.Sprintf("LIMIT %d OFFSET %d", limit, offset)
 
 	query := fmt.Sprintf(`
-SELECT id, repository, branch, event, source_branch, target_branch, tag, created, blob, status, status_desc, sha
-FROM artifacts
+SELECT id, repository, branch, event, source_branch, target_branch, tag, created, blob, status, status_desc, sha, artifact_id
+FROM events
 %s
 ORDER BY created desc
 %s;`, strings.Join(filters, " "), limitAndOffset)
 
-	var data []*model.Artifact
+	var data []*model.Event
 	err := meddler.QueryAll(db, &data, query, args...)
 	return data, err
 }
 
-// UnprocessedArtifacts selects an event timeline
-func (db *Store) UnprocessedArtifacts() (events []*model.Artifact, err error) {
-	stmt := sql.Stmt(db.driver, sql.SelectUnprocessedArtifacts)
+// Artifact returns an artifact by id
+func (db *Store) Artifact(id string) (*model.Event, error) {
+	query := fmt.Sprintf(`
+SELECT id, repository, branch, event, source_branch, target_branch, tag, created, blob, status, status_desc, sha, artifact_id
+FROM events
+WHERE artifact_id = ?;
+`)
+
+	var data model.Event
+	err := meddler.QueryRow(db, &data, query, id)
+	return &data, err
+}
+
+// UnprocessedEvents selects an event timeline
+func (db *Store) UnprocessedEvents() (events []*model.Event, err error) {
+	stmt := sql.Stmt(db.driver, sql.SelectUnprocessedEvents)
 	err = meddler.QueryAll(db, &events, stmt)
 	return events, err
 }
 
-// UpdateArtifactStatus updates an artifact status in the database
-func (db *Store) UpdateArtifactStatus(id string, status string, desc string) error {
-	stmt := sql.Stmt(db.driver, sql.UpdateArtifactStatus)
+// UpdateEventStatus updates an event status in the database
+func (db *Store) UpdateEventStatus(id string, status string, desc string) error {
+	stmt := sql.Stmt(db.driver, sql.UpdateEventStatus)
 	_, err := db.Exec(stmt, status, desc, id)
 	return err
 }

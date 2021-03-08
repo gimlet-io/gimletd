@@ -2,9 +2,11 @@ package server
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/gimlet-io/gimletd/dx"
 	"github.com/gimlet-io/gimletd/model"
 	"github.com/gimlet-io/gimletd/store"
+	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 	"net/http"
 	"strconv"
@@ -12,27 +14,29 @@ import (
 )
 
 func saveArtifact(w http.ResponseWriter, r *http.Request) {
-	var artifact dx.Artifact
-	json.NewDecoder(r.Body).Decode(&artifact)
-
 	ctx := r.Context()
 	store := ctx.Value("store").(*store.Store)
 
-	artifactModel, err := model.ToArtifactModel(artifact)
+	var artifact dx.Artifact
+	json.NewDecoder(r.Body).Decode(&artifact)
+	artifact.ID = fmt.Sprintf("%s-%s", artifact.Version.RepositoryName, uuid.New().String())
+	artifact.Created = time.Now().Unix()
+
+	event, err := model.ToEvent(artifact)
 	if err != nil {
 		logrus.Errorf("cannot convert to artifact model: %s", err)
 		http.Error(w, http.StatusText(500), 500)
 		return
 	}
 
-	savedArtifactModel, err := store.CreateArtifact(artifactModel)
+	savedEvent, err := store.CreateEvent(event)
 	if err != nil {
 		logrus.Errorf("cannot save artifact: %s", err)
 		http.Error(w, http.StatusText(500), 500)
 		return
 	}
 
-	savedArtifact, err := model.ToArtifact(savedArtifactModel)
+	savedArtifact, err := model.ToArtifact(savedEvent)
 	artifactStr, err := json.Marshal(savedArtifact)
 	if err != nil {
 		logrus.Errorf("cannot serialize artifact: %s", err)
@@ -112,7 +116,7 @@ func getArtifacts(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	artifactModels, err := store.Artifacts(
+	events, err := store.Artifacts(
 		app, branch,
 		event,
 		sourceBranch,
@@ -125,7 +129,7 @@ func getArtifacts(w http.ResponseWriter, r *http.Request) {
 	}
 
 	artifacts := []*dx.Artifact{}
-	for _, a := range artifactModels {
+	for _, a := range events {
 		artifact, err := model.ToArtifact(a)
 		if err != nil {
 			logrus.Errorf("cannot deserialize artifact: %s", err)

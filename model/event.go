@@ -2,6 +2,7 @@ package model
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/gimlet-io/gimletd/dx"
 )
 
@@ -9,29 +10,37 @@ const StatusNew = "new"
 const StatusProcessed = "processed"
 const StatusError = "error"
 
-type Artifact struct {
-	ID           string      `json:"id,omitempty"  meddler:"id"`
+const TypeArtifact = "artifact"
+const TypeRelease = "release"
+const TypeRollback = "rollback"
+
+type Event struct {
+	ID         string `json:"id,omitempty"  meddler:"id"`
+	Created    int64  `json:"created,omitempty"  meddler:"created"`
+	Type       string `json:"type,omitempty"  meddler:"type"`
+	Blob       string `json:"blob,omitempty"  meddler:"blob"`
+	Status     string `json:"status"  meddler:"status"`
+	StatusDesc string `json:"statusDesc"  meddler:"status_desc"`
+
+	// denormalized artifact fields
 	Repository   string      `json:"repository,omitempty"  meddler:"repository"`
 	Branch       string      `json:"branch,omitempty"  meddler:"branch"`
 	Event        dx.GitEvent `json:"event,omitempty"  meddler:"event"`
 	SourceBranch string      `json:"sourceBranch,omitempty"  meddler:"source_branch"`
 	TargetBranch string      `json:"targetBranch,omitempty"  meddler:"target_branch"`
 	Tag          string      `json:"tag,omitempty"  meddler:"tag"`
-	Created      int64       `json:"created,omitempty"  meddler:"created"`
-	Blob         string      `json:"blob,omitempty"  meddler:"blob"`
-	Status       string      `json:"status"  meddler:"status"`
-	StatusDesc   string      `json:"statusDesc"  meddler:"status_desc"`
 	SHA          string      `json:"sha"  meddler:"sha"`
+	ArtifactID   string      `json:"artifactID"  meddler:"artifact_id"`
 }
 
-func ToArtifactModel(artifact dx.Artifact) (*Artifact, error) {
+func ToEvent(artifact dx.Artifact) (*Event, error) {
 	artifactStr, err := json.Marshal(artifact)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cannot serialize artifact: %s", err)
 	}
 
-	return &Artifact{
-		ID:           artifact.ID,
+	return &Event{
+		Type:         TypeArtifact,
 		Repository:   artifact.Version.RepositoryName,
 		Branch:       artifact.Version.Branch,
 		Event:        artifact.Version.Event,
@@ -40,10 +49,11 @@ func ToArtifactModel(artifact dx.Artifact) (*Artifact, error) {
 		Tag:          artifact.Version.Tag,
 		Blob:         string(artifactStr),
 		SHA:          artifact.Version.SHA,
+		ArtifactID:   artifact.ID,
 	}, nil
 }
 
-func ToArtifact(a *Artifact) (*dx.Artifact, error) {
+func ToArtifact(a *Event) (*dx.Artifact, error) {
 	var artifact dx.Artifact
 	json.Unmarshal([]byte(a.Blob), &artifact)
 	return &artifact, nil
