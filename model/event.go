@@ -9,13 +9,18 @@ const StatusNew = "new"
 const StatusProcessed = "processed"
 const StatusError = "error"
 
-type Event struct {
-	ID           string      `json:"id,omitempty"  meddler:"id"`
-	Created      int64       `json:"created,omitempty"  meddler:"created"`
-	Blob         string      `json:"blob,omitempty"  meddler:"blob"`
-	Status       string      `json:"status"  meddler:"status"`
-	StatusDesc   string      `json:"statusDesc"  meddler:"status_desc"`
+const TypeArtifact = "artifact"
+const TypeUser = "user"
 
+type Event struct {
+	ID         string `json:"id,omitempty"  meddler:"id"`
+	Created    int64  `json:"created,omitempty"  meddler:"created"`
+	Type       string `json:"type,omitempty"  meddler:"type"`
+	Blob       string `json:"blob,omitempty"  meddler:"blob"`
+	Status     string `json:"status"  meddler:"status"`
+	StatusDesc string `json:"statusDesc"  meddler:"status_desc"`
+
+	// denormalized artifact fields
 	Repository   string      `json:"repository,omitempty"  meddler:"repository"`
 	Branch       string      `json:"branch,omitempty"  meddler:"branch"`
 	Event        dx.GitEvent `json:"event,omitempty"  meddler:"event"`
@@ -33,6 +38,7 @@ func ToEvent(artifact dx.Artifact) (*Event, error) {
 
 	return &Event{
 		ID:           artifact.ID,
+		Type:         TypeArtifact,
 		Repository:   artifact.Version.RepositoryName,
 		Branch:       artifact.Version.Branch,
 		Event:        artifact.Version.Event,

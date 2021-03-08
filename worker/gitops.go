@@ -70,6 +70,11 @@ func process(
 	event *model.Event,
 	notificationsManager notifications.Manager,
 ) {
+	if event.Type != model.TypeArtifact {
+		administerSuccess(store, event)
+		return
+	}
+
 	artifact, err := model.ToArtifact(event)
 	if err != nil {
 		administerError(fmt.Errorf("cannot parse artifact %s", err.Error()), event, store)

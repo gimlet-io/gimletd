@@ -34,13 +34,16 @@ WHERE login = ?;
 		SelectAllUser: `
 SELECT id, login, secret, admin
 FROM users;
-`, DeleteUser: `
+`,
+		DeleteUser: `
 DELETE FROM users where login = ?;
-`, SelectUnprocessedEvents: `
-SELECT id, repository, branch, event, source_branch, target_branch, tag, created, blob, status, status_desc, sha
+`,
+		SelectUnprocessedEvents: `
+SELECT id, created, type, blob, status, status_desc, sha, repository, branch, event, source_branch, target_branch, tag
 FROM events
 WHERE status='new' order by created ASC limit 10;
-`, UpdateEventStatus:`
+`,
+		UpdateEventStatus: `
 UPDATE events SET status = ?, status_desc = ? WHERE id = ?;
 `,
 	},

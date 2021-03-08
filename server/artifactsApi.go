@@ -112,7 +112,7 @@ func getArtifacts(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	events, err := store.Events(
+	events, err := store.Artifacts(
 		app, branch,
 		event,
 		sourceBranch,

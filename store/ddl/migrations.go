@@ -41,16 +41,17 @@ UNIQUE(login)
 			stmt: `
 CREATE TABLE IF NOT EXISTS events (
 id            TEXT,
+created       INTEGER,
+type          TEXT,
+blob          TEXT,
+status        TEXT DEFAULT 'new',
+status_desc   TEXT DEFAULT '',
 repository    TEXT,
 branch        TEXT,
 event         TEXT,
 source_branch TEXT,
 target_branch TEXT,
 tag           TEXT,
-created       INTEGER,
-blob          TEXT,
-status        TEXT DEFAULT 'new',
-status_desc   TEXT DEFAULT '',
 sha           TEXT,
 UNIQUE(id)
 );

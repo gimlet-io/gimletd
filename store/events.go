@@ -36,10 +36,10 @@ func (db *Store) CreateEvent(event *model.Event) (*model.Event, error) {
 	return event, meddler.Insert(db, "events", event)
 }
 
-// Events returns all events in the database within the given constraints
-func (db *Store) Events(
+// Artifacts returns all events in the database within the given constraints
+func (db *Store) Artifacts(
 	app, branch string,
-	event *dx.GitEvent,
+	gitEvent *dx.GitEvent,
 	sourceBranch string,
 	sha string,
 	limit, offset int,
@@ -47,6 +47,9 @@ func (db *Store) Events(
 
 	filters := []string{}
 	args := []interface{}{}
+
+	filters = addFilter(filters, "type = ?")
+	args = append(args, model.TypeArtifact)
 
 	if since != nil {
 		filters = addFilter(filters, "created >= ?")
@@ -74,9 +77,9 @@ func (db *Store) Events(
 		args = append(args, sha)
 	}
 
-	if event != nil {
+	if gitEvent != nil {
 		var intRep int
-		intRep = int(*event)
+		intRep = int(*gitEvent)
 		filters = addFilter(filters, fmt.Sprintf(" event = %d", intRep))
 	}
 
