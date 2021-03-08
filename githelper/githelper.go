@@ -2,6 +2,7 @@ package githelper
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/gimlet-io/gimlet-cli/commands"
@@ -12,8 +13,11 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
 	"github.com/go-git/go-git/v5/storage/memory"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"io/ioutil"
+	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -46,6 +50,30 @@ func CloneToMemory(repoName string, privateKeyPath string, shallow bool) (*git.R
 	}
 
 	return repo, err
+}
+
+func NativeCheckout(repoName string, privateKeyPath string) (string, *git.Repository, error) {
+	path, err := ioutil.TempDir("", "gitops-")
+	if err != nil {
+		errors.WithMessage(err, "get temporary directory")
+	}
+	url := fmt.Sprintf(gitSSHAddressFormat, repoName)
+	publicKeys, err := ssh.NewPublicKeysFromFile("git", privateKeyPath, "")
+	if err != nil {
+		return "", nil, fmt.Errorf("cannot generate public key from private: %s", err.Error())
+	}
+
+	opts := &git.CloneOptions{
+		URL:  url,
+		Auth: publicKeys,
+	}
+
+	repo, err := git.PlainClone(path, false, opts)
+	return path, repo, err
+}
+
+func NativeCleanup(path string) error {
+	return os.RemoveAll(path)
 }
 
 func Push(repo *git.Repository, privateKeyPath string) error {
@@ -98,6 +126,49 @@ func Commit(repo *git.Repository, message string) (string, error) {
 	}
 
 	return sha.String(), nil
+}
+
+func NativeRevert(repoPath string, sha string) error {
+	return execCommand(repoPath, "git", "revert", sha)
+}
+
+func execCommand(rootPath string, cmdName string, args ...string) error {
+	cmd := exec.CommandContext(context.TODO(), cmdName, args...)
+	cmd.Dir = rootPath
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return errors.WithMessage(err, "get stdout pipe for command")
+	}
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return errors.WithMessage(err, "get stderr pipe for command")
+	}
+	err = cmd.Start()
+	if err != nil {
+		return errors.WithMessage(err, "start command")
+	}
+
+	stdoutData, err := ioutil.ReadAll(stdout)
+	if err != nil {
+		return errors.WithMessage(err, "read stdout data of command")
+	}
+	stderrData, err := ioutil.ReadAll(stderr)
+	if err != nil {
+		return errors.WithMessage(err, "read stderr data of command")
+	}
+
+	err = cmd.Wait()
+	logrus.Infof("git/commit: exec command '%s %s': stdout: %s", cmdName, strings.Join(args, " "), stdoutData)
+	logrus.Infof("git/commit: exec command '%s %s': stderr: %s", cmdName, strings.Join(args, " "), stderrData)
+	if err != nil {
+		return errors.WithMessage(err, "execute command failed")
+	}
+
+	if len(stderrData) != 0 {
+		return errors.New(string(stderrData))
+	}
+
+	return nil
 }
 
 func DelDir(repo *git.Repository, path string) error {
@@ -224,7 +295,7 @@ func Releases(
 	path := fmt.Sprintf("%s/%s", env, app)
 	commits, err := repo.Log(
 		&git.LogOptions{
-			Path: &path,
+			Path:  &path,
 			Since: since,
 			Until: until,
 		},
