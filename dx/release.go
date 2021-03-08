@@ -21,3 +21,11 @@ type ReleaseRequest struct {
 	ArtifactID  string `json:"artifactId"`
 	TriggeredBy string `json:"triggeredBy"`
 }
+
+// RollbackRequest contains all metadata about the rollback intent
+type RollbackRequest struct {
+	Env         string `json:"env"`
+	App         string `json:"app"`
+	TargetSHA   string `json:"targetSHA"`
+	TriggeredBy string `json:"triggeredBy"`
+}

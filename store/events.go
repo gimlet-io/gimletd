@@ -91,9 +91,9 @@ FROM events
 WHERE artifact_id = ?;
 `)
 
-	var data *model.Event
+	var data model.Event
 	err := meddler.QueryRow(db, &data, query, id)
-	return data, err
+	return &data, err
 }
 
 // UnprocessedEvents selects an event timeline

@@ -49,7 +49,7 @@ func (w *GitopsWorker) Run() {
 		}
 
 		for _, event := range events {
-			process(w.store,
+			processEvent(w.store,
 				w.gitopsRepo,
 				w.gitopsRepoDeployKeyPath,
 				w.githubChartAccessDeployKeyPath,
@@ -62,7 +62,7 @@ func (w *GitopsWorker) Run() {
 	}
 }
 
-func process(
+func processEvent(
 	store *store.Store,
 	gitopsRepo string,
 	gitopsRepoDeployKeyPath string,
@@ -70,75 +70,134 @@ func process(
 	event *model.Event,
 	notificationsManager notifications.Manager,
 ) {
-	if event.Type != model.TypeArtifact {
-		administerSuccess(store, event)
-		return
-	}
+	var artifact *dx.Artifact
+	var err error
 
-	artifact, err := model.ToArtifact(event)
-	if err != nil {
-		administerError(fmt.Errorf("cannot parse artifact %s", err.Error()), event, store)
-		return
-	}
-
-	for _, env := range artifact.Environments {
-		if !deployTrigger(artifact, env.Deploy) {
-			continue
-		}
-
-		repo, err := githelper.CloneToMemory(gitopsRepo, gitopsRepoDeployKeyPath, true)
+	switch event.Type {
+	case model.TypeArtifact:
+		artifact, err = model.ToArtifact(event)
 		if err != nil {
-			administerError(err, event, store)
+			administerError(fmt.Errorf("cannot parse artifact %s", err.Error()), event, store)
 			return
 		}
 
-		gitopsEvent := &notifications.GitopsEvent{
-			Manifest:    env,
-			Artifact:    artifact,
-			TriggeredBy: "policy",
-			Status:      notifications.Success,
-			GitopsRepo:  gitopsRepo,
-		}
+		for _, env := range artifact.Environments {
+			if !deployTrigger(artifact, env.Deploy) {
+				continue
+			}
 
-		releaseMeta := &dx.Release{
-			App:         env.App,
-			Env:         env.Env,
-			ArtifactID:  artifact.ID,
-			Version:     &artifact.Version,
-			TriggeredBy: "policy",
+			err = cloneTemplateWriteAndPush(
+				gitopsRepo,
+				gitopsRepoDeployKeyPath,
+				githubChartAccessDeployKeyPath,
+				notificationsManager,
+				artifact,
+				env,
+				"policy",
+			)
+			if err != nil {
+				administerError(err, event, store)
+				return
+			}
 		}
-
-		sha, err := gitopsTemplateAndWrite(
-			repo,
-			artifact.Context,
-			env,
-			releaseMeta,
-			githubChartAccessDeployKeyPath,
-		)
+	case model.TypeRelease:
+		var releaseRequest dx.ReleaseRequest
+		json.Unmarshal([]byte(event.Blob), &releaseRequest)
 		if err != nil {
-			event.Status = model.StatusError
-			event.StatusDesc = err.Error()
-			administerError(err, event, store)
-
-			gitopsEvent.Status = notifications.Failure
-			gitopsEvent.StatusDesc = err.Error()
-			notificationsManager.Broadcast(notifications.MessageFromGitOpsEvent(gitopsEvent))
+			administerError(fmt.Errorf("cannot parse release request with id: %s", event.ID), event, store)
 			return
 		}
 
-		err = githelper.Push(repo, gitopsRepoDeployKeyPath)
+		artifactEvent, err := store.Artifact(releaseRequest.ArtifactID)
 		if err != nil {
-			administerError(err, event, store)
+			administerError(fmt.Errorf("cannot find artifact with id: %s", event.ArtifactID), event, store)
+			return
+		}
+		artifact, err = model.ToArtifact(artifactEvent)
+		if err != nil {
+			administerError(fmt.Errorf("cannot parse artifact %s", err.Error()), event, store)
 			return
 		}
 
-		if sha != "" { // if there was changes to push
-			gitopsEvent.GitopsRef = sha
-			notificationsManager.Broadcast(notifications.MessageFromGitOpsEvent(gitopsEvent))
+		for _, env := range artifact.Environments {
+			if env.Env != releaseRequest.Env {
+				continue
+			}
+
+			err = cloneTemplateWriteAndPush(
+				gitopsRepo,
+				gitopsRepoDeployKeyPath,
+				githubChartAccessDeployKeyPath,
+				notificationsManager,
+				artifact,
+				env,
+				releaseRequest.TriggeredBy,
+			)
+			if err != nil {
+				administerError(err, event, store)
+				return
+			}
 		}
 	}
 
 	administerSuccess(store, event)
+}
+
+func cloneTemplateWriteAndPush(
+	gitopsRepo string,
+	gitopsRepoDeployKeyPath string,
+	githubChartAccessDeployKeyPath string,
+	notificationsManager notifications.Manager,
+	artifact *dx.Artifact,
+	env *dx.Manifest,
+	triggeredBy string,
+) error {
+	repo, err := githelper.CloneToMemory(gitopsRepo, gitopsRepoDeployKeyPath, true)
+	if err != nil {
+		return err
+	}
+
+	gitopsEvent := &notifications.GitopsEvent{
+		Manifest:    env,
+		Artifact:    artifact,
+		TriggeredBy: "policy",
+		Status:      notifications.Success,
+		GitopsRepo:  gitopsRepo,
+	}
+
+	releaseMeta := &dx.Release{
+		App:         env.App,
+		Env:         env.Env,
+		ArtifactID:  artifact.ID,
+		Version:     &artifact.Version,
+		TriggeredBy: triggeredBy,
+	}
+
+	sha, err := gitopsTemplateAndWrite(
+		repo,
+		artifact.Context,
+		env,
+		releaseMeta,
+		githubChartAccessDeployKeyPath,
+	)
+	if err != nil {
+		gitopsEvent.Status = notifications.Failure
+		gitopsEvent.StatusDesc = err.Error()
+		notificationsManager.Broadcast(notifications.MessageFromGitOpsEvent(gitopsEvent))
+		return err
+	}
+
+	err = githelper.Push(repo, gitopsRepoDeployKeyPath)
+	if err != nil {
+		return err
+	}
+
+	if sha != "" { // if there was changes to push
+		gitopsEvent.GitopsRef = sha
+		notificationsManager.Broadcast(notifications.MessageFromGitOpsEvent(gitopsEvent))
+	}
+
+	return nil
 }
 
 func administerSuccess(store *store.Store, event *model.Event) {

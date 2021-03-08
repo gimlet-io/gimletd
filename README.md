@@ -146,3 +146,60 @@ Then you will see the notifications reaching Slack:
 ### Configure Github Status lines on Gitops write
 
 Set `GITHUB_STATUS_TOKEN` with a Github Personal Access Token with `repo:status` permission.
+
+
+## Usage
+
+### Creating an artifact
+
+```bash
+gimlet artifact create \
+    --repository=my-app \
+    --sha=26fc62ffa5cf63204ccbce6876c6d610 \
+    --branch=master \
+    --authorName=Laszlo \
+    --authorEmail=laszlo@laszlo.laszlo \
+    --committerName=Laszlo \
+    --committerEmail=laszlo@laszlo.laszlo \
+    --message="Bugfix 123" \
+    --url="https://github.com/owner/repo/commits/0017d995e32e3d1998395d971b969bcf682d2085" \
+    > artifact.json
+
+gimlet artifact add \
+    --field name=CI \
+    --field url=https://jenkins.example.com/job/dev/84/display/redirect \
+    -f artifact.json
+
+cat << EOF > .gimlet.yaml
+app: my-app
+env: staging
+namespace: default
+chart:
+  repository: https://chart.onechart.dev
+  name: onechart
+  version: 0.15.3
+values:
+  replicas: 1
+  image:
+    repository: ghcr.io/gimlet-io/my-app
+    tag: "{{ .GITHUB_SHA }}"
+EOF
+
+gimlet artifact add \
+    --envFile .gimlet.yaml \
+    -f artifact.json
+
+gimlet artifact add \
+    --var GITHUB_SHA=xyz \
+    -f artifact.json
+```
+
+```
+export GIMLET_SERVER=http://localhost:8888
+export GIMLET_TOKEN=xxx
+gimlet artifact push -f artifact.json
+
+gimlet artifact list
+
+gimlet release make --env staging --artifact my-app-c19a27dd-25a0-4d0b-b932-db4c7c660996
+```

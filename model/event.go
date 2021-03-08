@@ -11,7 +11,8 @@ const StatusProcessed = "processed"
 const StatusError = "error"
 
 const TypeArtifact = "artifact"
-const TypeUser = "user"
+const TypeRelease = "release"
+const TypeRollback = "rollback"
 
 type Event struct {
 	ID         string `json:"id,omitempty"  meddler:"id"`

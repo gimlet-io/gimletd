@@ -129,10 +129,12 @@ func release(w http.ResponseWriter, r *http.Request) {
 	}
 
 	artifact, err := store.Artifact(artifactID)
-	http.Error(w, fmt.Sprintf("%s - cannot find artifact with id %s", http.StatusText(http.StatusNotFound), artifactID), http.StatusNotFound)
-
+	if err != nil {
+		http.Error(w, fmt.Sprintf("%s - cannot find artifact with id %s", http.StatusText(http.StatusNotFound), artifactID), http.StatusNotFound)
+		return
+	}
 	_, err = store.CreateEvent(&model.Event{
-		Type:       model.TypeUser,
+		Type:       model.TypeRelease,
 		Blob:       string(releaseRequestStr),
 		Repository: artifact.Repository,
 	})
