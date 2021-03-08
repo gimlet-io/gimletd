@@ -12,38 +12,38 @@ import (
 	"time"
 )
 
-// CreateArtifact stores a new artifact in the database
-func (db *Store) CreateArtifact(artifactModel *model.Artifact) (*model.Artifact, error) {
-	artifactModel.ID = fmt.Sprintf("%s-%s", artifactModel.Repository, uuid.New().String())
+// CreateEvent stores a new event in the database
+func (db *Store) CreateEvent(event *model.Event) (*model.Event, error) {
+	event.ID = fmt.Sprintf("%s-%s", event.Repository, uuid.New().String())
 	now := time.Now().Unix()
-	artifactModel.Created = now
-	artifactModel.Status = model.StatusNew
+	event.Created = now
+	event.Status = model.StatusNew
 
 	var a dx.Artifact
-	err := json.Unmarshal([]byte(artifactModel.Blob), &a)
+	err := json.Unmarshal([]byte(event.Blob), &a)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't deserialize artifact: %s", err)
 	}
-	a.ID = artifactModel.ID
+	a.ID = event.ID
 	a.Created = now
 
 	artifactStr, err := json.Marshal(a)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't serialize artifact: %s", err)
 	}
-	artifactModel.Blob = string(artifactStr)
+	event.Blob = string(artifactStr)
 
-	return artifactModel, meddler.Insert(db, "artifacts", artifactModel)
+	return event, meddler.Insert(db, "events", event)
 }
 
-// Artifacts returns all artifacts in the database within the given constraints
-func (db *Store) Artifacts(
+// Events returns all events in the database within the given constraints
+func (db *Store) Events(
 	app, branch string,
 	event *dx.GitEvent,
 	sourceBranch string,
 	sha string,
 	limit, offset int,
-	since, until *time.Time) ([]*model.Artifact, error) {
+	since, until *time.Time) ([]*model.Event, error) {
 
 	filters := []string{}
 	args := []interface{}{}
@@ -87,26 +87,26 @@ func (db *Store) Artifacts(
 
 	query := fmt.Sprintf(`
 SELECT id, repository, branch, event, source_branch, target_branch, tag, created, blob, status, status_desc, sha
-FROM artifacts
+FROM events
 %s
 ORDER BY created desc
 %s;`, strings.Join(filters, " "), limitAndOffset)
 
-	var data []*model.Artifact
+	var data []*model.Event
 	err := meddler.QueryAll(db, &data, query, args...)
 	return data, err
 }
 
-// UnprocessedArtifacts selects an event timeline
-func (db *Store) UnprocessedArtifacts() (events []*model.Artifact, err error) {
-	stmt := sql.Stmt(db.driver, sql.SelectUnprocessedArtifacts)
+// UnprocessedEvents selects an event timeline
+func (db *Store) UnprocessedEvents() (events []*model.Event, err error) {
+	stmt := sql.Stmt(db.driver, sql.SelectUnprocessedEvents)
 	err = meddler.QueryAll(db, &events, stmt)
 	return events, err
 }
 
-// UpdateArtifactStatus updates an artifact status in the database
-func (db *Store) UpdateArtifactStatus(id string, status string, desc string) error {
-	stmt := sql.Stmt(db.driver, sql.UpdateArtifactStatus)
+// UpdateEventStatus updates an event status in the database
+func (db *Store) UpdateEventStatus(id string, status string, desc string) error {
+	stmt := sql.Stmt(db.driver, sql.UpdateEventStatus)
 	_, err := db.Exec(stmt, status, desc, id)
 	return err
 }

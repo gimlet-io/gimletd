@@ -15,7 +15,7 @@
 package ddl
 
 const createTableUsers = "create-table-users"
-const createTableArtifacts = "create-table-artifacts"
+const createTableEvents = "create-table-events"
 
 type migration struct {
 	name string
@@ -37,9 +37,9 @@ UNIQUE(login)
 `,
 		},
 		{
-			name: createTableArtifacts,
+			name: createTableEvents,
 			stmt: `
-CREATE TABLE IF NOT EXISTS artifacts (
+CREATE TABLE IF NOT EXISTS events (
 id            TEXT,
 repository    TEXT,
 branch        TEXT,

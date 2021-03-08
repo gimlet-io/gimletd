@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestArtifactCRUD(t *testing.T) {
+func TestEventCRUD(t *testing.T) {
 	s := NewTest()
 	defer func() {
 		s.Close()
@@ -41,15 +41,15 @@ func TestArtifactCRUD(t *testing.T) {
 	var a dx.Artifact
 	json.Unmarshal([]byte(artifactStr), &a)
 
-	aModel, err := model.ToArtifactModel(a)
+	aModel, err := model.ToEvent(a)
 	assert.Nil(t, err)
 
-	savedArtifact, err := s.CreateArtifact(aModel)
+	savedEvent, err := s.CreateEvent(aModel)
 	assert.Nil(t, err)
-	assert.NotEqual(t, savedArtifact.Created, 0)
-	assert.Equal(t, savedArtifact.Event, dx.PR)
+	assert.NotEqual(t, savedEvent.Created, 0)
+	assert.Equal(t, savedEvent.Event, dx.PR)
 
-	artifacts, err := s.Artifacts("", "", nil, "", "", 0, 0, nil, nil)
+	artifacts, err := s.Events("", "", nil, "", "", 0, 0, nil, nil)
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(artifacts))
 	assert.Equal(t, "ea9ab7cc31b2599bf4afcfd639da516ca27a4780", artifacts[0].SHA)

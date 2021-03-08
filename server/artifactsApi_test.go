@@ -166,11 +166,11 @@ func Test_getArtifactsSince(t *testing.T) {
 
 	var a dx.Artifact
 	json.Unmarshal([]byte(artifactStr), &a)
-	artifactModel, err := model.ToArtifactModel(a)
+	event, err := model.ToEvent(a)
 	if err != nil {
 		panic(err)
 	}
-	_, err = store.CreateArtifact(artifactModel)
+	_, err = store.CreateEvent(event)
 	if err != nil {
 		panic(err)
 	}
@@ -213,11 +213,11 @@ func setupArtifacts(store *store.Store) {
 
 	var a dx.Artifact
 	json.Unmarshal([]byte(artifactStr), &a)
-	artifactModel, err := model.ToArtifactModel(a)
+	event, err := model.ToEvent(a)
 	if err != nil {
 		panic(err)
 	}
-	_, err = store.CreateArtifact(artifactModel)
+	_, err = store.CreateEvent(event)
 	if err != nil {
 		panic(err)
 	}
@@ -247,11 +247,11 @@ func setupArtifacts(store *store.Store) {
 `
 
 	json.Unmarshal([]byte(artifactStr2), &a)
-	artifactModel, err = model.ToArtifactModel(a)
+	event, err = model.ToEvent(a)
 	if err != nil {
 		panic(err)
 	}
-	_, err = store.CreateArtifact(artifactModel)
+	_, err = store.CreateEvent(event)
 	if err != nil {
 		panic(err)
 	}

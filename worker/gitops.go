@@ -41,19 +41,19 @@ func NewGitopsWorker(
 
 func (w *GitopsWorker) Run() {
 	for {
-		artifactModels, err := w.store.UnprocessedArtifacts()
+		events, err := w.store.UnprocessedEvents()
 		if err != nil {
-			logrus.Errorf("Could not fetch unprocessed artifactModels %s", err.Error())
+			logrus.Errorf("Could not fetch unprocessed events %s", err.Error())
 			time.Sleep(1 * time.Second)
 			continue
 		}
 
-		for _, artifactModel := range artifactModels {
+		for _, event := range events {
 			process(w.store,
 				w.gitopsRepo,
 				w.gitopsRepoDeployKeyPath,
 				w.githubChartAccessDeployKeyPath,
-				artifactModel,
+				event,
 				w.notificationsManager,
 			)
 		}
@@ -67,12 +67,12 @@ func process(
 	gitopsRepo string,
 	gitopsRepoDeployKeyPath string,
 	githubChartAccessDeployKeyPath string,
-	artifactModel *model.Artifact,
+	event *model.Event,
 	notificationsManager notifications.Manager,
 ) {
-	artifact, err := model.ToArtifact(artifactModel)
+	artifact, err := model.ToArtifact(event)
 	if err != nil {
-		administerError(fmt.Errorf("cannot parse artifact %s", err.Error()), artifactModel, store)
+		administerError(fmt.Errorf("cannot parse artifact %s", err.Error()), event, store)
 		return
 	}
 
@@ -83,11 +83,11 @@ func process(
 
 		repo, err := githelper.CloneToMemory(gitopsRepo, gitopsRepoDeployKeyPath, true)
 		if err != nil {
-			administerError(err, artifactModel, store)
+			administerError(err, event, store)
 			return
 		}
 
-		event := &notifications.GitopsEvent{
+		gitopsEvent := &notifications.GitopsEvent{
 			Manifest:    env,
 			Artifact:    artifact,
 			TriggeredBy: "policy",
@@ -111,53 +111,53 @@ func process(
 			githubChartAccessDeployKeyPath,
 		)
 		if err != nil {
-			event.Status = notifications.Failure
+			event.Status = model.StatusError
 			event.StatusDesc = err.Error()
-			administerError(err, artifactModel, store)
+			administerError(err, event, store)
 
-			event.Status = notifications.Failure
-			event.StatusDesc = err.Error()
-			notificationsManager.Broadcast(notifications.MessageFromGitOpsEvent(event))
+			gitopsEvent.Status = notifications.Failure
+			gitopsEvent.StatusDesc = err.Error()
+			notificationsManager.Broadcast(notifications.MessageFromGitOpsEvent(gitopsEvent))
 			return
 		}
 
 		err = githelper.Push(repo, gitopsRepoDeployKeyPath)
 		if err != nil {
-			administerError(err, artifactModel, store)
+			administerError(err, event, store)
 			return
 		}
 
 		if sha != "" { // if there was changes to push
-			event.GitopsRef = sha
-			notificationsManager.Broadcast(notifications.MessageFromGitOpsEvent(event))
+			gitopsEvent.GitopsRef = sha
+			notificationsManager.Broadcast(notifications.MessageFromGitOpsEvent(gitopsEvent))
 		}
 	}
 
-	administerSuccess(store, artifactModel)
+	administerSuccess(store, event)
 }
 
-func administerSuccess(store *store.Store, artifactModel *model.Artifact) {
-	artifactModel.Status = model.StatusProcessed
-	updateArtifactModel(store, artifactModel)
+func administerSuccess(store *store.Store, event *model.Event) {
+	event.Status = model.StatusProcessed
+	updateEvent(store, event)
 }
 
-func updateArtifactModel(store *store.Store, artifactModel *model.Artifact) {
-	err := store.UpdateArtifactStatus(
-		artifactModel.ID,
-		artifactModel.Status,
-		artifactModel.StatusDesc,
+func updateEvent(store *store.Store, event *model.Event) {
+	err := store.UpdateEventStatus(
+		event.ID,
+		event.Status,
+		event.StatusDesc,
 	)
 	if err != nil {
-		logrus.Warnf("could not update artifactModel status %v", err)
+		logrus.Warnf("could not update event status %v", err)
 	}
 }
 
-func administerError(err error, artifactModel *model.Artifact, store *store.Store) {
-	logrus.Errorf("error in processing artifactModel: %s", err.Error())
-	artifactModel.Status = model.StatusError
-	artifactModel.StatusDesc = err.Error()
+func administerError(err error, event *model.Event, store *store.Store) {
+	logrus.Errorf("error in processing event: %s", err.Error())
+	event.Status = model.StatusError
+	event.StatusDesc = err.Error()
 
-	updateArtifactModel(store, artifactModel)
+	updateEvent(store, event)
 }
 
 func gitopsTemplateAndWrite(

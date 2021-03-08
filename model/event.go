@@ -9,28 +9,29 @@ const StatusNew = "new"
 const StatusProcessed = "processed"
 const StatusError = "error"
 
-type Artifact struct {
+type Event struct {
 	ID           string      `json:"id,omitempty"  meddler:"id"`
+	Created      int64       `json:"created,omitempty"  meddler:"created"`
+	Blob         string      `json:"blob,omitempty"  meddler:"blob"`
+	Status       string      `json:"status"  meddler:"status"`
+	StatusDesc   string      `json:"statusDesc"  meddler:"status_desc"`
+
 	Repository   string      `json:"repository,omitempty"  meddler:"repository"`
 	Branch       string      `json:"branch,omitempty"  meddler:"branch"`
 	Event        dx.GitEvent `json:"event,omitempty"  meddler:"event"`
 	SourceBranch string      `json:"sourceBranch,omitempty"  meddler:"source_branch"`
 	TargetBranch string      `json:"targetBranch,omitempty"  meddler:"target_branch"`
 	Tag          string      `json:"tag,omitempty"  meddler:"tag"`
-	Created      int64       `json:"created,omitempty"  meddler:"created"`
-	Blob         string      `json:"blob,omitempty"  meddler:"blob"`
-	Status       string      `json:"status"  meddler:"status"`
-	StatusDesc   string      `json:"statusDesc"  meddler:"status_desc"`
 	SHA          string      `json:"sha"  meddler:"sha"`
 }
 
-func ToArtifactModel(artifact dx.Artifact) (*Artifact, error) {
+func ToEvent(artifact dx.Artifact) (*Event, error) {
 	artifactStr, err := json.Marshal(artifact)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Artifact{
+	return &Event{
 		ID:           artifact.ID,
 		Repository:   artifact.Version.RepositoryName,
 		Branch:       artifact.Version.Branch,
@@ -43,7 +44,7 @@ func ToArtifactModel(artifact dx.Artifact) (*Artifact, error) {
 	}, nil
 }
 
-func ToArtifact(a *Artifact) (*dx.Artifact, error) {
+func ToArtifact(a *Event) (*dx.Artifact, error) {
 	var artifact dx.Artifact
 	json.Unmarshal([]byte(a.Blob), &artifact)
 	return &artifact, nil
