@@ -153,7 +153,29 @@ func processRollbackEvent(
 		return fmt.Errorf("cannot parse release request with id: %s", event.ID)
 	}
 
-	return cloneRevertPush(gitopsRepo, gitopsRepoDeployKeyPath, rollbackRequest.Env, rollbackRequest.App)
+	repoTmpPath, repo, err := githelper.NativeCheckout(gitopsRepo, gitopsRepoDeployKeyPath)
+	if err != nil {
+		return err
+	}
+	defer githelper.NativeCleanup(repoTmpPath)
+
+	err = revertTo(
+			rollbackRequest.Env,
+			rollbackRequest.App,
+			repo,
+			repoTmpPath,
+			rollbackRequest.TargetSHA,
+		)
+	if err != nil {
+		return err
+	}
+
+	err = githelper.Push(repo, gitopsRepoDeployKeyPath)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func processArtifactEvent(
@@ -247,19 +269,8 @@ func cloneTemplateWriteAndPush(
 	return nil
 }
 
-func cloneRevertPush(
-	gitopsRepo string,
-	gitopsRepoDeployKeyPath string,
-	env string,
-	app string,
-) error {
-	repoTmpPath, repo, err := githelper.NativeCheckout(gitopsRepo, gitopsRepoDeployKeyPath)
-	if err != nil {
-		return err
-	}
-	defer githelper.NativeCleanup(repoTmpPath)
-
-	path := fmt.Sprintf("releases/%s/%s/", env, app)
+func revertTo(env string, app string, repo *git.Repository, repoTmpPath string, sha string) error {
+	path := fmt.Sprintf("%s/%s", env, app)
 	commits, err := repo.Log(
 		&git.LogOptions{
 			Path: &path,
@@ -271,6 +282,10 @@ func cloneRevertPush(
 
 	hashesToRevert := []string{}
 	err = commits.ForEach(func(c *object.Commit) error {
+		if c.Hash.String() == sha {
+			return fmt.Errorf("EOF")
+		}
+
 		if !strings.Contains(c.Message, "This reverts commit") {
 			hashesToRevert = append(hashesToRevert, c.Hash.String())
 		}
@@ -290,17 +305,11 @@ func cloneRevertPush(
 			}
 		}
 	}
-
-	err = githelper.Push(repo, gitopsRepoDeployKeyPath)
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 
 func hasBeenReverted(repo *git.Repository, sha string, env string, app string) (bool, error) {
-	path := fmt.Sprintf("releases/%s/%s/", env, app)
+	path := fmt.Sprintf("%s/%s", env, app)
 	commits, err := repo.Log(
 		&git.LogOptions{
 			Path: &path,
@@ -314,6 +323,7 @@ func hasBeenReverted(repo *git.Repository, sha string, env string, app string) (
 	err = commits.ForEach(func(c *object.Commit) error {
 		if strings.Contains(c.Message, sha) {
 			hasBeenReverted = true
+			return fmt.Errorf("EOF")
 		}
 		return nil
 	})
