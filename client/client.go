@@ -33,6 +33,7 @@ const (
 	pathArtifact  = "%s/api/artifact"
 	pathArtifacts = "%s/api/artifacts"
 	pathReleases  = "%s/api/releases"
+	pathRollback  = "%s/api/rollback"
 )
 
 type client struct {
@@ -212,6 +213,12 @@ func (c *client) ReleasesGet(
 // ReleasesPost releases the given artifact to the given environment
 func (c *client) ReleasesPost(env string, artifactID string) error {
 	uri := fmt.Sprintf(pathReleases + "?env=%s&artifact=%s", c.addr, env, artifactID)
+	return c.post(uri, nil, nil)
+}
+
+// ReleasesPost releases the given artifact to the given environment
+func (c *client) RollbackPost(env string, app string, targetSHA string) error {
+	uri := fmt.Sprintf(pathRollback + "?env=%s&app=%s&sha=%s", c.addr, env, app, targetSHA)
 	return c.post(uri, nil, nil)
 }
 

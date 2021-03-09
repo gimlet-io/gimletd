@@ -52,4 +52,7 @@ type Client interface {
 
 	// ReleasesPost releases the given artifact to the given environment
 	ReleasesPost(env string, artifactID string) error
+
+	// RollbackPost rolls back to the given sha
+	RollbackPost(env string, app string, targetSHA string) error
 }

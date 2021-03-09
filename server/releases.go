@@ -133,7 +133,7 @@ func release(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("%s - cannot find artifact with id %s", http.StatusText(http.StatusNotFound), artifactID), http.StatusNotFound)
 		return
 	}
-	_, err = store.CreateEvent(&model.Event{
+	event, err := store.CreateEvent(&model.Event{
 		Type:       model.TypeRelease,
 		Blob:       string(releaseRequestStr),
 		Repository: artifact.Repository,
@@ -143,5 +143,64 @@ func release(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	eventIDBytes, _ := json.Marshal(map[string]string{
+		"id": event.ID,
+	})
+
 	w.WriteHeader(http.StatusCreated)
+	w.Write(eventIDBytes)
+}
+
+func rollback(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	store := ctx.Value("store").(*store.Store)
+	user := ctx.Value("user").(*model.User)
+
+	params := r.URL.Query()
+	var env, app, targetSHA string
+	if val, ok := params["env"]; ok {
+		env = val[0]
+	} else {
+		http.Error(w, fmt.Sprintf("%s: %s", http.StatusText(http.StatusBadRequest), "env parameter is mandatory"), http.StatusBadRequest)
+		return
+	}
+	if val, ok := params["app"]; ok {
+		app = val[0]
+	} else {
+		http.Error(w, fmt.Sprintf("%s: %s", http.StatusText(http.StatusBadRequest), "app parameter is mandatory"), http.StatusBadRequest)
+		return
+	}
+	if val, ok := params["sha"]; ok {
+		targetSHA = val[0]
+	} else {
+		http.Error(w, fmt.Sprintf("%s: %s", http.StatusText(http.StatusBadRequest), "sha parameter is mandatory"), http.StatusBadRequest)
+		return
+	}
+
+	rollbackRequestStr, err := json.Marshal(dx.RollbackRequest{
+		Env:         env,
+		App: app,
+		TargetSHA: targetSHA,
+		TriggeredBy: user.Login,
+	})
+	if err != nil {
+		http.Error(w, fmt.Sprintf("%s - cannot serialize rollback request: %s", http.StatusText(http.StatusInternalServerError), err), http.StatusInternalServerError)
+		return
+	}
+
+	event, err := store.CreateEvent(&model.Event{
+		Type:       model.TypeRollback,
+		Blob:       string(rollbackRequestStr),
+	})
+	if err != nil {
+		http.Error(w, fmt.Sprintf("%s - cannot save rollback request: %s", http.StatusText(http.StatusInternalServerError), err), http.StatusInternalServerError)
+		return
+	}
+
+	eventIDBytes, _ := json.Marshal(map[string]string{
+		"id": event.ID,
+	})
+
+	w.WriteHeader(http.StatusCreated)
+	w.Write(eventIDBytes)
 }

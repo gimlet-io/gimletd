@@ -16,12 +16,17 @@ package worker
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/gimlet-io/gimletd/dx"
+	"github.com/gimlet-io/gimletd/githelper"
 	"github.com/go-git/go-billy/v5/memfs"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
+	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/go-git/go-git/v5/storage/memory"
 	"github.com/stretchr/testify/assert"
+	"io/ioutil"
+	"os"
 	"testing"
 )
 
@@ -147,4 +152,103 @@ func Test_deployTrigger(t *testing.T) {
 			Event: dx.TagPtr(),
 		})
 	assert.True(t, triggered, "Should trigger a PR deploy")
+}
+
+func Test_revertTo(t *testing.T) {
+	path, _ := ioutil.TempDir("", "gitops-")
+	defer os.RemoveAll(path)
+
+	repo, _ := git.PlainInit(path, false)
+	initHistory(repo)
+
+	var SHAs []string
+	commits, _ := repo.Log(&git.LogOptions{})
+	 commits.ForEach(func(c *object.Commit) error {
+		SHAs = append(SHAs, c.Hash.String())
+		return nil
+	})
+
+	err := revertTo(
+		"staging",
+		"my-app",
+		repo,
+		path,
+		SHAs[2],
+	)
+	assert.Nil(t, err)
+	content, _ := githelper.Content(repo, "staging/my-app/file")
+	assert.Equal(t, "1\n", content)
+
+	SHAs = []string{}
+	commits, _ = repo.Log(&git.LogOptions{})
+	commits.ForEach(func(c *object.Commit) error {
+		SHAs = append(SHAs, c.Hash.String())
+		return nil
+	})
+	assert.Equal(t, 6, len(SHAs))
+
+	err = revertTo(
+		"staging",
+		"my-app",
+		repo,
+		path,
+		SHAs[4],
+	)
+	assert.Nil(t, err)
+	content, _ = githelper.Content(repo, "staging/my-app/file")
+	assert.Equal(t, "1\n", content)
+
+	err = revertTo(
+		"staging",
+		"my-app",
+		repo,
+		path,
+		SHAs[5],
+	)
+	assert.Nil(t, err)
+	content, _ = githelper.Content(repo, "staging/my-app/file")
+	assert.Equal(t, "0\n", content)
+}
+
+func initHistory(repo *git.Repository) {
+	sha, _ := githelper.CommitFilesToGit(
+		repo,
+		map[string]string{
+			"file": `0`,
+		},
+		"staging",
+		"my-app",
+		"0st commit",
+	)
+	fmt.Printf("%s - %s\n", sha, "0")
+	sha, _ = githelper.CommitFilesToGit(
+		repo,
+		map[string]string{
+			"file": `1`,
+		},
+		"staging",
+		"my-app",
+		"1st commit",
+	)
+	fmt.Printf("%s - %s\n", sha, "1")
+	sha, _ = githelper.CommitFilesToGit(
+		repo,
+		map[string]string{
+			"file": `2`,
+		},
+		"staging",
+		"my-app",
+		"2nd commit",
+	)
+	fmt.Printf("%s - %s\n", sha, "2")
+	sha, _ = githelper.CommitFilesToGit(
+		repo,
+		map[string]string{
+			"file": `3`,
+		},
+		"staging",
+		"my-app",
+		"3rd commit",
+	)
+	fmt.Printf("%s - %s\n", sha, "3")
 }

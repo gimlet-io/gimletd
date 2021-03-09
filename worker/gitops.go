@@ -9,6 +9,8 @@ import (
 	"github.com/gimlet-io/gimletd/notifications"
 	"github.com/gimlet-io/gimletd/store"
 	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing/object"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"os"
 	"strings"
@@ -70,77 +72,144 @@ func processEvent(
 	event *model.Event,
 	notificationsManager notifications.Manager,
 ) {
-	var artifact *dx.Artifact
-	var err error
-
 	switch event.Type {
 	case model.TypeArtifact:
-		artifact, err = model.ToArtifact(event)
+		err := processArtifactEvent(gitopsRepo, gitopsRepoDeployKeyPath, githubChartAccessDeployKeyPath, event, notificationsManager)
 		if err != nil {
-			administerError(fmt.Errorf("cannot parse artifact %s", err.Error()), event, store)
+			administerError(err, event, store)
 			return
-		}
-
-		for _, env := range artifact.Environments {
-			if !deployTrigger(artifact, env.Deploy) {
-				continue
-			}
-
-			err = cloneTemplateWriteAndPush(
-				gitopsRepo,
-				gitopsRepoDeployKeyPath,
-				githubChartAccessDeployKeyPath,
-				notificationsManager,
-				artifact,
-				env,
-				"policy",
-			)
-			if err != nil {
-				administerError(err, event, store)
-				return
-			}
 		}
 	case model.TypeRelease:
-		var releaseRequest dx.ReleaseRequest
-		json.Unmarshal([]byte(event.Blob), &releaseRequest)
+		err := processReleaseEvent(store, gitopsRepo, gitopsRepoDeployKeyPath, githubChartAccessDeployKeyPath, event, notificationsManager)
 		if err != nil {
-			administerError(fmt.Errorf("cannot parse release request with id: %s", event.ID), event, store)
+			administerError(err, event, store)
 			return
 		}
-
-		artifactEvent, err := store.Artifact(releaseRequest.ArtifactID)
+	case model.TypeRollback:
+		err := processRollbackEvent(gitopsRepo, gitopsRepoDeployKeyPath, event, notificationsManager)
 		if err != nil {
-			administerError(fmt.Errorf("cannot find artifact with id: %s", event.ArtifactID), event, store)
+			administerError(err, event, store)
 			return
-		}
-		artifact, err = model.ToArtifact(artifactEvent)
-		if err != nil {
-			administerError(fmt.Errorf("cannot parse artifact %s", err.Error()), event, store)
-			return
-		}
-
-		for _, env := range artifact.Environments {
-			if env.Env != releaseRequest.Env {
-				continue
-			}
-
-			err = cloneTemplateWriteAndPush(
-				gitopsRepo,
-				gitopsRepoDeployKeyPath,
-				githubChartAccessDeployKeyPath,
-				notificationsManager,
-				artifact,
-				env,
-				releaseRequest.TriggeredBy,
-			)
-			if err != nil {
-				administerError(err, event, store)
-				return
-			}
 		}
 	}
 
 	administerSuccess(store, event)
+}
+
+func processReleaseEvent(
+	store *store.Store,
+	gitopsRepo string,
+	gitopsRepoDeployKeyPath string,
+	githubChartAccessDeployKeyPath string,
+	event *model.Event,
+	notificationsManager notifications.Manager,
+) error {
+	var releaseRequest dx.ReleaseRequest
+	err := json.Unmarshal([]byte(event.Blob), &releaseRequest)
+	if err != nil {
+		return fmt.Errorf("cannot parse release request with id: %s", event.ID)
+	}
+
+	artifactEvent, err := store.Artifact(releaseRequest.ArtifactID)
+	if err != nil {
+		return fmt.Errorf("cannot find artifact with id: %s", event.ArtifactID)
+	}
+	artifact, err := model.ToArtifact(artifactEvent)
+	if err != nil {
+		return fmt.Errorf("cannot parse artifact %s", err.Error())
+	}
+
+	for _, env := range artifact.Environments {
+		if env.Env != releaseRequest.Env {
+			continue
+		}
+
+		err = cloneTemplateWriteAndPush(
+			gitopsRepo,
+			gitopsRepoDeployKeyPath,
+			githubChartAccessDeployKeyPath,
+			notificationsManager,
+			artifact,
+			env,
+			releaseRequest.TriggeredBy,
+		)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func processRollbackEvent(
+	gitopsRepo string,
+	gitopsRepoDeployKeyPath string,
+	event *model.Event,
+	notificationsManager notifications.Manager,
+) error {
+	var rollbackRequest dx.RollbackRequest
+	err := json.Unmarshal([]byte(event.Blob), &rollbackRequest)
+	if err != nil {
+		return fmt.Errorf("cannot parse release request with id: %s", event.ID)
+	}
+
+	repoTmpPath, repo, err := githelper.NativeCheckout(gitopsRepo, gitopsRepoDeployKeyPath)
+	if err != nil {
+		return err
+	}
+	defer githelper.NativeCleanup(repoTmpPath)
+
+	err = revertTo(
+			rollbackRequest.Env,
+			rollbackRequest.App,
+			repo,
+			repoTmpPath,
+			rollbackRequest.TargetSHA,
+		)
+	if err != nil {
+		return err
+	}
+
+	err = githelper.Push(repo, gitopsRepoDeployKeyPath)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func processArtifactEvent(
+	gitopsRepo string,
+	gitopsRepoDeployKeyPath string,
+	githubChartAccessDeployKeyPath string,
+	event *model.Event,
+	notificationsManager notifications.Manager,
+) error {
+	artifact, err := model.ToArtifact(event)
+	if err != nil {
+		return fmt.Errorf("cannot parse artifact %s", err.Error())
+	}
+
+	for _, env := range artifact.Environments {
+		if !deployTrigger(artifact, env.Deploy) {
+			continue
+		}
+
+		err = cloneTemplateWriteAndPush(
+			gitopsRepo,
+			gitopsRepoDeployKeyPath,
+			githubChartAccessDeployKeyPath,
+			notificationsManager,
+			artifact,
+			env,
+			"policy",
+		)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func cloneTemplateWriteAndPush(
@@ -160,7 +229,7 @@ func cloneTemplateWriteAndPush(
 	gitopsEvent := &notifications.GitopsEvent{
 		Manifest:    env,
 		Artifact:    artifact,
-		TriggeredBy: "policy",
+		TriggeredBy: triggeredBy,
 		Status:      notifications.Success,
 		GitopsRepo:  gitopsRepo,
 	}
@@ -198,6 +267,71 @@ func cloneTemplateWriteAndPush(
 	}
 
 	return nil
+}
+
+func revertTo(env string, app string, repo *git.Repository, repoTmpPath string, sha string) error {
+	path := fmt.Sprintf("%s/%s", env, app)
+	commits, err := repo.Log(
+		&git.LogOptions{
+			Path: &path,
+		},
+	)
+	if err != nil {
+		return errors.WithMessage(err, "could not walk commits")
+	}
+
+	hashesToRevert := []string{}
+	err = commits.ForEach(func(c *object.Commit) error {
+		if c.Hash.String() == sha {
+			return fmt.Errorf("EOF")
+		}
+
+		if !strings.Contains(c.Message, "This reverts commit") {
+			hashesToRevert = append(hashesToRevert, c.Hash.String())
+		}
+		return nil
+	})
+	if err != nil && err.Error() != "EOF" {
+		return err
+	}
+
+	for _, hash := range hashesToRevert {
+		hasBeenReverted, err := hasBeenReverted(repo, hash, env, app)
+		if !hasBeenReverted {
+			logrus.Infof("reverting %s", hash)
+			err = githelper.NativeRevert(repoTmpPath, hash)
+			if err != nil {
+				return errors.WithMessage(err, "could not revert")
+			}
+		}
+	}
+	return nil
+}
+
+func hasBeenReverted(repo *git.Repository, sha string, env string, app string) (bool, error) {
+	path := fmt.Sprintf("%s/%s", env, app)
+	commits, err := repo.Log(
+		&git.LogOptions{
+			Path: &path,
+		},
+	)
+	if err != nil {
+		return false, errors.WithMessage(err, "could not walk commits")
+	}
+
+	hasBeenReverted := false
+	err = commits.ForEach(func(c *object.Commit) error {
+		if strings.Contains(c.Message, sha) {
+			hasBeenReverted = true
+			return fmt.Errorf("EOF")
+		}
+		return nil
+	})
+	if err != nil && err.Error() != "EOF" {
+		return false, err
+	}
+
+	return hasBeenReverted, nil
 }
 
 func administerSuccess(store *store.Store, event *model.Event) {
