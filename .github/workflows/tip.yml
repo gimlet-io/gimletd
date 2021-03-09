@@ -34,7 +34,10 @@ jobs:
         VERSION: ${{ steps.get_version.outputs.version-without-v }}
 
     - name: Test
-      run: make test
+      run: |
+        git config --global user.email "git@gimlet.io"
+        git config --global user.name "Github Actions"
+        make test
 
     - name: Dist
       run: make dist
