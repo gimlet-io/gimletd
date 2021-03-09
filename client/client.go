@@ -34,6 +34,7 @@ const (
 	pathArtifacts = "%s/api/artifacts"
 	pathReleases  = "%s/api/releases"
 	pathRollback  = "%s/api/rollback"
+	pathEvent    = "%s/api/event"
 )
 
 type client struct {
@@ -212,7 +213,7 @@ func (c *client) ReleasesGet(
 
 // ReleasesPost releases the given artifact to the given environment
 func (c *client) ReleasesPost(env string, artifactID string) (string, error) {
-	uri := fmt.Sprintf(pathReleases + "?env=%s&artifact=%s", c.addr, env, artifactID)
+	uri := fmt.Sprintf(pathReleases+"?env=%s&artifact=%s", c.addr, env, artifactID)
 	result := new(map[string]interface{})
 	err := c.post(uri, nil, result)
 	if err != nil {
@@ -224,7 +225,7 @@ func (c *client) ReleasesPost(env string, artifactID string) (string, error) {
 
 // ReleasesPost releases the given artifact to the given environment
 func (c *client) RollbackPost(env string, app string, targetSHA string) (string, error) {
-	uri := fmt.Sprintf(pathRollback + "?env=%s&app=%s&sha=%s", c.addr, env, app, targetSHA)
+	uri := fmt.Sprintf(pathRollback+"?env=%s&app=%s&sha=%s", c.addr, env, app, targetSHA)
 	result := new(map[string]interface{})
 	err := c.post(uri, nil, result)
 	if err != nil {
@@ -232,6 +233,20 @@ func (c *client) RollbackPost(env string, app string, targetSHA string) (string,
 	}
 	res := *result
 	return res["id"].(string), nil
+}
+
+// TrackGet gets teh status of an event
+func (c *client) TrackGet(trackingID string) (string, string, error) {
+	uri := fmt.Sprintf(pathEvent, c.addr)
+
+	result := new(map[string]interface{})
+	err := c.get(uri+"?id="+trackingID, result)
+	if err != nil {
+		return "", "", err
+	}
+
+	res := *result
+	return res["status"].(string), res["desc"].(string), nil
 }
 
 func (c *client) get(rawURL string, out interface{}) error {

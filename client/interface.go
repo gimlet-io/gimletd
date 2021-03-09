@@ -55,4 +55,7 @@ type Client interface {
 
 	// RollbackPost rolls back to the given sha
 	RollbackPost(env string, app string, targetSHA string) (string, error)
+
+	// TrackGet returns the state of an event
+	TrackGet(trackingID string) (string, string, error)
 }

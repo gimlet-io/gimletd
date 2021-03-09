@@ -96,6 +96,19 @@ WHERE artifact_id = ?;
 	return &data, err
 }
 
+// Event returns an event by id
+func (db *Store) Event(id string) (*model.Event, error) {
+	query := fmt.Sprintf(`
+SELECT id, created, blob, status, status_desc
+FROM events
+WHERE id = ?;
+`)
+
+	var data model.Event
+	err := meddler.QueryRow(db, &data, query, id)
+	return &data, err
+}
+
 // UnprocessedEvents selects an event timeline
 func (db *Store) UnprocessedEvents() (events []*model.Event, err error) {
 	stmt := sql.Stmt(db.driver, sql.SelectUnprocessedEvents)

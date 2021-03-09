@@ -186,3 +186,32 @@ func rollback(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 	w.Write(eventIDBytes)
 }
+
+func getEvent(w http.ResponseWriter, r *http.Request) {
+	var id string
+
+	params := r.URL.Query()
+
+	if val, ok := params["id"]; ok {
+		id = val[0]
+	} else {
+		http.Error(w, fmt.Sprintf("%s: %s", http.StatusText(http.StatusBadRequest), "id parameter is mandatory"), http.StatusBadRequest)
+		return
+	}
+
+	ctx := r.Context()
+	store := ctx.Value("store").(*store.Store)
+	event, err := store.Event(id)
+	if err != nil {
+		logrus.Errorf("cannot get event: %s", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	}
+
+	statusBytes, _ := json.Marshal(map[string]string{
+		"status": event.Status,
+		"desc": event.StatusDesc,
+	})
+
+	w.WriteHeader(http.StatusOK)
+	w.Write(statusBytes)
+}
