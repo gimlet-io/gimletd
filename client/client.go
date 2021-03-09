@@ -211,15 +211,25 @@ func (c *client) ReleasesGet(
 }
 
 // ReleasesPost releases the given artifact to the given environment
-func (c *client) ReleasesPost(env string, artifactID string) error {
+func (c *client) ReleasesPost(env string, artifactID string) (string, error) {
 	uri := fmt.Sprintf(pathReleases + "?env=%s&artifact=%s", c.addr, env, artifactID)
-	return c.post(uri, nil, nil)
+	var result map[string]interface{}
+	err := c.post(uri, nil, result)
+	if err != nil {
+		return "", nil
+	}
+	return result["id"].(string), nil
 }
 
 // ReleasesPost releases the given artifact to the given environment
-func (c *client) RollbackPost(env string, app string, targetSHA string) error {
+func (c *client) RollbackPost(env string, app string, targetSHA string) (string, error) {
 	uri := fmt.Sprintf(pathRollback + "?env=%s&app=%s&sha=%s", c.addr, env, app, targetSHA)
-	return c.post(uri, nil, nil)
+	var result map[string]interface{}
+	err := c.post(uri, nil, result)
+	if err != nil {
+		return "", nil
+	}
+	return result["id"].(string), nil
 }
 
 func (c *client) get(rawURL string, out interface{}) error {

@@ -51,8 +51,8 @@ type Client interface {
 	) ([]*dx.Release, error)
 
 	// ReleasesPost releases the given artifact to the given environment
-	ReleasesPost(env string, artifactID string) error
+	ReleasesPost(env string, artifactID string) (string, error)
 
 	// RollbackPost rolls back to the given sha
-	RollbackPost(env string, app string, targetSHA string) error
+	RollbackPost(env string, app string, targetSHA string) (string, error)
 }
