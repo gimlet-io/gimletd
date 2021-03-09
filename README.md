@@ -202,4 +202,8 @@ gimlet artifact push -f artifact.json
 gimlet artifact list
 
 gimlet release make --env staging --artifact my-app-c19a27dd-25a0-4d0b-b932-db4c7c660996
+
+gimlet release list --env staging --app my-app
+
+gimlet release rollback --env staging --app my-app --to c2b11dfe7df3db8dba80eb0908b860822f53a852
 ```
