@@ -1,6 +1,7 @@
 package server
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"github.com/gimlet-io/gimletd/dx"
@@ -202,7 +203,9 @@ func getEvent(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	store := ctx.Value("store").(*store.Store)
 	event, err := store.Event(id)
-	if err != nil {
+	if err == sql.ErrNoRows {
+		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+	} else if err != nil {
 		logrus.Errorf("cannot get event: %s", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
