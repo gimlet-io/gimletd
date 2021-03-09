@@ -13,28 +13,10 @@ import (
 )
 
 func getReleases(w http.ResponseWriter, r *http.Request) {
-	//var limit, offset int
 	var since, until *time.Time
 	var app, env string
 
 	params := r.URL.Query()
-	//if val, ok := params["limit"]; ok {
-	//	l, err := strconv.Atoi(val[0])
-	//	if err != nil {
-	//		http.Error(w, http.StatusText(http.StatusBadRequest)+" - "+err.Error(), http.StatusBadRequest)
-	//		return
-	//	}
-	//	limit = l
-	//}
-	//if val, ok := params["offset"]; ok {
-	//	o, err := strconv.Atoi(val[0])
-	//	if err != nil {
-	//		http.Error(w, http.StatusText(http.StatusBadRequest)+" - "+err.Error(), http.StatusBadRequest)
-	//		return
-	//	}
-	//	offset = o
-	//}
-
 	if val, ok := params["since"]; ok {
 		t, err := time.Parse(time.RFC3339, val[0])
 		if err != nil {

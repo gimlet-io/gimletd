@@ -13,6 +13,8 @@ type Release struct {
 	GitopsRef  string `json:"gitopsRef"`
 	GitopsRepo string `json:"gitopsRepo"`
 	Created    int64  `json:"created,omitempty"`
+
+	RolledBack bool `json:"rolledBack,omitempty"`
 }
 
 // ReleaseRequest contains all metadata about the release intent

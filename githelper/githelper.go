@@ -305,6 +305,10 @@ func Releases(
 	}
 
 	err = commits.ForEach(func(c *object.Commit) error {
+		if RollbackCommit(c) {
+			return nil
+		}
+
 		releaseFile, err := c.File(path + "/release.json")
 		if err != nil {
 			logrus.Debugf("no release file for %s: %s", c.Hash.String(), err)
@@ -331,8 +335,15 @@ func Releases(
 		}
 		release.Created = c.Committer.When.Unix()
 		release.GitopsRef = c.Hash.String()
-		releases = append(releases, release)
 
+		rolledBack, err := HasBeenReverted(repo, c.Hash.String(), env, app)
+		if err != nil {
+			logrus.Warnf("cannot determine if commit was rolled back %s: %s", c.Hash.String(), err)
+			releases = append(releases, relaseFromCommit(c, app, env))
+		}
+		release.RolledBack = rolledBack
+
+		releases = append(releases, release)
 		return nil
 	})
 	if err != nil && err.Error() != "EOF" {
@@ -340,6 +351,36 @@ func Releases(
 	}
 
 	return releases, nil
+}
+
+func RollbackCommit(c *object.Commit) bool {
+	return strings.Contains(c.Message, "This reverts commit")
+}
+
+func HasBeenReverted(repo *git.Repository, sha string, env string, app string) (bool, error) {
+	path := fmt.Sprintf("%s/%s", env, app)
+	commits, err := repo.Log(
+		&git.LogOptions{
+			Path: &path,
+		},
+	)
+	if err != nil {
+		return false, errors.WithMessage(err, "could not walk commits")
+	}
+
+	hasBeenReverted := false
+	err = commits.ForEach(func(c *object.Commit) error {
+		if strings.Contains(c.Message, sha) {
+			hasBeenReverted = true
+			return fmt.Errorf("EOF")
+		}
+		return nil
+	})
+	if err != nil && err.Error() != "EOF" {
+		return false, err
+	}
+
+	return hasBeenReverted, nil
 }
 
 func relaseFromCommit(c *object.Commit, app string, env string) *dx.Release {

@@ -286,7 +286,7 @@ func revertTo(env string, app string, repo *git.Repository, repoTmpPath string, 
 			return fmt.Errorf("EOF")
 		}
 
-		if !strings.Contains(c.Message, "This reverts commit") {
+		if !githelper.RollbackCommit(c) {
 			hashesToRevert = append(hashesToRevert, c.Hash.String())
 		}
 		return nil
@@ -296,7 +296,7 @@ func revertTo(env string, app string, repo *git.Repository, repoTmpPath string, 
 	}
 
 	for _, hash := range hashesToRevert {
-		hasBeenReverted, err := hasBeenReverted(repo, hash, env, app)
+		hasBeenReverted, err := githelper.HasBeenReverted(repo, hash, env, app)
 		if !hasBeenReverted {
 			logrus.Infof("reverting %s", hash)
 			err = githelper.NativeRevert(repoTmpPath, hash)
@@ -306,32 +306,6 @@ func revertTo(env string, app string, repo *git.Repository, repoTmpPath string, 
 		}
 	}
 	return nil
-}
-
-func hasBeenReverted(repo *git.Repository, sha string, env string, app string) (bool, error) {
-	path := fmt.Sprintf("%s/%s", env, app)
-	commits, err := repo.Log(
-		&git.LogOptions{
-			Path: &path,
-		},
-	)
-	if err != nil {
-		return false, errors.WithMessage(err, "could not walk commits")
-	}
-
-	hasBeenReverted := false
-	err = commits.ForEach(func(c *object.Commit) error {
-		if strings.Contains(c.Message, sha) {
-			hasBeenReverted = true
-			return fmt.Errorf("EOF")
-		}
-		return nil
-	})
-	if err != nil && err.Error() != "EOF" {
-		return false, err
-	}
-
-	return hasBeenReverted, nil
 }
 
 func administerSuccess(store *store.Store, event *model.Event) {
