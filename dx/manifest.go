@@ -14,6 +14,7 @@ import (
 	"io/ioutil"
 	"net/url"
 	"path/filepath"
+	"regexp"
 	"sigs.k8s.io/yaml"
 	"strings"
 	"text/template"
@@ -45,7 +46,14 @@ func (m *Manifest) ResolveVars(vars map[string]string) error {
 		return fmt.Errorf("cannot marshal manifest %s", err.Error())
 	}
 
-	tpl, err := template.New("").Funcs(sprig.TxtFuncMap()).Parse(string(manifestString))
+	functions := make(map[string]interface{})
+	for k, v := range sprig.GenericFuncMap() {
+		functions[k] = v
+	}
+	functions["sanitizeDNSName"] = sanitizeDNSName
+	tpl, err := template.New("").
+		Funcs(functions).
+		Parse(string(manifestString))
 	if err != nil {
 		return err
 	}
@@ -57,6 +65,17 @@ func (m *Manifest) ResolveVars(vars map[string]string) error {
 	}
 
 	return yaml.Unmarshal(templated.Bytes(), m)
+}
+
+func sanitizeDNSName(str string) string {
+	r := regexp.MustCompile("[^0-9A-Za-z_\\\\.]+")
+	str = r.ReplaceAllString(str, "-")
+	str = strings.ToLower(str)
+	if len(str) > 63 {
+		str = str[0:63]
+	}
+	str = strings.TrimSuffix(str, "-")
+	return str
 }
 
 func HelmTemplate(m Manifest) (string, error) {
