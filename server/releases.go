@@ -52,12 +52,13 @@ func getReleases(w http.ResponseWriter, r *http.Request) {
 	gitopsRepo := ctx.Value("gitopsRepo").(string)
 	gitopsRepoDeployKeyPath := ctx.Value("gitopsRepoDeployKeyPath").(string)
 
-	repo, err := githelper.CloneToMemory(gitopsRepo, gitopsRepoDeployKeyPath, false)
+	repoTmpPath, repo, err := githelper.CloneToTmpFs(gitopsRepo, gitopsRepoDeployKeyPath)
 	if err != nil {
 		logrus.Errorf("cannot clone gitops repo: %s", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
+	defer githelper.TmpFsCleanup(repoTmpPath)
 
 	releases, err := githelper.Releases(repo, app, env, since, until)
 	if err != nil {

@@ -153,11 +153,11 @@ func processRollbackEvent(
 		return fmt.Errorf("cannot parse release request with id: %s", event.ID)
 	}
 
-	repoTmpPath, repo, err := githelper.NativeCheckout(gitopsRepo, gitopsRepoDeployKeyPath)
+	repoTmpPath, repo, err := githelper.CloneToTmpFs(gitopsRepo, gitopsRepoDeployKeyPath)
 	if err != nil {
 		return err
 	}
-	defer githelper.NativeCleanup(repoTmpPath)
+	defer githelper.TmpFsCleanup(repoTmpPath)
 
 	err = revertTo(
 			rollbackRequest.Env,

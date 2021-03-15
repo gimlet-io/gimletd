@@ -52,7 +52,7 @@ func CloneToMemory(repoName string, privateKeyPath string, shallow bool) (*git.R
 	return repo, err
 }
 
-func NativeCheckout(repoName string, privateKeyPath string) (string, *git.Repository, error) {
+func CloneToTmpFs(repoName string, privateKeyPath string) (string, *git.Repository, error) {
 	path, err := ioutil.TempDir("", "gitops-")
 	if err != nil {
 		errors.WithMessage(err, "get temporary directory")
@@ -72,7 +72,7 @@ func NativeCheckout(repoName string, privateKeyPath string) (string, *git.Reposi
 	return path, repo, err
 }
 
-func NativeCleanup(path string) error {
+func TmpFsCleanup(path string) error {
 	return os.RemoveAll(path)
 }
 
