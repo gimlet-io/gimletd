@@ -21,7 +21,7 @@ func (db *Store) CreateEvent(event *model.Event) (*model.Event, error) {
 
 // Artifacts returns all events in the database within the given constraints
 func (db *Store) Artifacts(
-	app, branch string,
+	repo, branch string,
 	gitEvent *dx.GitEvent,
 	sourceBranch string,
 	sha string,
@@ -43,9 +43,9 @@ func (db *Store) Artifacts(
 		args = append(args, until.Unix())
 	}
 
-	if app != "" {
+	if repo != "" {
 		filters = addFilter(filters, "repository = ?")
-		args = append(args, app)
+		args = append(args, repo)
 	}
 	if branch != "" {
 		filters = addFilter(filters, "branch = ?")

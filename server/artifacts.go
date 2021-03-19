@@ -55,7 +55,7 @@ func getArtifacts(w http.ResponseWriter, r *http.Request) {
 	var limit, offset int
 	var since, until *time.Time
 
-	var app, branch string
+	var repo, branch string
 	var event *dx.GitEvent
 	var sourceBranch string
 	var sha string
@@ -95,8 +95,8 @@ func getArtifacts(w http.ResponseWriter, r *http.Request) {
 		until = &t
 	}
 
-	if val, ok := params["app"]; ok {
-		app = val[0]
+	if val, ok := params["repository"]; ok {
+		repo = val[0]
 	}
 	if val, ok := params["branch"]; ok {
 		branch = val[0]
@@ -117,7 +117,7 @@ func getArtifacts(w http.ResponseWriter, r *http.Request) {
 	}
 
 	events, err := store.Artifacts(
-		app, branch,
+		repo, branch,
 		event,
 		sourceBranch,
 		sha,
