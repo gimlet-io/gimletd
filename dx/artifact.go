@@ -3,6 +3,7 @@ package dx
 type Version struct {
 	RepositoryName string   `json:"repositoryName,omitempty"`
 	SHA            string   `json:"sha,omitempty"`
+	Created        int64    `json:"created,omitempty"`
 	Branch         string   `json:"branch,omitempty"`
 	Event          GitEvent `json:"event,omitempty"`
 	SourceBranch   string   `json:"sourceBranch,omitempty"`
