@@ -19,5 +19,8 @@ RUN chown gimletd:gimletd /var/lib/gimletd
 USER gimletd
 WORKDIR /var/lib/gimletd
 
+RUN git config --global user.name "GimletD"
+RUN git config --global user.email "gimletd@gimlet.io"
+
 EXPOSE 8888
 CMD ["/bin/gimletd"]
