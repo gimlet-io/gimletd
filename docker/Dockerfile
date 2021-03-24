@@ -1,5 +1,8 @@
 FROM alpine:3.13
 
+RUN apk update && apk upgrade && \
+    apk add --no-cache bash git openssh
+
 ENV DATABASE_DRIVER=sqlite3
 ENV DATABASE_CONFIG=/var/lib/gimletd/gimletd.sqlite
 ENV XDG_CACHE_HOME /var/lib/gimletd
