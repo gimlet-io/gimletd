@@ -10,6 +10,7 @@ import (
 	"github.com/gimlet-io/gimletd/store"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/object"
+	"github.com/gobwas/glob"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"os"
@@ -160,12 +161,12 @@ func processRollbackEvent(
 	defer githelper.TmpFsCleanup(repoTmpPath)
 
 	err = revertTo(
-			rollbackRequest.Env,
-			rollbackRequest.App,
-			repo,
-			repoTmpPath,
-			rollbackRequest.TargetSHA,
-		)
+		rollbackRequest.Env,
+		rollbackRequest.App,
+		repo,
+		repoTmpPath,
+		rollbackRequest.TargetSHA,
+	)
 	if err != nil {
 		return err
 	}
@@ -379,13 +380,41 @@ func deployTrigger(artifactToCheck *dx.Artifact, deployPolicy *dx.Deploy) bool {
 	}
 
 	if deployPolicy.Branch == "" &&
-		deployPolicy.Event == nil {
+		deployPolicy.Event == nil &&
+		deployPolicy.Tag == "" {
 		return false
 	}
 
 	if deployPolicy.Branch != "" &&
-		deployPolicy.Branch != artifactToCheck.Version.Branch {
+		(deployPolicy.Event == nil || *deployPolicy.Event != *dx.PushPtr() && *deployPolicy.Event != *dx.PRPtr()) {
 		return false
+	}
+
+	if deployPolicy.Tag != "" &&
+		(deployPolicy.Event == nil || *deployPolicy.Event != *dx.TagPtr()) {
+		return false
+	}
+
+	if deployPolicy.Tag != "" {
+		g := glob.MustCompile(deployPolicy.Tag)
+
+		exactMatch := deployPolicy.Tag == artifactToCheck.Version.Tag
+		patternMatch := g.Match(artifactToCheck.Version.Tag)
+
+		if !exactMatch && !patternMatch {
+			return false
+		}
+	}
+
+	if deployPolicy.Branch != "" {
+		g := glob.MustCompile(deployPolicy.Branch)
+
+		exactMatch := deployPolicy.Branch == artifactToCheck.Version.Branch
+		patternMatch := g.Match(artifactToCheck.Version.Branch)
+
+		if !exactMatch && !patternMatch {
+			return false
+		}
 	}
 
 	if deployPolicy.Event != nil {

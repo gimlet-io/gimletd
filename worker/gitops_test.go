@@ -84,7 +84,7 @@ func Test_gitopsTemplateAndWrite(t *testing.T) {
 	assert.Nil(t, err)
 }
 
-func Test_deployTrigger(t *testing.T) {
+func Test_emptyTrigger(t *testing.T) {
 	triggered := deployTrigger(
 		&dx.Artifact{}, nil)
 	assert.False(t, triggered, "Empty deploy policy should not trigger a deploy")
@@ -92,8 +92,10 @@ func Test_deployTrigger(t *testing.T) {
 	triggered = deployTrigger(
 		&dx.Artifact{}, &dx.Deploy{})
 	assert.False(t, triggered, "Empty deploy policy should not trigger a deploy")
+}
 
-	triggered = deployTrigger(
+func Test_branchTrigger(t *testing.T) {
+	triggered := deployTrigger(
 		&dx.Artifact{
 			Version: dx.Version{
 				Branch: "master",
@@ -101,6 +103,7 @@ func Test_deployTrigger(t *testing.T) {
 		},
 		&dx.Deploy{
 			Branch: "notMaster",
+			Event: dx.PushPtr(),
 		})
 	assert.False(t, triggered, "Branch mismatch should not trigger a deploy")
 
@@ -112,10 +115,37 @@ func Test_deployTrigger(t *testing.T) {
 		},
 		&dx.Deploy{
 			Branch: "master",
+			Event: dx.PushPtr(),
 		})
 	assert.True(t, triggered, "Matching branch should trigger a deploy")
 
 	triggered = deployTrigger(
+		&dx.Artifact{
+			Version: dx.Version{
+				Branch: "master",
+				Event: *dx.PRPtr(),
+			},
+		},
+		&dx.Deploy{
+			Branch: "master",
+			Event: dx.PRPtr(),
+		})
+	assert.True(t, triggered, "Matching branch should trigger a deploy")
+
+	triggered = deployTrigger(
+		&dx.Artifact{
+			Version: dx.Version{
+				Branch: "master",
+			},
+		},
+		&dx.Deploy{
+			Branch: "master",
+		})
+	assert.False(t, triggered, "Branch triggers need an event always to trigger a deploy")
+}
+
+func Test_eventTrigger(t *testing.T) {
+	triggered := deployTrigger(
 		&dx.Artifact{},
 		&dx.Deploy{
 			Event: dx.PushPtr(),
@@ -151,8 +181,49 @@ func Test_deployTrigger(t *testing.T) {
 		&dx.Deploy{
 			Event: dx.TagPtr(),
 		})
-	assert.True(t, triggered, "Should trigger a PR deploy")
+	assert.True(t, triggered, "Should trigger a tag deploy")
 }
+
+func Test_tag_and_branch_pattern_triggers(t *testing.T) {
+	triggered := deployTrigger(
+		&dx.Artifact{
+			Version: dx.Version{
+				Branch: "feature/coolness",
+				Event: *dx.PRPtr(),
+			},
+		},
+		&dx.Deploy{
+			Branch: "feature/*",
+			Event: dx.PRPtr(),
+		})
+	assert.True(t, triggered, "Matching branch pattern should trigger a deploy")
+
+	triggered = deployTrigger(
+		&dx.Artifact{
+			Version: dx.Version{
+				Tag: "v3.0.1",
+				Event: *dx.TagPtr(),
+			},
+		},
+		&dx.Deploy{
+			Tag: "v*",
+			Event: dx.TagPtr(),
+		})
+	assert.True(t, triggered, "Matching tag pattern should trigger a deploy")
+
+	triggered = deployTrigger(
+		&dx.Artifact{
+			Version: dx.Version{
+				Tag: "xxx",
+			},
+		},
+		&dx.Deploy{
+			Tag: "v*",
+			Event: dx.TagPtr(),
+		})
+	assert.False(t, triggered, "Non matching tag pattern should not trigger a deploy")
+}
+
 
 func Test_revertTo(t *testing.T) {
 	path, _ := ioutil.TempDir("", "gitops-")
