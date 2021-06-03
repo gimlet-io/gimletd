@@ -66,7 +66,7 @@ func (db *Store) Artifacts(
 		filters = addFilter(filters, fmt.Sprintf(" event = %d", intRep))
 	}
 
-	if limit == 0 || offset == 0 {
+	if limit == 0 && offset == 0 {
 		limit = 10
 	}
 	limitAndOffset := fmt.Sprintf("LIMIT %d OFFSET %d", limit, offset)
