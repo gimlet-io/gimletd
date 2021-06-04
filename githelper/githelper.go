@@ -253,6 +253,10 @@ func CommitFilesToGit(
 		if err != nil {
 			return "", fmt.Errorf("cannot stage file %s", err)
 		}
+		err = stageFile(w, releaseString, filepath.Join(env, app, "release.json"))
+		if err != nil {
+			return "", fmt.Errorf("cannot stage file %s", err)
+		}
 	}
 
 	empty, err = NothingToCommit(repo)
