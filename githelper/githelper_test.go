@@ -11,7 +11,7 @@ import (
 func Test_Releases(t *testing.T) {
 	repo := initHistory()
 
-	releases, err := Releases(repo, "my-app", "staging", nil, nil, 10)
+	releases, err := Releases(repo, "my-app", "staging", nil, nil, 10, "")
 	assert.Nil(t, err)
 	assert.Equal(t, 3, len(releases),"should get all releases")
 }
@@ -19,9 +19,18 @@ func Test_Releases(t *testing.T) {
 func Test_ReleasesLimit(t *testing.T) {
 	repo := initHistory()
 
-	releases, err := Releases(repo, "my-app", "staging", nil, nil, 1)
+	releases, err := Releases(repo, "my-app", "staging", nil, nil, 1, "")
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(releases),"should get only one release")
+}
+
+func Test_ReleasesGitRepo(t *testing.T) {
+	repo := initHistory()
+
+	releases, err := Releases(repo, "my-app2", "staging", nil, nil, 0, "laszlocph/gimletd-test2")
+	assert.Nil(t, err)
+	assert.Equal(t, 1, len(releases),"should get the commit from the gitrepo")
+	assert.Equal(t, "xxx", releases[0].App,"should get the commit from the gitrepo")
 }
 
 func initHistory() *git.Repository {
@@ -30,7 +39,17 @@ func initHistory() *git.Repository {
 	CommitFilesToGit(
 		repo,
 		map[string]string{
-			"release.json": `{"app":"fosdem-2021","env":"staging","artifactId":"my-app-94578d91-ef9a-413d-9afb-602256d2b124","repositoryName":"laszlocph/gimletd-test","sha":"d7aa20d7055999200b52c4ffd146d5c7c415e3e7","branch":"master","triggeredBy":"policy","gitopsRef":"","gitopsRepo":""}`,
+			"release.json": `{}`,
+		},
+		"staging",
+		"my-app2",
+		"First commit is not read - it's a bug",
+	)
+
+	CommitFilesToGit(
+		repo,
+		map[string]string{
+			"release.json": `{"app":"xxx","env":"staging","artifactId":"my-app-94578d91-ef9a-413d-9afb-602256d2b124","triggeredBy":"policy","gitopsRef":"","gitopsRepo":"", "version":{"repositoryName":"laszlocph/gimletd-test2","sha":"d7aa20d7055999200b52c4ffd146d5c7c415e3e7","created":1622792757,"branch":"master","event":"pr"}}`,
 		},
 		"staging",
 		"my-app2",
@@ -39,7 +58,7 @@ func initHistory() *git.Repository {
 	CommitFilesToGit(
 		repo,
 		map[string]string{
-			"release.json": `{"app":"fosdem-2021","env":"staging","artifactId":"my-app-94578d91-ef9a-413d-9afb-602256d2b124","repositoryName":"laszlocph/gimletd-test","sha":"d7aa20d7055999200b52c4ffd146d5c7c415e3e7","branch":"master","triggeredBy":"policy","gitopsRef":"","gitopsRepo":""}`,
+			"release.json": `{"app":"fosdem-2021","env":"staging","artifactId":"my-app-94578d91-ef9a-413d-9afb-602256d2b124","triggeredBy":"policy","gitopsRef":"","gitopsRepo":"", "version":{"repositoryName":"laszlocph/gimletd-test","sha":"d7aa20d7055999200b52c4ffd146d5c7c415e3e7","created":1622792757,"branch":"master","event":"pr"}}`,
 		},
 		"staging",
 		"my-app",
@@ -48,7 +67,7 @@ func initHistory() *git.Repository {
 	CommitFilesToGit(
 		repo,
 		map[string]string{
-			"release.json": `{"app":"fosdem-2022","env":"staging","artifactId":"my-app-94578d91-ef9a-413d-9afb-602256d2b124","repositoryName":"laszlocph/gimletd-test","sha":"d7aa20d7055999200b52c4ffd146d5c7c415e3e7","branch":"master","triggeredBy":"policy","gitopsRef":"","gitopsRepo":""}`,
+			"release.json": `{"app":"fosdem-2022","env":"staging","artifactId":"my-app-94578d91-ef9a-413d-9afb-602256d2b124","triggeredBy":"policy","gitopsRef":"","gitopsRepo":"", "version":{"repositoryName":"laszlocph/gimletd-test","sha":"d7aa20d7055999200b52c4ffd146d5c7c415e3e7","created":1622792757,"branch":"master","event":"pr"}}`,
 		},
 		"staging",
 		"my-app",
@@ -57,7 +76,7 @@ func initHistory() *git.Repository {
 	CommitFilesToGit(
 		repo,
 		map[string]string{
-			"release.json": `{"app":"fosdem-2023","env":"staging","artifactId":"my-app-94578d91-ef9a-413d-9afb-602256d2b124","repositoryName":"laszlocph/gimletd-test","sha":"d7aa20d7055999200b52c4ffd146d5c7c415e3e7","branch":"master","triggeredBy":"policy","gitopsRef":"","gitopsRepo":""}`,
+			"release.json": `{"app":"fosdem-2023","env":"staging","artifactId":"my-app-94578d91-ef9a-413d-9afb-602256d2b124","triggeredBy":"policy","gitopsRef":"","gitopsRepo":"", "version":{"repositoryName":"laszlocph/gimletd-test","sha":"d7aa20d7055999200b52c4ffd146d5c7c415e3e7","created":1622792757,"branch":"master","event":"pr"}}`,
 		},
 		"staging",
 		"my-app",

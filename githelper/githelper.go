@@ -290,10 +290,21 @@ func Releases(
 	app, env string,
 	since, until *time.Time,
 	limit int,
+	gitRepo string,
 ) ([]*dx.Release, error) {
 	releases := []*dx.Release{}
 
-	path := fmt.Sprintf("%s/%s", env, app)
+	var path string
+	if env == "" {
+		return nil, fmt.Errorf("env is mandatory")
+	} else {
+		if app != "" {
+			path = fmt.Sprintf("%s/%s", env, app)
+		} else {
+			path = env
+		}
+	}
+
 	commits, err := repo.Log(
 		&git.LogOptions{
 			Path:  &path,
@@ -310,11 +321,14 @@ func Releases(
 			return nil
 		}
 
-		releaseFile, err := c.File(path + "/release.json")
+		releaseFile, err := c.File(env + "/release.json")
 		if err != nil {
-			logrus.Debugf("no release file for %s: %s", c.Hash.String(), err)
-			releases = append(releases, relaseFromCommit(c, app, env))
-			return nil
+			releaseFile, err = c.File(path + "/release.json") // for backwards compatibility we read in env/app folder for a while
+			if err != nil {
+				logrus.Debugf("no release file for %s: %s", c.Hash.String(), err)
+				releases = append(releases, relaseFromCommit(c, app, env))
+				return nil
+			}
 		}
 
 		buf := new(bytes.Buffer)
@@ -334,6 +348,13 @@ func Releases(
 			logrus.Warnf("cannot parse release file for %s: %s", c.Hash.String(), err)
 			releases = append(releases, relaseFromCommit(c, app, env))
 		}
+
+		if gitRepo != "" { // gitRepo filter
+			if release.Version.RepositoryName != gitRepo {
+				return nil
+			}
+		}
+
 		release.Created = c.Committer.When.Unix()
 		release.GitopsRef = c.Hash.String()
 
@@ -346,7 +367,7 @@ func Releases(
 
 		releases = append(releases, release)
 
-		if len(releases) >= limit {
+		if limit != 0 && len(releases) >= limit {
 			return fmt.Errorf("%s", "LIMIT")
 		}
 
