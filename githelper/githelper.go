@@ -209,7 +209,14 @@ func StageFolder(repo *git.Repository, folder string) error {
 	})
 }
 
-func CommitFilesToGit(repo *git.Repository, files map[string]string, env string, app string, message string) (string, error) {
+func CommitFilesToGit(
+	repo *git.Repository,
+	files map[string]string,
+	env string,
+	app string,
+	message string,
+	releaseString string,
+) (string, error) {
 	empty, err := NothingToCommit(repo)
 	if err != nil {
 		return "", fmt.Errorf("cannot get git state %s", err)
@@ -233,6 +240,16 @@ func CommitFilesToGit(repo *git.Repository, files map[string]string, env string,
 		}
 
 		err = stageFile(w, content, filepath.Join(env, app, filepath.Base(path)))
+		if err != nil {
+			return "", fmt.Errorf("cannot stage file %s", err)
+		}
+	}
+
+	if releaseString != "" {
+		if !strings.HasSuffix(releaseString, "\n") {
+			releaseString = releaseString + "\n"
+		}
+		err = stageFile(w, releaseString, filepath.Join(env, "release.json"))
 		if err != nil {
 			return "", fmt.Errorf("cannot stage file %s", err)
 		}
@@ -289,10 +306,22 @@ func Releases(
 	repo *git.Repository,
 	app, env string,
 	since, until *time.Time,
+	limit int,
+	gitRepo string,
 ) ([]*dx.Release, error) {
 	releases := []*dx.Release{}
 
-	path := fmt.Sprintf("%s/%s", env, app)
+	var path string
+	if env == "" {
+		return nil, fmt.Errorf("env is mandatory")
+	} else {
+		if app != "" {
+			path = fmt.Sprintf("%s/%s", env, app)
+		} else {
+			path = env
+		}
+	}
+
 	commits, err := repo.Log(
 		&git.LogOptions{
 			Path:  &path,
@@ -305,11 +334,15 @@ func Releases(
 	}
 
 	err = commits.ForEach(func(c *object.Commit) error {
+		if limit != 0 && len(releases) >= limit {
+			return fmt.Errorf("%s", "LIMIT")
+		}
+
 		if RollbackCommit(c) {
 			return nil
 		}
 
-		releaseFile, err := c.File(path + "/release.json")
+		releaseFile, err := c.File(env + "/release.json")
 		if err != nil {
 			logrus.Debugf("no release file for %s: %s", c.Hash.String(), err)
 			releases = append(releases, relaseFromCommit(c, app, env))
@@ -333,6 +366,13 @@ func Releases(
 			logrus.Warnf("cannot parse release file for %s: %s", c.Hash.String(), err)
 			releases = append(releases, relaseFromCommit(c, app, env))
 		}
+
+		if gitRepo != "" { // gitRepo filter
+			if release.Version.RepositoryName != gitRepo {
+				return nil
+			}
+		}
+
 		release.Created = c.Committer.When.Unix()
 		release.GitopsRef = c.Hash.String()
 
@@ -344,9 +384,12 @@ func Releases(
 		release.RolledBack = rolledBack
 
 		releases = append(releases, release)
+
 		return nil
 	})
-	if err != nil && err.Error() != "EOF" {
+	if err != nil &&
+		err.Error() != "EOF" &&
+		err.Error() != "LIMIT" {
 		return nil, err
 	}
 

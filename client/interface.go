@@ -47,6 +47,7 @@ type Client interface {
 		app string,
 		env string,
 		limit, offset int,
+		gitRepo string,
 		since, until *time.Time,
 	) ([]*dx.Release, error)
 

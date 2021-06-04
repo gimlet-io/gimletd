@@ -290,6 +290,7 @@ func initHistory(repo *git.Repository) {
 		"staging",
 		"my-app",
 		"0st commit",
+		"",
 	)
 	fmt.Printf("%s - %s\n", sha, "0")
 	sha, _ = githelper.CommitFilesToGit(
@@ -300,6 +301,7 @@ func initHistory(repo *git.Repository) {
 		"staging",
 		"my-app",
 		"1st commit",
+		"",
 	)
 	fmt.Printf("%s - %s\n", sha, "1")
 	sha, _ = githelper.CommitFilesToGit(
@@ -310,6 +312,7 @@ func initHistory(repo *git.Repository) {
 		"staging",
 		"my-app",
 		"2nd commit",
+		"",
 	)
 	fmt.Printf("%s - %s\n", sha, "2")
 	sha, _ = githelper.CommitFilesToGit(
@@ -320,6 +323,7 @@ func initHistory(repo *git.Repository) {
 		"staging",
 		"my-app",
 		"3rd commit",
+		"",
 	)
 	fmt.Printf("%s - %s\n", sha, "3")
 }
