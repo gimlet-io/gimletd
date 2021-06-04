@@ -245,12 +245,14 @@ func CommitFilesToGit(
 		}
 	}
 
-	if !strings.HasSuffix(releaseString, "\n") {
-		releaseString = releaseString + "\n"
-	}
-	err = stageFile(w, releaseString, filepath.Join(env, "release.json"))
-	if err != nil {
-		return "", fmt.Errorf("cannot stage file %s", err)
+	if releaseString != "" {
+		if !strings.HasSuffix(releaseString, "\n") {
+			releaseString = releaseString + "\n"
+		}
+		err = stageFile(w, releaseString, filepath.Join(env, "release.json"))
+		if err != nil {
+			return "", fmt.Errorf("cannot stage file %s", err)
+		}
 	}
 
 	empty, err = NothingToCommit(repo)
