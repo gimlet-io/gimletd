@@ -348,9 +348,12 @@ func Releases(
 
 		releaseFile, err := c.File(env + "/release.json")
 		if err != nil {
-			logrus.Debugf("no release file for %s: %s", c.Hash.String(), err)
-			releases = append(releases, relaseFromCommit(c, app, env))
-			return nil
+			releaseFile, err = c.File(path + "/release.json")
+			if err != nil {
+				logrus.Debugf("no release file for %s: %s", c.Hash.String(), err)
+				releases = append(releases, relaseFromCommit(c, app, env))
+				return nil
+			}
 		}
 
 		buf := new(bytes.Buffer)
