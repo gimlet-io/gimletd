@@ -209,7 +209,14 @@ func StageFolder(repo *git.Repository, folder string) error {
 	})
 }
 
-func CommitFilesToGit(repo *git.Repository, files map[string]string, env string, app string, message string) (string, error) {
+func CommitFilesToGit(
+	repo *git.Repository,
+	files map[string]string,
+	env string,
+	app string,
+	message string,
+	releaseString string,
+) (string, error) {
 	empty, err := NothingToCommit(repo)
 	if err != nil {
 		return "", fmt.Errorf("cannot get git state %s", err)
@@ -236,6 +243,14 @@ func CommitFilesToGit(repo *git.Repository, files map[string]string, env string,
 		if err != nil {
 			return "", fmt.Errorf("cannot stage file %s", err)
 		}
+	}
+
+	if !strings.HasSuffix(releaseString, "\n") {
+		releaseString = releaseString + "\n"
+	}
+	err = stageFile(w, releaseString, filepath.Join(env, "release.json"))
+	if err != nil {
+		return "", fmt.Errorf("cannot stage file %s", err)
 	}
 
 	empty, err = NothingToCommit(repo)
@@ -317,18 +332,19 @@ func Releases(
 	}
 
 	err = commits.ForEach(func(c *object.Commit) error {
+		if limit != 0 && len(releases) >= limit {
+			return fmt.Errorf("%s", "LIMIT")
+		}
+
 		if RollbackCommit(c) {
 			return nil
 		}
 
 		releaseFile, err := c.File(env + "/release.json")
 		if err != nil {
-			releaseFile, err = c.File(path + "/release.json") // for backwards compatibility we read in env/app folder for a while
-			if err != nil {
-				logrus.Debugf("no release file for %s: %s", c.Hash.String(), err)
-				releases = append(releases, relaseFromCommit(c, app, env))
-				return nil
-			}
+			logrus.Debugf("no release file for %s: %s", c.Hash.String(), err)
+			releases = append(releases, relaseFromCommit(c, app, env))
+			return nil
 		}
 
 		buf := new(bytes.Buffer)
@@ -366,10 +382,6 @@ func Releases(
 		release.RolledBack = rolledBack
 
 		releases = append(releases, release)
-
-		if limit != 0 && len(releases) >= limit {
-			return fmt.Errorf("%s", "LIMIT")
-		}
 
 		return nil
 	})

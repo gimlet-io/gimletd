@@ -364,9 +364,8 @@ func gitopsTemplateAndWrite(
 	if err != nil {
 		return "", fmt.Errorf("cannot marshal release meta data %s", err.Error())
 	}
-	files["release.json"] = string(releaseString)
 
-	sha, err := githelper.CommitFilesToGit(repo, files, env.Env, env.App, "automated deploy")
+	sha, err := githelper.CommitFilesToGit(repo, files, env.Env, env.App, "automated deploy", string(releaseString))
 	if err != nil {
 		return "", fmt.Errorf("cannot write to git %s", err.Error())
 	}

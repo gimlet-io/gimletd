@@ -151,6 +151,7 @@ func (c *client) ReleasesGet(
 	app string,
 	env string,
 	limit, offset int,
+	gitRepo string,
 	since, until *time.Time,
 ) ([]*dx.Release, error) {
 	uri := fmt.Sprintf(pathReleases, c.addr)
@@ -174,6 +175,9 @@ func (c *client) ReleasesGet(
 	}
 	if env != "" {
 		params = append(params, fmt.Sprintf("env=%s", env))
+	}
+	if gitRepo != "" {
+		params = append(params, fmt.Sprintf("git-repo=%s", gitRepo))
 	}
 
 	var paramsStr string
