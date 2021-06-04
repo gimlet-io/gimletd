@@ -289,6 +289,7 @@ func Releases(
 	repo *git.Repository,
 	app, env string,
 	since, until *time.Time,
+	limit int,
 ) ([]*dx.Release, error) {
 	releases := []*dx.Release{}
 
@@ -344,9 +345,16 @@ func Releases(
 		release.RolledBack = rolledBack
 
 		releases = append(releases, release)
+
+		if len(releases) >= limit {
+			return fmt.Errorf("%s", "LIMIT")
+		}
+
 		return nil
 	})
-	if err != nil && err.Error() != "EOF" {
+	if err != nil &&
+		err.Error() != "EOF" &&
+		err.Error() != "LIMIT" {
 		return nil, err
 	}
 

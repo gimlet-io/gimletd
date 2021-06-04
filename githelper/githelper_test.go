@@ -11,9 +11,17 @@ import (
 func Test_Releases(t *testing.T) {
 	repo := initHistory()
 
-	releases, err := Releases(repo, "my-app", "staging", nil, nil)
+	releases, err := Releases(repo, "my-app", "staging", nil, nil, 10)
 	assert.Nil(t, err)
 	assert.Equal(t, 3, len(releases),"should get all releases")
+}
+
+func Test_ReleasesLimit(t *testing.T) {
+	repo := initHistory()
+
+	releases, err := Releases(repo, "my-app", "staging", nil, nil, 1)
+	assert.Nil(t, err)
+	assert.Equal(t, 1, len(releases),"should get only one release")
 }
 
 func initHistory() *git.Repository {
