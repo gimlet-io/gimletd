@@ -51,6 +51,12 @@ type Client interface {
 		since, until *time.Time,
 	) ([]*dx.Release, error)
 
+	// StatusGet returns release status for all apps in an env
+	StatusGet(
+		app string,
+		env string,
+	) (map[string]*dx.Release, error)
+
 	// ReleasesPost releases the given artifact to the given environment
 	ReleasesPost(env string, artifactID string) (string, error)
 

@@ -33,8 +33,9 @@ const (
 	pathArtifact  = "%s/api/artifact"
 	pathArtifacts = "%s/api/artifacts"
 	pathReleases  = "%s/api/releases"
+	pathStatus    = "%s/api/status"
 	pathRollback  = "%s/api/rollback"
-	pathEvent    = "%s/api/event"
+	pathEvent     = "%s/api/event"
 )
 
 type client struct {
@@ -210,6 +211,56 @@ func (c *client) ReleasesGet(
 
 	if out == nil {
 		return []*dx.Release{}, nil
+	}
+
+	return out, err
+}
+
+// StatusGet returns release status for all apps in an env
+func (c *client) StatusGet(
+	app string,
+	env string,
+) (map[string]*dx.Release, error) {
+	uri := fmt.Sprintf(pathStatus, c.addr)
+
+	var params []string
+	if app != "" {
+		params = append(params, fmt.Sprintf("app=%s", app))
+	}
+	if env != "" {
+		params = append(params, fmt.Sprintf("env=%s", env))
+	}
+
+	var paramsStr string
+	if len(params) > 0 {
+		paramsStr = strings.Join(params, "&")
+		paramsStr = "?" + paramsStr
+	}
+
+	body, err := c.open(uri+paramsStr, "GET", nil)
+	if err != nil {
+		return nil, err
+	}
+	defer body.Close()
+
+	bodyBytes, err := ioutil.ReadAll(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyString := string(bodyBytes)
+
+	if bodyString == "[]" { // json deserializer breaks on empty arrays / objects
+		return map[string]*dx.Release{}, nil
+	}
+
+	var out map[string]*dx.Release
+	err = json.Unmarshal(bodyBytes, &out)
+	if err != nil {
+		return nil, err
+	}
+
+	if out == nil {
+		return map[string]*dx.Release{}, nil
 	}
 
 	return out, err

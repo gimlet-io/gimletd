@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/gimlet-io/gimlet-cli/commands"
 	"github.com/gimlet-io/gimletd/dx"
+	"github.com/go-git/go-billy/v5"
 	"github.com/go-git/go-billy/v5/memfs"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
@@ -401,6 +402,67 @@ func Releases(
 	}
 
 	return releases, nil
+}
+
+func Status(
+	repo *git.Repository,
+	app, env string,
+) (map[string]*dx.Release, error) {
+	appReleases := map[string]*dx.Release{}
+
+	worktree, err := repo.Worktree()
+	if err != nil {
+		return nil, err
+	}
+	fs := worktree.Filesystem
+
+	if env == "" {
+		return nil, fmt.Errorf("env is mandatory")
+	} else {
+		if app != "" {
+			path := filepath.Join(env, app)
+			release, err := readAppStatus(fs, path)
+			if err != nil {
+				return nil, fmt.Errorf("cannot read app status %s: %s", path, err)
+			}
+
+			appReleases[app] = release
+		} else {
+			paths, err := fs.ReadDir(env)
+			if err != nil {
+				return nil, fmt.Errorf("cannot list files: %s", err)
+			}
+
+			for _, fileInfo := range paths {
+				if !fileInfo.IsDir() {
+					continue
+				}
+				path := filepath.Join(env, fileInfo.Name())
+
+				release, err := readAppStatus(fs, path)
+				if err != nil {
+					return nil, fmt.Errorf("cannot read app status %s: %s", path, err)
+				}
+
+				appReleases[fileInfo.Name()] = release
+			}
+		}
+	}
+
+	return appReleases, nil
+}
+
+func readAppStatus(fs billy.Filesystem, path string) (*dx.Release, error) {
+	var release *dx.Release
+	f, err := fs.Open(path + "/release.json")
+	if err != nil {
+		return nil, err
+	}
+
+	releaseBytes, err := ioutil.ReadAll(f)
+	err = json.Unmarshal(releaseBytes, &release)
+	defer f.Close()
+	return release, err
 }
 
 func RollbackCommit(c *object.Commit) bool {
