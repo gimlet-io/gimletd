@@ -93,6 +93,56 @@ func getReleases(w http.ResponseWriter, r *http.Request) {
 	w.Write(releasesStr)
 }
 
+func getStatus(w http.ResponseWriter, r *http.Request) {
+	var app, env string
+
+	params := r.URL.Query()
+	if val, ok := params["app"]; ok {
+		app = val[0]
+	}
+	if val, ok := params["env"]; ok {
+		env = val[0]
+	} else {
+		http.Error(w, fmt.Sprintf("%s: %s", http.StatusText(http.StatusBadRequest), "env parameter is mandatory"), http.StatusBadRequest)
+		return
+	}
+
+	ctx := r.Context()
+	gitopsRepo := ctx.Value("gitopsRepo").(string)
+	gitopsRepoDeployKeyPath := ctx.Value("gitopsRepoDeployKeyPath").(string)
+
+	repoTmpPath, repo, err := githelper.CloneToTmpFs(gitopsRepo, gitopsRepoDeployKeyPath)
+	if err != nil {
+		logrus.Errorf("cannot clone gitops repo: %s", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+	defer githelper.TmpFsCleanup(repoTmpPath)
+
+	appReleases, err := githelper.Status(repo, app, env)
+	if err != nil {
+		logrus.Errorf("cannot get status: %s", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	for _, release := range appReleases {
+		if release != nil {
+			release.GitopsRepo = gitopsRepo
+		}
+	}
+
+	appReleasesString, err := json.Marshal(appReleases)
+	if err != nil {
+		logrus.Errorf("cannot serialize app releases: %s", err)
+		http.Error(w, http.StatusText(500), 500)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write(appReleasesString)
+}
+
 func release(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	store := ctx.Value("store").(*store.Store)

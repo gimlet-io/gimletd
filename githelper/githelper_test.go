@@ -33,6 +33,18 @@ func Test_ReleasesGitRepo(t *testing.T) {
 	assert.Equal(t, "xxx", releases[0].App,"should get the commit from the gitrepo")
 }
 
+func Test_Status(t *testing.T) {
+	repo := initHistory()
+
+	status, err := Status(repo, "my-app", "staging")
+	assert.Nil(t, err)
+	assert.Equal(t, 1, len(status),"should get release status for app")
+
+	status, err = Status(repo, "", "staging")
+	assert.Nil(t, err)
+	assert.Equal(t, 2, len(status),"should get release status for all apps")
+}
+
 func initHistory() *git.Repository {
 	repo, _ := git.Init(memory.NewStorage(), memfs.New())
 
