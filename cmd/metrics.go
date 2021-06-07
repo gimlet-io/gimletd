@@ -8,6 +8,11 @@ import (
 var (
 	eventsProcessed = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "gimletd_event_processed_total",
-		Help: "The total number of processed events ",
+		Help: "The total number of processed events",
 	})
+
+	releases = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "gimletd_releases",
+		Help: "Release status",
+	}, []string{"env", "app", "sourceCommit", "commitMessage", "gitopsCommit"})
 )

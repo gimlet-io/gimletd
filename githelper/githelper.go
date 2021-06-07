@@ -452,6 +452,37 @@ func Status(
 	return appReleases, nil
 }
 
+func Envs(
+	repo *git.Repository,
+) ([]string, error) {
+	var envs []string
+
+	worktree, err := repo.Worktree()
+	if err != nil {
+		return nil, err
+	}
+	fs := worktree.Filesystem
+
+	paths, err := fs.ReadDir("/")
+	if err != nil {
+		return nil, fmt.Errorf("cannot list files: %s", err)
+	}
+
+	for _, fileInfo := range paths {
+		if !fileInfo.IsDir() {
+			continue
+		}
+
+		dir := fileInfo.Name()
+		_, err := readAppStatus(fs, dir )
+		if err == nil {
+			envs = append(envs, dir)
+		}
+	}
+
+	return envs, nil
+}
+
 func readAppStatus(fs billy.Filesystem, path string) (*dx.Release, error) {
 	var release *dx.Release
 	f, err := fs.Open(path + "/release.json")

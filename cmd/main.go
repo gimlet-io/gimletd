@@ -69,6 +69,13 @@ func main() {
 		logrus.Warn("Not starting GitOps worker. GITOPS_REPO and GITOPS_REPO_DEPLOY_KEY_PATH must be set to start GitOps worker")
 	}
 
+	releaseStateWorker := &worker.ReleaseStateWorker{
+		GitopsRepo:              config.GitopsRepo,
+		GitopsRepoDeployKeyPath: config.GitopsRepoDeployKeyPath,
+		Releases:                releases,
+	}
+	go releaseStateWorker.Run()
+
 	r := server.SetupRouter(config, store, notificationsManager)
 	err = http.ListenAndServe(":8888", r)
 	if err != nil {
