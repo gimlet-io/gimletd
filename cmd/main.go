@@ -61,6 +61,7 @@ func main() {
 			config.GitopsRepoDeployKeyPath,
 			config.GithubChartAccessDeployKeyPath,
 			notificationsManager,
+			eventsProcessed,
 		)
 		go gitopsWorker.Run()
 		logrus.Info("Gitops worker started")

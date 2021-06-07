@@ -8,6 +8,7 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/cors"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"net/http"
 	"time"
 )
@@ -50,6 +51,7 @@ func SetupRouter(
 		r.Post("/api/rollback", rollback)
 		r.Get("/api/event", getEvent)
 		r.Post("/api/flux-events", fluxEvent)
+		r.Get("/metrics", promhttp.Handler().ServeHTTP)
 	})
 
 	r.Group(func(r chi.Router) {

@@ -12,6 +12,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/gobwas/glob"
 	"github.com/pkg/errors"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 	"os"
 	"strings"
@@ -24,6 +25,7 @@ type GitopsWorker struct {
 	gitopsRepoDeployKeyPath        string
 	githubChartAccessDeployKeyPath string
 	notificationsManager           notifications.Manager
+	eventsProcessed                prometheus.Counter
 }
 
 func NewGitopsWorker(
@@ -32,6 +34,7 @@ func NewGitopsWorker(
 	gitopsRepoDeployKeyPath string,
 	githubChartAccessDeployKeyPath string,
 	notificationsManager notifications.Manager,
+	eventsProcessed prometheus.Counter,
 ) *GitopsWorker {
 	return &GitopsWorker{
 		store:                          store,
@@ -39,6 +42,7 @@ func NewGitopsWorker(
 		gitopsRepoDeployKeyPath:        gitopsRepoDeployKeyPath,
 		notificationsManager:           notificationsManager,
 		githubChartAccessDeployKeyPath: githubChartAccessDeployKeyPath,
+		eventsProcessed:                eventsProcessed,
 	}
 }
 
@@ -46,12 +50,14 @@ func (w *GitopsWorker) Run() {
 	for {
 		events, err := w.store.UnprocessedEvents()
 		if err != nil {
+
 			logrus.Errorf("Could not fetch unprocessed events %s", err.Error())
 			time.Sleep(1 * time.Second)
 			continue
 		}
 
 		for _, event := range events {
+			w.eventsProcessed.Inc()
 			processEvent(w.store,
 				w.gitopsRepo,
 				w.gitopsRepoDeployKeyPath,

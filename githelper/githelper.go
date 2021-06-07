@@ -441,7 +441,7 @@ func Status(
 
 				release, err := readAppStatus(fs, path)
 				if err != nil {
-					return nil, fmt.Errorf("cannot read app status %s: %s", path, err)
+					logrus.Debugf("cannot read app status %s: %s", path, err)
 				}
 
 				appReleases[fileInfo.Name()] = release

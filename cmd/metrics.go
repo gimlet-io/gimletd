@@ -1,0 +1,13 @@
+package main
+
+import (
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+)
+
+var (
+	eventsProcessed = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "gimletd_event_processed_total",
+		Help: "The total number of processed events ",
+	})
+)
