@@ -29,6 +29,9 @@ func (w *ReleaseStateWorker) Run() {
 			time.Sleep(30 * time.Second)
 			continue
 		}
+
+		cnt := 1.0
+		w.Releases.Reset()
 		for _, env := range envs {
 			appReleases, err := githelper.Status(repo, "", env)
 			if err != nil {
@@ -37,7 +40,6 @@ func (w *ReleaseStateWorker) Run() {
 				continue
 			}
 
-			w.Releases.Reset()
 			for app, release := range appReleases {
 				if release != nil {
 					w.Releases.WithLabelValues(
@@ -46,7 +48,7 @@ func (w *ReleaseStateWorker) Run() {
 						"tbd",
 						"tbd",
 						"tbd",
-					).Set(1.0)
+					).Set(cnt)
 				} else {
 					w.Releases.WithLabelValues(
 						env,
@@ -54,8 +56,9 @@ func (w *ReleaseStateWorker) Run() {
 						"tbd",
 						"tbd",
 						"tbd",
-					).Set(1.0)
+					).Set(cnt)
 				}
+				cnt += 1.0
 			}
 		}
 
