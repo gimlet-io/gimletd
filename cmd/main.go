@@ -10,8 +10,10 @@ import (
 	"github.com/gimlet-io/gimletd/server/token"
 	"github.com/gimlet-io/gimletd/store"
 	"github.com/gimlet-io/gimletd/worker"
+	"github.com/go-chi/chi"
 	"github.com/gorilla/securecookie"
 	"github.com/joho/godotenv"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
 	"net/http"
 )
@@ -75,6 +77,10 @@ func main() {
 		Releases:                releases,
 	}
 	go releaseStateWorker.Run()
+
+	metricsRouter := chi.NewRouter()
+	metricsRouter.Get("/metrics", promhttp.Handler().ServeHTTP)
+	go http.ListenAndServe(":8889", metricsRouter)
 
 	r := server.SetupRouter(config, store, notificationsManager)
 	err = http.ListenAndServe(":8888", r)
