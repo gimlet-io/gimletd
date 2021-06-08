@@ -40,8 +40,8 @@ func (w *ReleaseStateWorker) Run() {
 			}
 
 			for app, release := range appReleases {
-				created := time.Unix(release.Created, 0)
 				if release != nil {
+					created := time.Unix(release.Created, 0)
 					w.Releases.WithLabelValues(
 						env,
 						app,
@@ -54,10 +54,10 @@ func (w *ReleaseStateWorker) Run() {
 					w.Releases.WithLabelValues(
 						env,
 						app,
-						release.Version.URL,
-						release.Version.Message,
-						release.GitopsRef,
-						created.Format(time.RFC3339),
+						"",
+						"",
+						"",
+						"",
 					).Set(1.0)
 				}
 			}
