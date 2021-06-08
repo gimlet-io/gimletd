@@ -1,9 +1,13 @@
 package worker
 
 import (
+	"fmt"
 	"github.com/gimlet-io/gimletd/githelper"
+	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
+	"path/filepath"
 	"time"
 )
 
@@ -40,14 +44,23 @@ func (w *ReleaseStateWorker) Run() {
 			}
 
 			for app, release := range appReleases {
+				commit, err := lastCommitThatTouchedAFile(repo, filepath.Join(env, app))
+				if err != nil {
+					logrus.Errorf("cannot find last commit: %s", err)
+					time.Sleep(30 * time.Second)
+					continue
+				}
+
+				gitopsRef := commit.Hash.String()
+				created := commit.Committer.When
+
 				if release != nil {
-					created := time.Unix(release.Created, 0)
 					w.Releases.WithLabelValues(
 						env,
 						app,
 						release.Version.URL,
 						release.Version.Message,
-						release.GitopsRef,
+						gitopsRef,
 						created.Format(time.RFC3339),
 					).Set(1.0)
 				} else {
@@ -56,8 +69,8 @@ func (w *ReleaseStateWorker) Run() {
 						app,
 						"",
 						"",
-						"",
-						"",
+						gitopsRef,
+						created.Format(time.RFC3339),
 					).Set(1.0)
 				}
 			}
@@ -65,4 +78,28 @@ func (w *ReleaseStateWorker) Run() {
 
 		time.Sleep(30 * time.Second)
 	}
+}
+
+func lastCommitThatTouchedAFile(repo *git.Repository, path string) (*object.Commit, error) {
+	commits, err := repo.Log(
+		&git.LogOptions{
+			Path:  &path,
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	var commit *object.Commit
+	err = commits.ForEach(func(c *object.Commit) error {
+		commit = c
+		return fmt.Errorf("%s", "FOUND")
+	})
+	if err != nil &&
+		err.Error() != "EOF" &&
+		err.Error() != "FOUND" {
+		return nil, err
+	}
+
+	return commit, nil
 }
