@@ -14,5 +14,5 @@ var (
 	releases = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "gimletd_releases",
 		Help: "Release status",
-	}, []string{"env", "app", "sourceCommit", "commitMessage", "gitopsCommit"})
+	}, []string{"env", "app", "sourceCommit", "commitMessage", "gitopsCommit", "gitopsCommitCreated"})
 )
