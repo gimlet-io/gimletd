@@ -51,7 +51,7 @@ func (w *ReleaseStateWorker) Run() {
 					continue
 				}
 
-				gitopsRef := commit.Hash.String()
+				gitopsRef := fmt.Sprintf("https://github.com/%s/commit/%s", w.GitopsRepo,commit.Hash.String())
 				created := commit.Committer.When
 
 				if release != nil {
