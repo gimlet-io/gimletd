@@ -57,14 +57,28 @@ func Test_gitopsTemplateAndWrite(t *testing.T) {
       "Chart": {
         "Repository": "https://chart.onechart.dev",
         "Name": "onechart",
-        "Version": "0.10.0"
+        "Version": "0.21.0"
       },
       "Values": {
         "image": {
           "repository": "ghcr.io/gimlet-io/my-app",
           "tag": "{{ .GITHUB_SHA }}"
         },
-        "replicas": 1
+        "replicas": 1,
+        "volumes": [
+		  {
+            "name": "uploads",
+			"path": "/files",
+			"size": "12Gi",
+			"storageClass": "gp3"
+          },
+		  {
+            "name": "errors",
+			"path": "/errors",
+			"size": "12Gi",
+			"storageClass": "gp3"
+          }
+		]
       }
     }
   ],

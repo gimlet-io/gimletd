@@ -133,9 +133,15 @@ func SplitHelmOutput(input map[string]string) map[string]string {
 				continue
 			}
 
-			filePath := strings.Split(p, "\n")[0]
+			lines := strings.Split(p, "\n")
+			filePath := lines[0]
+			content := strings.Join(lines[1:], "\n")
 			fileName := filepath.Base(filePath)
-			files[fileName] = strings.Join(strings.Split(p, "\n")[1:], "\n")
+			if existingContent, ok := files[fileName]; ok {
+				files[fileName] = existingContent + "---\n" + content + "\n"
+			} else {
+				files[fileName] = "---\n" + content + "\n"
+			}
 		}
 	}
 
