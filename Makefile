@@ -14,7 +14,7 @@ format:
 	@gofmt -w ${GOFILES}
 
 test:
-	$(DOCKER_RUN) go test -race -timeout 30s $(shell go list ./... )
+	$(DOCKER_RUN) go test -race -timeout 60s $(shell go list ./... )
 
 build:
 	$(DOCKER_RUN) go build -ldflags $(LDFLAGS) -o build/gimlet github.com/gimlet-io/gimletd/cmd

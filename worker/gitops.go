@@ -373,7 +373,7 @@ func gitopsTemplateAndWrite(
 
 	sha, err := githelper.CommitFilesToGit(repo, files, env.Env, env.App, "automated deploy", string(releaseString))
 	if err != nil {
-		return "", fmt.Errorf("cannot write to git %s", err.Error())
+		return "", fmt.Errorf("cannot write to git: %s", err.Error())
 	}
 
 	return sha, nil
