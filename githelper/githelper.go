@@ -178,6 +178,11 @@ func DelDir(repo *git.Repository, path string) error {
 		return err
 	}
 
+	_, err = worktree.Filesystem.Stat(path)
+	if err != nil {
+		return nil
+	}
+
 	files, err := worktree.Filesystem.ReadDir(path)
 	if err != nil {
 		return err
@@ -229,6 +234,13 @@ func CommitFilesToGit(
 	w, err := repo.Worktree()
 	if err != nil {
 		return "", fmt.Errorf("cannot get worktree %s", err)
+	}
+
+	// first delete, then recreate app dir
+	// to remove stale template files
+	err = DelDir(repo, filepath.Join(env, app))
+	if err != nil {
+		return "", fmt.Errorf("cannot del dir: %s", err)
 	}
 	err = w.Filesystem.MkdirAll(filepath.Join(env, app), commands.Dir_RWX_RX_R)
 	if err != nil {

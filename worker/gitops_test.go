@@ -98,6 +98,95 @@ func Test_gitopsTemplateAndWrite(t *testing.T) {
 	assert.Nil(t, err)
 }
 
+func Test_gitopsTemplateAndWrite_deleteStaleFiles(t *testing.T) {
+	repo, _ := git.Init(memory.NewStorage(), memfs.New())
+	_, err := repo.CreateRemote(&config.RemoteConfig{Name: "origin", URLs: []string{""}})
+	var a dx.Artifact
+
+	withVolume := `
+{
+  "version": {
+    "repositoryName": "my-app",
+    "sha": "ea9ab7cc31b2599bf4afcfd639da516ca27a4780",
+    "branch": "master",
+    "authorName": "Jane Doe",
+    "authorEmail": "jane@doe.org",
+    "committerName": "Jane Doe",
+    "committerEmail": "jane@doe.org",
+    "message": "Bugfix 123",
+    "url": "https://github.com/gimlet-io/gimlet-cli/commit/ea9ab7cc31b2599bf4afcfd639da516ca27a4780"
+  },
+  "environments": [
+    {
+      "App": "my-app",
+      "Env": "staging",
+      "Namespace": "staging",
+      "Chart": {
+        "Repository": "https://chart.onechart.dev",
+        "Name": "onechart",
+        "Version": "0.21.0"
+      },
+      "Values": {
+        "volumes": [
+		  {
+            "name": "uploads",
+			"path": "/files",
+			"size": "12Gi",
+			"storageClass": "gp3"
+          }
+		]
+      }
+    }
+  ]
+}
+`
+
+	json.Unmarshal([]byte(withVolume), &a)
+	_, err = gitopsTemplateAndWrite(repo, a.Context, a.Environments[0], &dx.Release{}, "")
+	assert.Nil(t, err)
+
+	content, _ := githelper.Content(repo, "staging/my-app/deployment.yaml")
+	assert.True(t, len(content) > 100)
+	content, _ = githelper.Content(repo, "staging/my-app/pvc.yaml")
+	assert.True(t, len(content) > 100)
+
+	withoutVolume := `
+{
+  "version": {
+    "repositoryName": "my-app",
+    "sha": "ea9ab7cc31b2599bf4afcfd639da516ca27a4780",
+    "branch": "master",
+    "authorName": "Jane Doe",
+    "authorEmail": "jane@doe.org",
+    "committerName": "Jane Doe",
+    "committerEmail": "jane@doe.org",
+    "message": "Bugfix 123",
+    "url": "https://github.com/gimlet-io/gimlet-cli/commit/ea9ab7cc31b2599bf4afcfd639da516ca27a4780"
+  },
+  "environments": [
+    {
+      "App": "my-app",
+      "Env": "staging",
+      "Namespace": "staging",
+      "Chart": {
+        "Repository": "https://chart.onechart.dev",
+        "Name": "onechart",
+        "Version": "0.21.0"
+      }
+    }
+  ]
+}
+`
+
+	var b dx.Artifact
+	err = json.Unmarshal([]byte(withoutVolume), &b)
+	_, err = gitopsTemplateAndWrite(repo, b.Context, b.Environments[0], &dx.Release{}, "")
+	assert.Nil(t, err)
+
+	content, _ = githelper.Content(repo, "staging/my-app/pvc.yaml")
+	assert.Equal(t, content, "")
+}
+
 func Test_emptyTrigger(t *testing.T) {
 	triggered := deployTrigger(
 		&dx.Artifact{}, nil)
@@ -117,7 +206,7 @@ func Test_branchTrigger(t *testing.T) {
 		},
 		&dx.Deploy{
 			Branch: "notMaster",
-			Event: dx.PushPtr(),
+			Event:  dx.PushPtr(),
 		})
 	assert.False(t, triggered, "Branch mismatch should not trigger a deploy")
 
@@ -129,7 +218,7 @@ func Test_branchTrigger(t *testing.T) {
 		},
 		&dx.Deploy{
 			Branch: "master",
-			Event: dx.PushPtr(),
+			Event:  dx.PushPtr(),
 		})
 	assert.True(t, triggered, "Matching branch should trigger a deploy")
 
@@ -137,12 +226,12 @@ func Test_branchTrigger(t *testing.T) {
 		&dx.Artifact{
 			Version: dx.Version{
 				Branch: "master",
-				Event: *dx.PRPtr(),
+				Event:  *dx.PRPtr(),
 			},
 		},
 		&dx.Deploy{
 			Branch: "master",
-			Event: dx.PRPtr(),
+			Event:  dx.PRPtr(),
 		})
 	assert.True(t, triggered, "Matching branch should trigger a deploy")
 
@@ -203,24 +292,24 @@ func Test_tag_and_branch_pattern_triggers(t *testing.T) {
 		&dx.Artifact{
 			Version: dx.Version{
 				Branch: "feature/coolness",
-				Event: *dx.PRPtr(),
+				Event:  *dx.PRPtr(),
 			},
 		},
 		&dx.Deploy{
 			Branch: "feature/*",
-			Event: dx.PRPtr(),
+			Event:  dx.PRPtr(),
 		})
 	assert.True(t, triggered, "Matching branch pattern should trigger a deploy")
 
 	triggered = deployTrigger(
 		&dx.Artifact{
 			Version: dx.Version{
-				Tag: "v3.0.1",
+				Tag:   "v3.0.1",
 				Event: *dx.TagPtr(),
 			},
 		},
 		&dx.Deploy{
-			Tag: "v*",
+			Tag:   "v*",
 			Event: dx.TagPtr(),
 		})
 	assert.True(t, triggered, "Matching tag pattern should trigger a deploy")
@@ -232,12 +321,11 @@ func Test_tag_and_branch_pattern_triggers(t *testing.T) {
 			},
 		},
 		&dx.Deploy{
-			Tag: "v*",
+			Tag:   "v*",
 			Event: dx.TagPtr(),
 		})
 	assert.False(t, triggered, "Non matching tag pattern should not trigger a deploy")
 }
-
 
 func Test_revertTo(t *testing.T) {
 	path, _ := ioutil.TempDir("", "gitops-")
@@ -248,7 +336,7 @@ func Test_revertTo(t *testing.T) {
 
 	var SHAs []string
 	commits, _ := repo.Log(&git.LogOptions{})
-	 commits.ForEach(func(c *object.Commit) error {
+	commits.ForEach(func(c *object.Commit) error {
 		SHAs = append(SHAs, c.Hash.String())
 		return nil
 	})
