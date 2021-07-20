@@ -2,13 +2,13 @@ package notifications
 
 import (
 	"fmt"
-	"github.com/fluxcd/pkg/recorder"
+	"github.com/fluxcd/pkg/runtime/events"
 	githubLib "github.com/google/go-github/v33/github"
 	"strings"
 )
 
 type fluxMessage struct {
-	event      *recorder.Event
+	event      *events.Event
 	gitopsRepo string
 }
 
@@ -30,7 +30,8 @@ func (fm *fluxMessage) AsSlackMessage() (*slackMessage, error) {
 		msg.Text = fmt.Sprintf("Gitops changes applied :heavy_check_mark: %s", commitLink(fm.gitopsRepo, parseRev(rev)))
 	}
 
-	if fm.event.Reason == "ValidationFailed" {
+	if fm.event.Reason == "ValidationFailed" ||
+		fm.event.Reason == "ReconciliationFailed" {
 		msg.Text = ":exclamation: Gitops apply failed"
 	}
 
@@ -44,21 +45,8 @@ func (fm *fluxMessage) AsSlackMessage() (*slackMessage, error) {
 		},
 	)
 
-	//if fm.event.Reason == "ReconciliationSucceeded" {
-	//	msg.Blocks = append(msg.Blocks,
-	//		Block{
-	//			Type: contextString,
-	//			Elements: []Text{
-	//				{
-	//					Type: markdown,
-	//					Text: fm.event.Message,
-	//				},
-	//			},
-	//		},
-	//	)
-	//}
-
-	if fm.event.Reason == "ValidationFailed" {
+	if fm.event.Reason == "ValidationFailed" ||
+		fm.event.Reason == "ReconciliationFailed" {
 		msg.Blocks = append(msg.Blocks,
 			Block{
 				Type: contextString,
@@ -107,7 +95,7 @@ func (fm *fluxMessage) AsGithubStatus() (*githubLib.RepoStatus, error) {
 	return nil, nil
 }
 
-func MessageFromFluxEvent(gitopsRepo string, event *recorder.Event) Message {
+func MessageFromFluxEvent(gitopsRepo string, event *events.Event) Message {
 	return &fluxMessage{
 		event:      event,
 		gitopsRepo: gitopsRepo,

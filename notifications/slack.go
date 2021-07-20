@@ -87,10 +87,10 @@ func (s *slackProvider) post(msg *slackMessage) error {
 	}
 	if val, ok := parsed["ok"]; ok {
 		if val != true {
-			logrus.Info(string(body))
+			logrus.Infof("Slack response: %s", string(body))
 		}
 	} else {
-		logrus.Info(string(body))
+		logrus.Infof("Slack response: %s", string(body))
 	}
 
 	if res.StatusCode != 200 {

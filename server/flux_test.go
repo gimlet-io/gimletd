@@ -3,7 +3,7 @@ package server
 import (
 	"context"
 	"encoding/json"
-	"github.com/fluxcd/pkg/recorder"
+	"github.com/fluxcd/pkg/runtime/events"
 	"github.com/gimlet-io/gimletd/notifications"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
@@ -23,7 +23,7 @@ func Test_fluxEvent(t *testing.T) {
 		"",
 	)
 
-	event := recorder.Event{
+	event := events.Event{
 		InvolvedObject: corev1.ObjectReference{
 			Kind:      "GitRepository",
 			Namespace: "gitops-system",
