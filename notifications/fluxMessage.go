@@ -2,13 +2,13 @@ package notifications
 
 import (
 	"fmt"
-	"github.com/fluxcd/pkg/recorder"
+	"github.com/fluxcd/pkg/runtime/events"
 	githubLib "github.com/google/go-github/v33/github"
 	"strings"
 )
 
 type fluxMessage struct {
-	event      *recorder.Event
+	event      *events.Event
 	gitopsRepo string
 }
 
@@ -107,7 +107,7 @@ func (fm *fluxMessage) AsGithubStatus() (*githubLib.RepoStatus, error) {
 	return nil, nil
 }
 
-func MessageFromFluxEvent(gitopsRepo string, event *recorder.Event) Message {
+func MessageFromFluxEvent(gitopsRepo string, event *events.Event) Message {
 	return &fluxMessage{
 		event:      event,
 		gitopsRepo: gitopsRepo,
