@@ -69,4 +69,7 @@ type Client interface {
 
 	// UserGet returns the user with the given login
     UserGet(login string, withToken bool) (*model.User, error)
+
+	// UserPost creates a user
+	UserPost(user *model.User) (*model.User, error)
 }

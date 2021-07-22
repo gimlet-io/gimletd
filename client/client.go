@@ -286,7 +286,7 @@ func (c *client) RollbackPost(env string, app string, targetSHA string) (string,
 	result := new(map[string]interface{})
 	err := c.post(uri, nil, result)
 	if err != nil {
-		return "", nil
+		return "", err
 	}
 	res := *result
 	return res["id"].(string), nil
@@ -322,6 +322,17 @@ func (c *client) UserGet(login string, withToken bool) (*model.User, error) {
 	}
 
 	return user, nil
+}
+
+// UserPost creates a user
+func (c *client) UserPost(toSave *model.User) (*model.User, error) {
+	uri := fmt.Sprintf(pathUser, c.addr)
+	createdUser := new(model.User)
+	err := c.post(uri, toSave, createdUser)
+	if err != nil {
+		return nil, err
+	}
+	return createdUser, nil
 }
 
 func (c *client) get(rawURL string, out interface{}) error {
