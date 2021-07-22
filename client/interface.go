@@ -17,6 +17,7 @@ package client
 
 import (
 	"github.com/gimlet-io/gimletd/dx"
+	"github.com/gimlet-io/gimletd/model"
 	"net/http"
 	"time"
 )
@@ -65,4 +66,7 @@ type Client interface {
 
 	// TrackGet returns the state of an event
 	TrackGet(trackingID string) (string, string, error)
+
+	// UserGet returns the user with the given login
+    UserGet(login string, withToken bool) (*model.User, error)
 }

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gimlet-io/gimletd/dx"
+	"github.com/gimlet-io/gimletd/dx/helm"
 	"github.com/gimlet-io/gimletd/githelper"
 	"github.com/gimlet-io/gimletd/model"
 	"github.com/gimlet-io/gimletd/notifications"
@@ -352,7 +353,7 @@ func gitopsTemplateAndWrite(
 	}
 
 	if strings.HasPrefix(env.Chart.Name, "git@") {
-		tmpChartDir, err := dx.CloneChartFromRepo(*env, sshPrivateKeyPathForChartClone)
+		tmpChartDir, err := helm.CloneChartFromRepo(*env, sshPrivateKeyPathForChartClone)
 		if err != nil {
 			return "", fmt.Errorf("cannot fetch chart from git %s", err.Error())
 		}
@@ -360,11 +361,11 @@ func gitopsTemplateAndWrite(
 		defer os.RemoveAll(tmpChartDir)
 	}
 
-	templatedManifests, err := dx.HelmTemplate(*env)
+	templatedManifests, err := helm.HelmTemplate(*env)
 	if err != nil {
 		return "", fmt.Errorf("cannot run helm template %s", err.Error())
 	}
-	files := dx.SplitHelmOutput(map[string]string{"manifest.yaml": templatedManifests})
+	files := helm.SplitHelmOutput(map[string]string{"manifest.yaml": templatedManifests})
 
 	releaseString, err := json.Marshal(release)
 	if err != nil {

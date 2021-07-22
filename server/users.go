@@ -48,6 +48,19 @@ func getUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	withToken := chi.URLParam(r, "withToken")
+	if withToken == "true" {
+		token := token.New(token.UserToken, user.Login)
+		tokenStr, err := token.Sign(user.Secret)
+		if err != nil {
+			logrus.Errorf("couldn't generate JWT token %s", err)
+			http.Error(w, http.StatusText(500), 500)
+			return
+		}
+		// token is not saved as it is JWT
+		user.Token = tokenStr
+	}
+
 	userString, err := json.Marshal(user)
 	if err != nil {
 		logrus.Errorf("cannot serialize user %s: %s", login, err)

@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gimlet-io/gimletd/dx"
+	"github.com/gimlet-io/gimletd/model"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -36,6 +37,7 @@ const (
 	pathStatus    = "%s/api/status"
 	pathRollback  = "%s/api/rollback"
 	pathEvent     = "%s/api/event"
+	pathUser      = "%s/api/user"
 )
 
 type client struct {
@@ -302,6 +304,24 @@ func (c *client) TrackGet(trackingID string) (string, string, error) {
 
 	res := *result
 	return res["status"].(string), res["desc"].(string), nil
+}
+
+// UserGet returns the user with the given login name
+func (c *client) UserGet(login string, withToken bool) (*model.User, error) {
+	uri := fmt.Sprintf(pathUser, c.addr)
+
+	tokenClause := "&withToken=false"
+	if withToken {
+		tokenClause = "&withToken=true"
+	}
+
+	user := new(model.User)
+	err := c.get(uri+"?login="+login+tokenClause, user)
+	if err != nil {
+		return nil, err
+	}
+
+	return user, nil
 }
 
 func (c *client) get(rawURL string, out interface{}) error {
