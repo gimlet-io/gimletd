@@ -43,12 +43,16 @@ func getUser(w http.ResponseWriter, r *http.Request) {
 	login := chi.URLParam(r, "login")
 	user, err := store.User(login)
 	if err != nil {
+		if err.Error() == "sql: no rows in result set" {
+			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+			return
+		}
 		logrus.Errorf("cannot get user %s: %s", login, err)
-		http.Error(w, http.StatusText(500), 500)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
-	withToken := chi.URLParam(r, "withToken")
+	withToken := r.URL.Query().Get("withToken")
 	if withToken == "true" {
 		token := token.New(token.UserToken, user.Login)
 		tokenStr, err := token.Sign(user.Secret)
