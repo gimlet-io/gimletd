@@ -310,13 +310,13 @@ func (c *client) TrackGet(trackingID string) (string, string, error) {
 func (c *client) UserGet(login string, withToken bool) (*model.User, error) {
 	uri := fmt.Sprintf(pathUser, c.addr)
 
-	tokenClause := "&withToken=false"
+	tokenClause := "?withToken=false"
 	if withToken {
-		tokenClause = "&withToken=true"
+		tokenClause = "?withToken=true"
 	}
 
 	user := new(model.User)
-	err := c.get(uri+"?login="+login+tokenClause, user)
+	err := c.get(uri+"/"+login+tokenClause, user)
 	if err != nil {
 		return nil, err
 	}
