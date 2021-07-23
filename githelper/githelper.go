@@ -73,6 +73,25 @@ func CloneToTmpFs(repoName string, privateKeyPath string) (string, *git.Reposito
 	return path, repo, err
 }
 
+func RemoteHasChanges(repo *git.Repository, privateKeyPath string) (bool, error) {
+	publicKeys, err := ssh.NewPublicKeysFromFile("git", privateKeyPath, "")
+	if err != nil {
+		return false, fmt.Errorf("cannot generate public key from private: %s", err.Error())
+	}
+
+	err = repo.Fetch(&git.FetchOptions{
+		Auth: publicKeys,
+	})
+	if err == git.NoErrAlreadyUpToDate {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
 func TmpFsCleanup(path string) error {
 	return os.RemoveAll(path)
 }
@@ -486,7 +505,7 @@ func Envs(
 		}
 
 		dir := fileInfo.Name()
-		_, err := readAppStatus(fs, dir )
+		_, err := readAppStatus(fs, dir)
 		if err == nil {
 			envs = append(envs, dir)
 		}

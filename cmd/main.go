@@ -79,6 +79,9 @@ func main() {
 	}
 	go releaseStateWorker.Run()
 
+	stopCh := make(chan struct{})
+	defer close(stopCh)
+
 	metricsRouter := chi.NewRouter()
 	metricsRouter.Get("/metrics", promhttp.Handler().ServeHTTP)
 	go http.ListenAndServe(":8889", metricsRouter)
