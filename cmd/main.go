@@ -4,6 +4,7 @@ import (
 	"encoding/base32"
 	"fmt"
 	"github.com/gimlet-io/gimletd/cmd/config"
+	"github.com/gimlet-io/gimletd/githelper"
 	"github.com/gimlet-io/gimletd/model"
 	"github.com/gimlet-io/gimletd/notifications"
 	"github.com/gimlet-io/gimletd/server"
@@ -71,16 +72,22 @@ func main() {
 		logrus.Warn("Not starting GitOps worker. GITOPS_REPO and GITOPS_REPO_DEPLOY_KEY_PATH must be set to start GitOps worker")
 	}
 
-	releaseStateWorker := &worker.ReleaseStateWorker{
-		GitopsRepo:              config.GitopsRepo,
-		GitopsRepoDeployKeyPath: config.GitopsRepoDeployKeyPath,
-		Releases:                releases,
-		Perf:                    perf,
-	}
-	go releaseStateWorker.Run()
-
 	stopCh := make(chan struct{})
 	defer close(stopCh)
+
+	repoCache, err := githelper.NewRepoCache(config.GitopsRepo, config.GitopsRepoDeployKeyPath, stopCh)
+	if err != nil {
+		panic(err)
+	}
+	logrus.Info("repo cache initialized")
+
+	releaseStateWorker := &worker.ReleaseStateWorker{
+		GitopsRepo: config.GitopsRepo,
+		RepoCache:  repoCache,
+		Releases:   releases,
+		Perf:       perf,
+	}
+	go releaseStateWorker.Run()
 
 	metricsRouter := chi.NewRouter()
 	metricsRouter.Get("/metrics", promhttp.Handler().ServeHTTP)

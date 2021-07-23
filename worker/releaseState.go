@@ -12,24 +12,18 @@ import (
 )
 
 type ReleaseStateWorker struct {
-	GitopsRepo              string
-	GitopsRepoDeployKeyPath string
-	Releases                *prometheus.GaugeVec
-	Perf                    *prometheus.HistogramVec
+	GitopsRepo string
+	RepoCache  *githelper.RepoCache
+	Releases   *prometheus.GaugeVec
+	Perf       *prometheus.HistogramVec
 }
 
 func (w *ReleaseStateWorker) Run() {
 	for {
 		t0 := time.Now()
-		repoTmpPath, repo, err := githelper.CloneToTmpFs(w.GitopsRepo, w.GitopsRepoDeployKeyPath)
-		if err != nil {
-			logrus.Errorf("cannot clone gitops repo: %s", err)
-			time.Sleep(30 * time.Second)
-			continue
-		}
+		repo := w.RepoCache.InstanceForRead()
 		logrus.Infof("releaseState_clone: %f", time.Since(t0).Seconds())
 		w.Perf.WithLabelValues("releaseState_clone").Observe(time.Since(t0).Seconds())
-		defer githelper.TmpFsCleanup(repoTmpPath)
 
 		envs, err := githelper.Envs(repo)
 		if err != nil {

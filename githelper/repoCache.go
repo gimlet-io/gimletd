@@ -74,6 +74,6 @@ func (w *RepoCache) updateRepo() error {
 	return nil
 }
 
-func (w *RepoCache) instanceForRead() *git.Repository {
+func (w *RepoCache) InstanceForRead() *git.Repository {
 	return w.repo
 }
