@@ -75,6 +75,7 @@ func main() {
 		GitopsRepo:              config.GitopsRepo,
 		GitopsRepoDeployKeyPath: config.GitopsRepoDeployKeyPath,
 		Releases:                releases,
+		Perf:                    perf,
 	}
 	go releaseStateWorker.Run()
 

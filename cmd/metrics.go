@@ -15,4 +15,9 @@ var (
 		Name: "gimletd_releases",
 		Help: "Release status",
 	}, []string{"env", "app", "sourceCommit", "commitMessage", "gitopsCommit", "gitopsCommitCreated"})
+
+	perf = promauto.NewHistogramVec(prometheus.HistogramOpts{
+		Name: "gimletd_perf",
+		Help: "Performance of functions",
+	}, []string{"function"})
 )

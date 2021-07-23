@@ -15,16 +15,19 @@ type ReleaseStateWorker struct {
 	GitopsRepo              string
 	GitopsRepoDeployKeyPath string
 	Releases                *prometheus.GaugeVec
+	Perf                    *prometheus.HistogramVec
 }
 
 func (w *ReleaseStateWorker) Run() {
 	for {
+		t0 := time.Now()
 		repoTmpPath, repo, err := githelper.CloneToTmpFs(w.GitopsRepo, w.GitopsRepoDeployKeyPath)
 		if err != nil {
 			logrus.Errorf("cannot clone gitops repo: %s", err)
 			time.Sleep(30 * time.Second)
 			continue
 		}
+		w.Perf.WithLabelValues("releaseState_clone").Observe(time.Since(t0).Seconds())
 		defer githelper.TmpFsCleanup(repoTmpPath)
 
 		envs, err := githelper.Envs(repo)
@@ -36,22 +39,26 @@ func (w *ReleaseStateWorker) Run() {
 
 		w.Releases.Reset()
 		for _, env := range envs {
+			t1 := time.Now()
 			appReleases, err := githelper.Status(repo, "", env)
 			if err != nil {
 				logrus.Errorf("cannot get status: %s", err)
 				time.Sleep(30 * time.Second)
 				continue
 			}
+			w.Perf.WithLabelValues("releaseState_appReleases").Observe(time.Since(t1).Seconds())
 
 			for app, release := range appReleases {
+				t2 := time.Now()
 				commit, err := lastCommitThatTouchedAFile(repo, filepath.Join(env, app))
 				if err != nil {
 					logrus.Errorf("cannot find last commit: %s", err)
 					time.Sleep(30 * time.Second)
 					continue
 				}
+				w.Perf.WithLabelValues("releaseState_appRelease").Observe(time.Since(t2).Seconds())
 
-				gitopsRef := fmt.Sprintf("https://github.com/%s/commit/%s", w.GitopsRepo,commit.Hash.String())
+				gitopsRef := fmt.Sprintf("https://github.com/%s/commit/%s", w.GitopsRepo, commit.Hash.String())
 				created := commit.Committer.When
 
 				if release != nil {
@@ -75,7 +82,7 @@ func (w *ReleaseStateWorker) Run() {
 				}
 			}
 		}
-
+		w.Perf.WithLabelValues("releaseState_run").Observe(time.Since(t0).Seconds())
 		time.Sleep(30 * time.Second)
 	}
 }
@@ -83,7 +90,7 @@ func (w *ReleaseStateWorker) Run() {
 func lastCommitThatTouchedAFile(repo *git.Repository, path string) (*object.Commit, error) {
 	commits, err := repo.Log(
 		&git.LogOptions{
-			Path:  &path,
+			Path: &path,
 		},
 	)
 	if err != nil {
