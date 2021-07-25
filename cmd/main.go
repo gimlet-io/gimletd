@@ -56,6 +56,16 @@ func main() {
 	}
 	go notificationsManager.Run()
 
+	stopCh := make(chan struct{})
+	defer close(stopCh)
+
+	repoCache, err := githelper.NewRepoCache(config.GitopsRepo, config.GitopsRepoDeployKeyPath, stopCh)
+	if err != nil {
+		panic(err)
+	}
+	go repoCache.Run()
+	logrus.Info("repo cache initialized")
+
 	if config.GitopsRepo != "" &&
 		config.GitopsRepoDeployKeyPath != "" {
 		gitopsWorker := worker.NewGitopsWorker(
@@ -65,21 +75,13 @@ func main() {
 			config.GithubChartAccessDeployKeyPath,
 			notificationsManager,
 			eventsProcessed,
+			repoCache,
 		)
 		go gitopsWorker.Run()
 		logrus.Info("Gitops worker started")
 	} else {
 		logrus.Warn("Not starting GitOps worker. GITOPS_REPO and GITOPS_REPO_DEPLOY_KEY_PATH must be set to start GitOps worker")
 	}
-
-	stopCh := make(chan struct{})
-	defer close(stopCh)
-
-	repoCache, err := githelper.NewRepoCache(config.GitopsRepo, config.GitopsRepoDeployKeyPath, stopCh)
-	if err != nil {
-		panic(err)
-	}
-	logrus.Info("repo cache initialized")
 
 	releaseStateWorker := &worker.ReleaseStateWorker{
 		GitopsRepo: config.GitopsRepo,

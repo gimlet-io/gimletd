@@ -27,6 +27,7 @@ type GitopsWorker struct {
 	githubChartAccessDeployKeyPath string
 	notificationsManager           notifications.Manager
 	eventsProcessed                prometheus.Counter
+	repoCache                      *githelper.RepoCache
 }
 
 func NewGitopsWorker(
@@ -36,6 +37,7 @@ func NewGitopsWorker(
 	githubChartAccessDeployKeyPath string,
 	notificationsManager notifications.Manager,
 	eventsProcessed prometheus.Counter,
+	repoCache *githelper.RepoCache,
 ) *GitopsWorker {
 	return &GitopsWorker{
 		store:                          store,
@@ -44,6 +46,7 @@ func NewGitopsWorker(
 		notificationsManager:           notificationsManager,
 		githubChartAccessDeployKeyPath: githubChartAccessDeployKeyPath,
 		eventsProcessed:                eventsProcessed,
+		repoCache:                      repoCache,
 	}
 }
 
@@ -65,6 +68,7 @@ func (w *GitopsWorker) Run() {
 				w.githubChartAccessDeployKeyPath,
 				event,
 				w.notificationsManager,
+				w.repoCache,
 			)
 		}
 
@@ -79,10 +83,11 @@ func processEvent(
 	githubChartAccessDeployKeyPath string,
 	event *model.Event,
 	notificationsManager notifications.Manager,
+	repoCache *githelper.RepoCache,
 ) {
 	switch event.Type {
 	case model.TypeArtifact:
-		err := processArtifactEvent(gitopsRepo, gitopsRepoDeployKeyPath, githubChartAccessDeployKeyPath, event, notificationsManager)
+		err := processArtifactEvent(gitopsRepo, gitopsRepoDeployKeyPath, githubChartAccessDeployKeyPath, event, notificationsManager, repoCache)
 		if err != nil {
 			administerError(err, event, store)
 			return
@@ -93,12 +98,14 @@ func processEvent(
 			administerError(err, event, store)
 			return
 		}
+		repoCache.Invalidate()
 	case model.TypeRollback:
 		err := processRollbackEvent(gitopsRepo, gitopsRepoDeployKeyPath, event, notificationsManager)
 		if err != nil {
 			administerError(err, event, store)
 			return
 		}
+		repoCache.Invalidate()
 	}
 
 	administerSuccess(store, event)
@@ -192,6 +199,7 @@ func processArtifactEvent(
 	githubChartAccessDeployKeyPath string,
 	event *model.Event,
 	notificationsManager notifications.Manager,
+	repoCache *githelper.RepoCache,
 ) error {
 	artifact, err := model.ToArtifact(event)
 	if err != nil {
@@ -215,6 +223,8 @@ func processArtifactEvent(
 		if err != nil {
 			return err
 		}
+
+		repoCache.Invalidate()
 	}
 
 	return nil

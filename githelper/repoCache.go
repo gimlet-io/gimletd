@@ -1,7 +1,6 @@
 package githelper
 
 import (
-	"fmt"
 	"github.com/go-git/go-git/v5"
 	"github.com/sirupsen/logrus"
 	"time"
@@ -13,6 +12,7 @@ type RepoCache struct {
 	repo                    *git.Repository
 	repoTmpPath             string
 	stopCh                  chan struct{}
+	invalidateCh            chan string
 }
 
 func NewRepoCache(
@@ -31,6 +31,7 @@ func NewRepoCache(
 		repo:                    repo,
 		repoTmpPath:             repoTmpPath,
 		stopCh:                  stopCh,
+		invalidateCh:            make(chan string),
 	}, nil
 }
 
@@ -43,8 +44,9 @@ func (w *RepoCache) Run() {
 			logrus.Infof("cleaning up git repo cache at %s", w.repoTmpPath)
 			TmpFsCleanup(w.repoTmpPath)
 			return
+		case <-w.invalidateCh:
+			logrus.Info("received cache invalidate message")
 		case <-time.After(30 * time.Second):
-			fmt.Println("timeout 1")
 		}
 	}
 }
@@ -77,4 +79,8 @@ func (w *RepoCache) updateRepo() error {
 
 func (w *RepoCache) InstanceForRead() *git.Repository {
 	return w.repo
+}
+
+func (w *RepoCache) Invalidate() {
+	w.invalidateCh <- "invalidate"
 }
