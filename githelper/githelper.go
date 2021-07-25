@@ -15,6 +15,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
 	"github.com/go-git/go-git/v5/storage/memory"
 	"github.com/pkg/errors"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 	"io/ioutil"
 	"os"
@@ -438,7 +439,9 @@ func Releases(
 func Status(
 	repo *git.Repository,
 	app, env string,
+	perf *prometheus.HistogramVec,
 ) (map[string]*dx.Release, error) {
+	t0 := time.Now()
 	appReleases := map[string]*dx.Release{}
 
 	worktree, err := repo.Worktree()
@@ -480,6 +483,8 @@ func Status(
 		}
 	}
 
+	logrus.Infof("githelper_status: %f", time.Since(t0).Seconds())
+	perf.WithLabelValues("githelper_status").Observe(time.Since(t0).Seconds())
 	return appReleases, nil
 }
 

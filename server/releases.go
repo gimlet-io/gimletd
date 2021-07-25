@@ -8,6 +8,7 @@ import (
 	"github.com/gimlet-io/gimletd/githelper"
 	"github.com/gimlet-io/gimletd/model"
 	"github.com/gimlet-io/gimletd/store"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 	"net/http"
 	"strconv"
@@ -102,8 +103,9 @@ func getStatus(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	repoCache := ctx.Value("repoCache").(*githelper.RepoCache)
 	gitopsRepo := ctx.Value("gitopsRepo").(string)
+	perf := ctx.Value("perf").(*prometheus.HistogramVec)
 
-	appReleases, err := githelper.Status(repoCache.InstanceForRead(), app, env)
+	appReleases, err := githelper.Status(repoCache.InstanceForRead(), app, env, perf)
 	if err != nil {
 		logrus.Errorf("cannot get status: %s", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)

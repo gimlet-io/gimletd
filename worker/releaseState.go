@@ -35,7 +35,7 @@ func (w *ReleaseStateWorker) Run() {
 		w.Releases.Reset()
 		for _, env := range envs {
 			t1 := time.Now()
-			appReleases, err := githelper.Status(repo, "", env)
+			appReleases, err := githelper.Status(repo, "", env, w.Perf)
 			if err != nil {
 				logrus.Errorf("cannot get status: %s", err)
 				time.Sleep(30 * time.Second)

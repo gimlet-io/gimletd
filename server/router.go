@@ -9,6 +9,7 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/cors"
+	"github.com/prometheus/client_golang/prometheus"
 	"net/http"
 	"time"
 )
@@ -18,6 +19,7 @@ func SetupRouter(
 	store *store.Store,
 	notificationsManager notifications.Manager,
 	repoCache *githelper.RepoCache,
+	perf *prometheus.HistogramVec,
 ) *chi.Mux {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
@@ -32,6 +34,7 @@ func SetupRouter(
 	r.Use(middleware.WithValue("gitopsRepo", config.GitopsRepo))
 	r.Use(middleware.WithValue("gitopsRepoDeployKeyPath", config.GitopsRepoDeployKeyPath))
 	r.Use(middleware.WithValue("repoCache", repoCache))
+	r.Use(middleware.WithValue("perf", perf))
 
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   []string{"http://localhost:8888", config.Host},

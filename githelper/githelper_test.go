@@ -4,6 +4,8 @@ import (
 	"github.com/go-git/go-billy/v5/memfs"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/storage/memory"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -36,11 +38,16 @@ func Test_ReleasesGitRepo(t *testing.T) {
 func Test_Status(t *testing.T) {
 	repo := initHistory()
 
-	status, err := Status(repo, "my-app", "staging")
+	perf := promauto.NewHistogramVec(prometheus.HistogramOpts{
+		Name: "gimletd_perf",
+		Help: "Performance of functions",
+	}, []string{"function"})
+
+	status, err := Status(repo, "my-app", "staging", perf)
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(status),"should get release status for app")
 
-	status, err = Status(repo, "", "staging")
+	status, err = Status(repo, "", "staging", perf)
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(status),"should get release status for all apps")
 }
