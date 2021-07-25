@@ -53,6 +53,7 @@ func (w *RepoCache) syncGitRepo() {
 	hasChanges, err := RemoteHasChanges(w.repo, w.gitopsRepoDeployKeyPath)
 
 	if hasChanges || err != nil {
+		logrus.Info("repo cache is stale, updating")
 		err := w.updateRepo()
 		if err != nil {
 			logrus.Errorf("could not update git repo %s", err)
