@@ -60,18 +60,10 @@ func getReleases(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
+	repoCache := ctx.Value("repoCache").(*githelper.RepoCache)
 	gitopsRepo := ctx.Value("gitopsRepo").(string)
-	gitopsRepoDeployKeyPath := ctx.Value("gitopsRepoDeployKeyPath").(string)
 
-	repoTmpPath, repo, err := githelper.CloneToTmpFs(gitopsRepo, gitopsRepoDeployKeyPath)
-	if err != nil {
-		logrus.Errorf("cannot clone gitops repo: %s", err)
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-		return
-	}
-	defer githelper.TmpFsCleanup(repoTmpPath)
-
-	releases, err := githelper.Releases(repo, app, env, since, until, limit, gitRepo)
+	releases, err := githelper.Releases(repoCache.InstanceForRead(), app, env, since, until, limit, gitRepo)
 	if err != nil {
 		logrus.Errorf("cannot get releases: %s", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -108,18 +100,10 @@ func getStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
+	repoCache := ctx.Value("repoCache").(*githelper.RepoCache)
 	gitopsRepo := ctx.Value("gitopsRepo").(string)
-	gitopsRepoDeployKeyPath := ctx.Value("gitopsRepoDeployKeyPath").(string)
 
-	repoTmpPath, repo, err := githelper.CloneToTmpFs(gitopsRepo, gitopsRepoDeployKeyPath)
-	if err != nil {
-		logrus.Errorf("cannot clone gitops repo: %s", err)
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-		return
-	}
-	defer githelper.TmpFsCleanup(repoTmpPath)
-
-	appReleases, err := githelper.Status(repo, app, env)
+	appReleases, err := githelper.Status(repoCache.InstanceForRead(), app, env)
 	if err != nil {
 		logrus.Errorf("cannot get status: %s", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -224,8 +208,8 @@ func rollback(w http.ResponseWriter, r *http.Request) {
 
 	rollbackRequestStr, err := json.Marshal(dx.RollbackRequest{
 		Env:         env,
-		App: app,
-		TargetSHA: targetSHA,
+		App:         app,
+		TargetSHA:   targetSHA,
 		TriggeredBy: user.Login,
 	})
 	if err != nil {
@@ -234,8 +218,8 @@ func rollback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	event, err := store.CreateEvent(&model.Event{
-		Type:       model.TypeRollback,
-		Blob:       string(rollbackRequestStr),
+		Type: model.TypeRollback,
+		Blob: string(rollbackRequestStr),
 	})
 	if err != nil {
 		http.Error(w, fmt.Sprintf("%s - cannot save rollback request: %s", http.StatusText(http.StatusInternalServerError), err), http.StatusInternalServerError)
@@ -274,7 +258,7 @@ func getEvent(w http.ResponseWriter, r *http.Request) {
 
 	statusBytes, _ := json.Marshal(map[string]string{
 		"status": event.Status,
-		"desc": event.StatusDesc,
+		"desc":   event.StatusDesc,
 	})
 
 	w.WriteHeader(http.StatusOK)

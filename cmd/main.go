@@ -93,7 +93,7 @@ func main() {
 	metricsRouter.Get("/metrics", promhttp.Handler().ServeHTTP)
 	go http.ListenAndServe(":8889", metricsRouter)
 
-	r := server.SetupRouter(config, store, notificationsManager)
+	r := server.SetupRouter(config, store, notificationsManager, repoCache)
 	err = http.ListenAndServe(":8888", r)
 	if err != nil {
 		panic(err)

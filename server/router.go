@@ -2,6 +2,7 @@ package server
 
 import (
 	"github.com/gimlet-io/gimletd/cmd/config"
+	"github.com/gimlet-io/gimletd/githelper"
 	"github.com/gimlet-io/gimletd/notifications"
 	"github.com/gimlet-io/gimletd/server/session"
 	"github.com/gimlet-io/gimletd/store"
@@ -16,6 +17,7 @@ func SetupRouter(
 	config *config.Config,
 	store *store.Store,
 	notificationsManager notifications.Manager,
+	repoCache *githelper.RepoCache,
 ) *chi.Mux {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
@@ -29,6 +31,7 @@ func SetupRouter(
 	r.Use(middleware.WithValue("notificationsManager", notificationsManager))
 	r.Use(middleware.WithValue("gitopsRepo", config.GitopsRepo))
 	r.Use(middleware.WithValue("gitopsRepoDeployKeyPath", config.GitopsRepoDeployKeyPath))
+	r.Use(middleware.WithValue("repoCache", repoCache))
 
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   []string{"http://localhost:8888", config.Host},
