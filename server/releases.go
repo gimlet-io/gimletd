@@ -115,6 +115,7 @@ func getStatus(w http.ResponseWriter, r *http.Request) {
 	for _, release := range appReleases {
 		if release != nil {
 			release.GitopsRepo = gitopsRepo
+			//release.Created = TODO Get githelper.Releases for each app with limit 1 - could be terribly slow
 		}
 	}
 
