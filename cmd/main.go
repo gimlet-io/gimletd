@@ -4,6 +4,7 @@ import (
 	"encoding/base32"
 	"fmt"
 	"github.com/gimlet-io/gimletd/cmd/config"
+	"github.com/gimlet-io/gimletd/githelper"
 	"github.com/gimlet-io/gimletd/model"
 	"github.com/gimlet-io/gimletd/notifications"
 	"github.com/gimlet-io/gimletd/server"
@@ -55,6 +56,16 @@ func main() {
 	}
 	go notificationsManager.Run()
 
+	stopCh := make(chan struct{})
+	defer close(stopCh)
+
+	repoCache, err := githelper.NewRepoCache(config.GitopsRepo, config.GitopsRepoDeployKeyPath, stopCh)
+	if err != nil {
+		panic(err)
+	}
+	go repoCache.Run()
+	logrus.Info("repo cache initialized")
+
 	if config.GitopsRepo != "" &&
 		config.GitopsRepoDeployKeyPath != "" {
 		gitopsWorker := worker.NewGitopsWorker(
@@ -64,6 +75,7 @@ func main() {
 			config.GithubChartAccessDeployKeyPath,
 			notificationsManager,
 			eventsProcessed,
+			repoCache,
 		)
 		go gitopsWorker.Run()
 		logrus.Info("Gitops worker started")
@@ -72,10 +84,10 @@ func main() {
 	}
 
 	releaseStateWorker := &worker.ReleaseStateWorker{
-		GitopsRepo:              config.GitopsRepo,
-		GitopsRepoDeployKeyPath: config.GitopsRepoDeployKeyPath,
-		Releases:                releases,
-		Perf:                    perf,
+		GitopsRepo: config.GitopsRepo,
+		RepoCache:  repoCache,
+		Releases:   releases,
+		Perf:       perf,
 	}
 	go releaseStateWorker.Run()
 
@@ -83,7 +95,7 @@ func main() {
 	metricsRouter.Get("/metrics", promhttp.Handler().ServeHTTP)
 	go http.ListenAndServe(":8889", metricsRouter)
 
-	r := server.SetupRouter(config, store, notificationsManager)
+	r := server.SetupRouter(config, store, notificationsManager, repoCache, perf)
 	err = http.ListenAndServe(":8888", r)
 	if err != nil {
 		panic(err)

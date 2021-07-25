@@ -15,6 +15,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
 	"github.com/go-git/go-git/v5/storage/memory"
 	"github.com/pkg/errors"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 	"io/ioutil"
 	"os"
@@ -71,6 +72,25 @@ func CloneToTmpFs(repoName string, privateKeyPath string) (string, *git.Reposito
 
 	repo, err := git.PlainClone(path, false, opts)
 	return path, repo, err
+}
+
+func RemoteHasChanges(repo *git.Repository, privateKeyPath string) (bool, error) {
+	publicKeys, err := ssh.NewPublicKeysFromFile("git", privateKeyPath, "")
+	if err != nil {
+		return false, fmt.Errorf("cannot generate public key from private: %s", err.Error())
+	}
+
+	err = repo.Fetch(&git.FetchOptions{
+		Auth: publicKeys,
+	})
+	if err == git.NoErrAlreadyUpToDate {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
 }
 
 func TmpFsCleanup(path string) error {
@@ -419,7 +439,9 @@ func Releases(
 func Status(
 	repo *git.Repository,
 	app, env string,
+	perf *prometheus.HistogramVec,
 ) (map[string]*dx.Release, error) {
+	t0 := time.Now()
 	appReleases := map[string]*dx.Release{}
 
 	worktree, err := repo.Worktree()
@@ -461,6 +483,8 @@ func Status(
 		}
 	}
 
+	logrus.Infof("githelper_status: %f", time.Since(t0).Seconds())
+	perf.WithLabelValues("githelper_status").Observe(time.Since(t0).Seconds())
 	return appReleases, nil
 }
 
@@ -486,7 +510,7 @@ func Envs(
 		}
 
 		dir := fileInfo.Name()
-		_, err := readAppStatus(fs, dir )
+		_, err := readAppStatus(fs, dir)
 		if err == nil {
 			envs = append(envs, dir)
 		}
