@@ -90,11 +90,9 @@ func MustUser() func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
-			user, userSet := ctx.Value("user").(*model.User)
+			_, userSet := ctx.Value("user").(*model.User)
 			if !userSet {
 				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-			} else if user.Admin {
-				http.Error(w, http.StatusText(http.StatusForbidden) + " admin users should be solely used for user management", http.StatusForbidden)
 			} else {
 				next.ServeHTTP(w, r)
 			}

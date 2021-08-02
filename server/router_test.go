@@ -48,10 +48,6 @@ func Test_MustUser(t *testing.T) {
 	tokenStr, err := tokenInstance.Sign(user.Secret)
 	assert.Nil(t, err)
 
-	resp, err = http.Get(server.URL + "/api/artifacts?access_token=" + tokenStr)
-	assert.Nil(t, err)
-	assert.Equal(t, http.StatusForbidden, resp.StatusCode, "admin users should only use user management endpoints")
-
 	user = &model.User{
 		Login: "user",
 		Secret: base32.StdEncoding.EncodeToString(
