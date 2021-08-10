@@ -61,7 +61,7 @@ func Test_artifact(t *testing.T) {
 		"", "",
 		nil,
 		"",
-		"",
+		[]string{},
 		0, 0,
 		nil, nil,
 	)

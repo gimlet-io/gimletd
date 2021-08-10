@@ -49,7 +49,7 @@ func TestEventCRUD(t *testing.T) {
 	assert.NotEqual(t, savedEvent.Created, 0)
 	assert.Equal(t, savedEvent.Event, dx.PR)
 
-	artifacts, err := s.Artifacts("", "", nil, "", "", 0, 0, nil, nil)
+	artifacts, err := s.Artifacts("", "", nil, "", []string{}, 0, 0, nil, nil)
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(artifacts))
 	assert.Equal(t, "ea9ab7cc31b2599bf4afcfd639da516ca27a4780", artifacts[0].SHA)

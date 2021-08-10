@@ -134,6 +134,39 @@ func Test_getArtifactsPR(t *testing.T) {
 	assert.Equal(t, "2", response[0].Version.SHA)
 }
 
+func Test_getArtifactsSha(t *testing.T) {
+	store := store.NewTest()
+	setupArtifacts(store)
+
+	_, body, err := testEndpoint(getArtifacts, func(ctx context.Context) context.Context {
+		ctx = context.WithValue(ctx, "store", store)
+		return ctx
+	}, "/path?sha=ea9ab7cc31b2599bf4afcfd639da516ca27a4780")
+	assert.Nil(t, err)
+	var response []*dx.Artifact
+	err = json.Unmarshal([]byte(body), &response)
+	assert.Nil(t, err)
+	assert.Equal(t, 1, len(response))
+	assert.Equal(t, "ea9ab7cc31b2599bf4afcfd639da516ca27a4780", response[0].Version.SHA)
+}
+
+func Test_getArtifactsHashes(t *testing.T) {
+	store := store.NewTest()
+	setupArtifacts(store)
+
+	_, body, err := testEndpoint(getArtifacts, func(ctx context.Context) context.Context {
+		ctx = context.WithValue(ctx, "store", store)
+		return ctx
+	}, "/path?hashes=ea9ab7cc31b2599bf4afcfd639da516ca27a4780&hashes=2")
+	assert.Nil(t, err)
+	var response []*dx.Artifact
+	err = json.Unmarshal([]byte(body), &response)
+	assert.Nil(t, err)
+	assert.Equal(t, 2, len(response))
+	assert.Equal(t, "ea9ab7cc31b2599bf4afcfd639da516ca27a4780", response[0].Version.SHA)
+	assert.Equal(t, "2", response[1].Version.SHA)
+}
+
 func Test_getArtifactsSince(t *testing.T) {
 	store := store.NewTest()
 	setupArtifacts(store)

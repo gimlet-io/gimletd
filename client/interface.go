@@ -38,7 +38,7 @@ type Client interface {
 		repo, branch string,
 		event *dx.GitEvent,
 		sourceBranch string,
-		sha string,
+		sha []string,
 		limit, offset int,
 		since, until *time.Time,
 	) ([]*dx.Artifact, error)

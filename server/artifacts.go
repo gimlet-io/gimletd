@@ -58,7 +58,7 @@ func getArtifacts(w http.ResponseWriter, r *http.Request) {
 	var repo, branch string
 	var event *dx.GitEvent
 	var sourceBranch string
-	var sha string
+	var sha []string
 
 	params := r.URL.Query()
 	if val, ok := params["limit"]; ok {
@@ -105,7 +105,7 @@ func getArtifacts(w http.ResponseWriter, r *http.Request) {
 		sourceBranch = val[0]
 	}
 	if val, ok := params["sha"]; ok {
-		sha = val[0]
+		sha = val
 	}
 	if val, ok := params["event"]; ok {
 		event = dx.PushPtr()

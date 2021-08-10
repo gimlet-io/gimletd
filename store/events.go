@@ -24,7 +24,7 @@ func (db *Store) Artifacts(
 	repo, branch string,
 	gitEvent *dx.GitEvent,
 	sourceBranch string,
-	sha string,
+	sha []string,
 	limit, offset int,
 	since, until *time.Time) ([]*model.Event, error) {
 
@@ -55,9 +55,11 @@ func (db *Store) Artifacts(
 		filters = addFilter(filters, "branch = ?")
 		args = append(args, sourceBranch)
 	}
-	if sha != "" {
-		filters = addFilter(filters, fmt.Sprintf("sha = %s", sha))
-		args = append(args, sha)
+	if len(sha) != 0 {
+		filters = addFilter(filters, "sha in (?" + strings.Repeat(",?", len(sha)-1) + ")")
+		for _, s := range sha {
+			args = append(args, s)
+		}
 	}
 
 	if gitEvent != nil {

@@ -78,7 +78,7 @@ func (c *client) ArtifactsGet(
 	repo, branch string,
 	event *dx.GitEvent,
 	sourceBranch string,
-	sha string,
+	sha []string,
 	limit, offset int,
 	since, until *time.Time,
 ) ([]*dx.Artifact, error) {
@@ -110,8 +110,10 @@ func (c *client) ArtifactsGet(
 	if sourceBranch != "" {
 		params = append(params, fmt.Sprintf("sourceBranch=%s", sourceBranch))
 	}
-	if sha != "" {
-		params = append(params, fmt.Sprintf("sha=%s", sha))
+	if len(sha) != 0 {
+		for _, s := range sha {
+			params = append(params, fmt.Sprintf("sha=%s", s))
+		}
 	}
 
 	var paramsStr string
