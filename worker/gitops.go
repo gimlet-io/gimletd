@@ -244,6 +244,11 @@ func cloneTemplateWriteAndPush(
 		return err
 	}
 
+	err = env.ResolveVars(artifact.Context)
+	if err != nil {
+		return fmt.Errorf("cannot resolve manifest vars %s", err.Error())
+	}
+
 	gitopsEvent := &notifications.GitopsEvent{
 		Manifest:    env,
 		Artifact:    artifact,
@@ -262,7 +267,6 @@ func cloneTemplateWriteAndPush(
 
 	sha, err := gitopsTemplateAndWrite(
 		repo,
-		artifact.Context,
 		env,
 		releaseMeta,
 		githubChartAccessDeployKeyPath,
@@ -279,7 +283,7 @@ func cloneTemplateWriteAndPush(
 		return err
 	}
 
-	if sha != "" { // if there was changes to push
+	if sha != "" { // if there is a change to push
 		gitopsEvent.GitopsRef = sha
 		notificationsManager.Broadcast(notifications.MessageFromGitOpsEvent(gitopsEvent))
 	}
@@ -352,16 +356,10 @@ func administerError(err error, event *model.Event, store *store.Store) {
 
 func gitopsTemplateAndWrite(
 	repo *git.Repository,
-	context map[string]string,
 	env *dx.Manifest,
 	release *dx.Release,
 	sshPrivateKeyPathForChartClone string,
 ) (string, error) {
-	err := env.ResolveVars(context)
-	if err != nil {
-		return "", fmt.Errorf("cannot resolve manifest vars %s", err.Error())
-	}
-
 	if strings.HasPrefix(env.Chart.Name, "git@") {
 		tmpChartDir, err := helm.CloneChartFromRepo(*env, sshPrivateKeyPathForChartClone)
 		if err != nil {
