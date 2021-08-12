@@ -94,7 +94,7 @@ func Test_gitopsTemplateAndWrite(t *testing.T) {
 	repo, _ := git.Init(memory.NewStorage(), memfs.New())
 	_, err := repo.CreateRemote(&config.RemoteConfig{Name: "origin", URLs: []string{""}})
 
-	_, err = gitopsTemplateAndWrite(repo, a.Context, a.Environments[0], &dx.Release{}, "")
+	_, err = gitopsTemplateAndWrite(repo, a.Environments[0], &dx.Release{}, "")
 	assert.Nil(t, err)
 }
 
@@ -142,7 +142,7 @@ func Test_gitopsTemplateAndWrite_deleteStaleFiles(t *testing.T) {
 `
 
 	json.Unmarshal([]byte(withVolume), &a)
-	_, err = gitopsTemplateAndWrite(repo, a.Context, a.Environments[0], &dx.Release{}, "")
+	_, err = gitopsTemplateAndWrite(repo, a.Environments[0], &dx.Release{}, "")
 	assert.Nil(t, err)
 
 	content, _ := githelper.Content(repo, "staging/my-app/deployment.yaml")
@@ -180,7 +180,7 @@ func Test_gitopsTemplateAndWrite_deleteStaleFiles(t *testing.T) {
 
 	var b dx.Artifact
 	err = json.Unmarshal([]byte(withoutVolume), &b)
-	_, err = gitopsTemplateAndWrite(repo, b.Context, b.Environments[0], &dx.Release{}, "")
+	_, err = gitopsTemplateAndWrite(repo, b.Environments[0], &dx.Release{}, "")
 	assert.Nil(t, err)
 
 	content, _ = githelper.Content(repo, "staging/my-app/pvc.yaml")
