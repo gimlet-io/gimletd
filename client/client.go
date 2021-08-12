@@ -271,10 +271,10 @@ func (c *client) StatusGet(
 }
 
 // ReleasesPost releases the given artifact to the given environment
-func (c *client) ReleasesPost(env string, app string, artifactID string) (string, error) {
-	uri := fmt.Sprintf(pathReleases+"?env=%s&app=%s&artifact=%s", c.addr, env, app, artifactID)
+func (c *client) ReleasesPost(request dx.ReleaseRequest) (string, error) {
+	uri := fmt.Sprintf(pathReleases, c.addr)
 	result := new(map[string]interface{})
-	err := c.post(uri, nil, result)
+	err := c.post(uri, request, result)
 	if err != nil {
 		return "", err
 	}

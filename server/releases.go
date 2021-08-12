@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 	"github.com/gimlet-io/gimletd/store"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
+	"io/ioutil"
 	"net/http"
 	"strconv"
 	"time"
@@ -135,28 +137,29 @@ func release(w http.ResponseWriter, r *http.Request) {
 	store := ctx.Value("store").(*store.Store)
 	user := ctx.Value("user").(*model.User)
 
-	params := r.URL.Query()
-	var env, app, artifactID string
-	if val, ok := params["env"]; ok {
-		env = val[0]
-	} else {
+	body, _ := ioutil.ReadAll(r.Body)
+	var releaseRequest dx.ReleaseRequest
+	err := json.NewDecoder(bytes.NewReader(body)).Decode(&releaseRequest)
+	if err != nil {
+		logrus.Errorf("cannot decode release request: %s", err)
+		http.Error(w, http.StatusText(400), 400)
+		return
+	}
+
+	if releaseRequest.Env == "" {
 		http.Error(w, fmt.Sprintf("%s: %s", http.StatusText(http.StatusBadRequest), "env parameter is mandatory"), http.StatusBadRequest)
 		return
 	}
-	if val, ok := params["artifact"]; ok {
-		artifactID = val[0]
-	} else {
+
+	if releaseRequest.ArtifactID == "" {
 		http.Error(w, fmt.Sprintf("%s: %s", http.StatusText(http.StatusBadRequest), "artifact parameter is mandatory"), http.StatusBadRequest)
 		return
 	}
-	if val, ok := params["app"]; ok {
-		app = val[0]
-	}
 
 	releaseRequestStr, err := json.Marshal(dx.ReleaseRequest{
-		Env:         env,
-		App:         app,
-		ArtifactID:  artifactID,
+		Env:         releaseRequest.Env,
+		App:         releaseRequest.App,
+		ArtifactID:  releaseRequest.ArtifactID,
 		TriggeredBy: user.Login,
 	})
 	if err != nil {
@@ -164,9 +167,9 @@ func release(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	artifact, err := store.Artifact(artifactID)
+	artifact, err := store.Artifact(releaseRequest.ArtifactID)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("%s - cannot find artifact with id %s", http.StatusText(http.StatusNotFound), artifactID), http.StatusNotFound)
+		http.Error(w, fmt.Sprintf("%s - cannot find artifact with id %s", http.StatusText(http.StatusNotFound), releaseRequest.ArtifactID), http.StatusNotFound)
 		return
 	}
 	event, err := store.CreateEvent(&model.Event{
