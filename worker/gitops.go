@@ -138,6 +138,10 @@ func processReleaseEvent(
 		if env.Env != releaseRequest.Env {
 			continue
 		}
+		if releaseRequest.App != "" &&
+			env.App != releaseRequest.App {
+			continue
+		}
 
 		err = cloneTemplateWriteAndPush(
 			gitopsRepo,

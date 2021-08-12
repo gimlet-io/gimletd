@@ -136,7 +136,7 @@ func release(w http.ResponseWriter, r *http.Request) {
 	user := ctx.Value("user").(*model.User)
 
 	params := r.URL.Query()
-	var env, artifactID string
+	var env, app, artifactID string
 	if val, ok := params["env"]; ok {
 		env = val[0]
 	} else {
@@ -149,9 +149,13 @@ func release(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("%s: %s", http.StatusText(http.StatusBadRequest), "artifact parameter is mandatory"), http.StatusBadRequest)
 		return
 	}
+	if val, ok := params["app"]; ok {
+		app = val[0]
+	}
 
 	releaseRequestStr, err := json.Marshal(dx.ReleaseRequest{
 		Env:         env,
+		App:         app,
 		ArtifactID:  artifactID,
 		TriggeredBy: user.Login,
 	})

@@ -271,8 +271,8 @@ func (c *client) StatusGet(
 }
 
 // ReleasesPost releases the given artifact to the given environment
-func (c *client) ReleasesPost(env string, artifactID string) (string, error) {
-	uri := fmt.Sprintf(pathReleases+"?env=%s&artifact=%s", c.addr, env, artifactID)
+func (c *client) ReleasesPost(env string, app string, artifactID string) (string, error) {
+	uri := fmt.Sprintf(pathReleases+"?env=%s&app=%s&artifact=%s", c.addr, env, app, artifactID)
 	result := new(map[string]interface{})
 	err := c.post(uri, nil, result)
 	if err != nil {
@@ -282,7 +282,7 @@ func (c *client) ReleasesPost(env string, artifactID string) (string, error) {
 	return res["id"].(string), nil
 }
 
-// ReleasesPost releases the given artifact to the given environment
+// RollbackPost rolls back to a specific gitops commit
 func (c *client) RollbackPost(env string, app string, targetSHA string) (string, error) {
 	uri := fmt.Sprintf(pathRollback+"?env=%s&app=%s&sha=%s", c.addr, env, app, targetSHA)
 	result := new(map[string]interface{})

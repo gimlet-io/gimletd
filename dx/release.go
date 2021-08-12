@@ -20,6 +20,7 @@ type Release struct {
 // ReleaseRequest contains all metadata about the release intent
 type ReleaseRequest struct {
 	Env         string `json:"env"`
+	App         string `json:"app"`
 	ArtifactID  string `json:"artifactId"`
 	TriggeredBy string `json:"triggeredBy"`
 }
