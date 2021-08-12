@@ -276,7 +276,7 @@ func (c *client) ReleasesPost(env string, app string, artifactID string) (string
 	result := new(map[string]interface{})
 	err := c.post(uri, nil, result)
 	if err != nil {
-		return "", nil
+		return "", err
 	}
 	res := *result
 	return res["id"].(string), nil
