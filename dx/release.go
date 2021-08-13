@@ -33,8 +33,8 @@ type RollbackRequest struct {
 	TriggeredBy string `json:"triggeredBy"`
 }
 
-//ReleaseStatus holds the info of a release
-type ReleaseStatus struct {
-	GitopsSha string `json:"gitopsSha"`
-	Applied   bool   `json:"applied"`
+//GitopsStatus holds the gitops references that were created based on an event
+type GitopsStatus struct {
+	GitopsHashes []string        `json:"gitopsHashes"`
+	Applied      map[string]bool `json:"applied"`
 }

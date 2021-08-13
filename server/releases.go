@@ -267,9 +267,9 @@ func getEvent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	statusBytes, _ := json.Marshal(map[string]interface{}{
-		"status":     event.Status,
-		"statusDesc": event.StatusDesc,
-		"statusMeta": event.StatusMeta,
+		"status":       event.Status,
+		"statusDesc":   event.StatusDesc,
+		"gitopsStatus": event.GitopsStatus,
 	})
 
 	w.WriteHeader(http.StatusOK)

@@ -65,7 +65,7 @@ type Client interface {
 	RollbackPost(env string, app string, targetSHA string) (string, error)
 
 	// TrackGet returns the state of an event
-	TrackGet(trackingID string) (string, string, *dx.ReleaseStatus, error)
+	TrackGet(trackingID string) (string, string, *dx.GitopsStatus, error)
 
 	// UserGet returns the user with the given login
 	UserGet(login string, withToken bool) (*model.User, error)

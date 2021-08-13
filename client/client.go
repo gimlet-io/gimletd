@@ -295,7 +295,7 @@ func (c *client) RollbackPost(env string, app string, targetSHA string) (string,
 }
 
 // TrackGet gets teh status of an event
-func (c *client) TrackGet(trackingID string) (string, string, *dx.ReleaseStatus, error) {
+func (c *client) TrackGet(trackingID string) (string, string, *dx.GitopsStatus, error) {
 	uri := fmt.Sprintf(pathEvent, c.addr)
 
 	result := new(map[string]interface{})
@@ -307,7 +307,7 @@ func (c *client) TrackGet(trackingID string) (string, string, *dx.ReleaseStatus,
 	res := *result
 	return res["status"].(string),
 		res["statusDesc"].(string),
-		res["statusMeta"].(*dx.ReleaseStatus),
+		res["gitopsStatus"].(*dx.GitopsStatus),
 		nil
 }
 
