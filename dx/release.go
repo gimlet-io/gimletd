@@ -32,3 +32,9 @@ type RollbackRequest struct {
 	TargetSHA   string `json:"targetSHA"`
 	TriggeredBy string `json:"triggeredBy"`
 }
+
+//ReleaseStatus holds the info of a release
+type ReleaseStatus struct {
+	GitopsSha string `json:"gitopsSha"`
+	Applied   bool   `json:"applied"`
+}

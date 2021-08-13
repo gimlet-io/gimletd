@@ -16,6 +16,7 @@ package ddl
 
 const createTableUsers = "create-table-users"
 const createTableEvents = "create-table-events"
+const addStatusMetaColumnToEventsTable = "add-status-meta-to-events-table"
 
 type migration struct {
 	name string
@@ -57,6 +58,10 @@ artifact_id   TEXT,
 UNIQUE(id)
 );
 `,
+		},
+		{
+			name: addStatusMetaColumnToEventsTable,
+			stmt: `ALTER TABLE events ADD COLUMN status_meta TEXT;`,
 		},
 	},
 	"postgres": {},

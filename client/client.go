@@ -295,17 +295,20 @@ func (c *client) RollbackPost(env string, app string, targetSHA string) (string,
 }
 
 // TrackGet gets teh status of an event
-func (c *client) TrackGet(trackingID string) (string, string, error) {
+func (c *client) TrackGet(trackingID string) (string, string, *dx.ReleaseStatus, error) {
 	uri := fmt.Sprintf(pathEvent, c.addr)
 
 	result := new(map[string]interface{})
 	err := c.get(uri+"?id="+trackingID, result)
 	if err != nil {
-		return "", "", err
+		return "", "", nil, err
 	}
 
 	res := *result
-	return res["status"].(string), res["desc"].(string), nil
+	return res["status"].(string),
+		res["statusDesc"].(string),
+		res["statusMeta"].(*dx.ReleaseStatus),
+		nil
 }
 
 // UserGet returns the user with the given login name

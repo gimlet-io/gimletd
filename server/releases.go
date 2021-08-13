@@ -266,9 +266,10 @@ func getEvent(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 
-	statusBytes, _ := json.Marshal(map[string]string{
-		"status": event.Status,
-		"desc":   event.StatusDesc,
+	statusBytes, _ := json.Marshal(map[string]interface{}{
+		"status":     event.Status,
+		"statusDesc": event.StatusDesc,
+		"statusMeta": event.StatusMeta,
 	})
 
 	w.WriteHeader(http.StatusOK)

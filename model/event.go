@@ -15,12 +15,13 @@ const TypeRelease = "release"
 const TypeRollback = "rollback"
 
 type Event struct {
-	ID         string `json:"id,omitempty"  meddler:"id"`
-	Created    int64  `json:"created,omitempty"  meddler:"created"`
-	Type       string `json:"type,omitempty"  meddler:"type"`
-	Blob       string `json:"blob,omitempty"  meddler:"blob"`
-	Status     string `json:"status"  meddler:"status"`
-	StatusDesc string `json:"statusDesc"  meddler:"status_desc"`
+	ID         string            `json:"id,omitempty"  meddler:"id"`
+	Created    int64             `json:"created,omitempty"  meddler:"created"`
+	Type       string            `json:"type,omitempty"  meddler:"type"`
+	Blob       string            `json:"blob,omitempty"  meddler:"blob"`
+	Status     string            `json:"status"  meddler:"status"`
+	StatusDesc string            `json:"statusDesc"  meddler:"status_desc"`
+	StatusMeta *dx.ReleaseStatus `json:"statusMeta"  meddler:"status_meta"`
 
 	// denormalized artifact fields
 	Repository   string      `json:"repository,omitempty"  meddler:"repository"`
