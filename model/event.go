@@ -21,7 +21,7 @@ type Event struct {
 	Blob         string           `json:"blob,omitempty"  meddler:"blob"`
 	Status       string           `json:"status"  meddler:"status"`
 	StatusDesc   string           `json:"statusDesc"  meddler:"status_desc"`
-	GitopsStatus *dx.GitopsStatus `json:"gitopsStatus"  meddler:"gitops_status"`
+	GitopsStatus *dx.GitopsStatus `json:"gitopsStatus"  meddler:"gitops_status,json"`
 
 	// denormalized artifact fields
 	Repository   string      `json:"repository,omitempty"  meddler:"repository"`

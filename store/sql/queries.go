@@ -44,7 +44,7 @@ FROM events
 WHERE status='new' order by created ASC limit 10;
 `,
 		UpdateEventStatus: `
-UPDATE events SET status = ?, status_desc = ?, gitopsStatus = ? WHERE id = ?;
+UPDATE events SET status = ?, status_desc = ?, gitops_status = ? WHERE id = ?;
 `,
 	},
 	"postgres": {},
