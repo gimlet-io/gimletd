@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"github.com/fluxcd/pkg/runtime/events"
 	"github.com/gimlet-io/gimletd/notifications"
+	"github.com/gimlet-io/gimletd/store"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -34,7 +35,8 @@ func Test_fluxEvent(t *testing.T) {
 		Message:   "message",
 		Reason:    "reason",
 		Metadata: map[string]string{
-			"test": "metadata",
+			"test":     "metadata",
+			"revision": "xyz",
 		},
 		ReportingController: "source-controller",
 		ReportingInstance:   "source-controller-xyz",
@@ -45,6 +47,7 @@ func Test_fluxEvent(t *testing.T) {
 	_, _, err := testPostEndpoint(fluxEvent, func(ctx context.Context) context.Context {
 		ctx = context.WithValue(ctx, "notificationsManager", notificationsManager)
 		ctx = context.WithValue(ctx, "gitopsRepo", "my/gitops")
+		ctx = context.WithValue(ctx, "store", store.NewTest())
 		return ctx
 	}, "/path", string(body))
 	assert.Nil(t, err)

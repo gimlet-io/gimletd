@@ -2,18 +2,17 @@ package notifications
 
 import (
 	"fmt"
-	"github.com/fluxcd/pkg/runtime/events"
+	"github.com/gimlet-io/gimletd/model"
 	githubLib "github.com/google/go-github/v33/github"
-	"strings"
 )
 
 type fluxMessage struct {
-	event      *events.Event
-	gitopsRepo string
+	gitopsCommit *model.GitopsCommit
+	gitopsRepo   string
 }
 
 func (fm *fluxMessage) AsSlackMessage() (*slackMessage, error) {
-	if fm.event.Reason == "Progressing" {
+	if fm.gitopsCommit.Status == model.Progressing {
 		return nil, nil
 	}
 
@@ -22,16 +21,12 @@ func (fm *fluxMessage) AsSlackMessage() (*slackMessage, error) {
 		Blocks: []Block{},
 	}
 
-	if fm.event.Reason == "ReconciliationSucceeded" {
-		rev := ""
-		if val, ok := fm.event.Metadata["revision"]; ok {
-			rev = val
-		}
-		msg.Text = fmt.Sprintf("Gitops changes applied :heavy_check_mark: %s", commitLink(fm.gitopsRepo, parseRev(rev)))
+	if fm.gitopsCommit.Status == model.ReconciliationSucceeded {
+		msg.Text = fmt.Sprintf("Gitops changes applied :heavy_check_mark: %s", commitLink(fm.gitopsRepo, fm.gitopsCommit.Sha))
 	}
 
-	if fm.event.Reason == "ValidationFailed" ||
-		fm.event.Reason == "ReconciliationFailed" {
+	if fm.gitopsCommit.Status == model.ValidationFailed ||
+		fm.gitopsCommit.Status == model.ReconciliationFailed {
 		msg.Text = ":exclamation: Gitops apply failed"
 	}
 
@@ -45,15 +40,15 @@ func (fm *fluxMessage) AsSlackMessage() (*slackMessage, error) {
 		},
 	)
 
-	if fm.event.Reason == "ValidationFailed" ||
-		fm.event.Reason == "ReconciliationFailed" {
+	if fm.gitopsCommit.Status == model.ValidationFailed ||
+		fm.gitopsCommit.Status == model.ReconciliationFailed {
 		msg.Blocks = append(msg.Blocks,
 			Block{
 				Type: contextString,
 				Elements: []Text{
 					{
 						Type: markdown,
-						Text: extractValidationError(fm.event.Message),
+						Text: fm.gitopsCommit.StatusDesc,
 					},
 				},
 			},
@@ -61,30 +56,6 @@ func (fm *fluxMessage) AsSlackMessage() (*slackMessage, error) {
 	}
 
 	return msg, nil
-}
-
-func extractValidationError(msg string) string {
-	errors := ""
-	lines := strings.Split(msg, "\n")
-	for _, line := range lines {
-		if line != "" &&
-			!strings.HasSuffix(line, "created") && !strings.HasSuffix(line, "created (dry run)") &&
-			!strings.HasSuffix(line, "configured") && !strings.HasSuffix(line, "configured (dry run)") &&
-			!strings.HasSuffix(line, "unchanged") && !strings.HasSuffix(line, "unchanged (dry run)") {
-			errors += line + "\n"
-		}
-	}
-
-	return errors
-}
-
-func parseRev(rev string) string {
-	parts := strings.Split(rev, "/")
-	if len(parts) != 2 {
-		return "n/a"
-	}
-
-	return parts[1]
 }
 
 func (fm *fluxMessage) Env() string {
@@ -95,10 +66,10 @@ func (fm *fluxMessage) AsGithubStatus() (*githubLib.RepoStatus, error) {
 	return nil, nil
 }
 
-func MessageFromFluxEvent(gitopsRepo string, event *events.Event) Message {
+func NewMessage(gitopsRepo string, gitopsCommit *model.GitopsCommit) Message {
 	return &fluxMessage{
-		event:      event,
-		gitopsRepo: gitopsRepo,
+		gitopsCommit: gitopsCommit,
+		gitopsRepo:   gitopsRepo,
 	}
 }
 
