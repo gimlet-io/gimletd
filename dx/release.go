@@ -20,7 +20,7 @@ type Release struct {
 // ReleaseRequest contains all metadata about the release intent
 type ReleaseRequest struct {
 	Env         string `json:"env"`
-	App         string `json:"app"`
+	App         string `json:"app,omitempty"`
 	ArtifactID  string `json:"artifactId"`
 	TriggeredBy string `json:"triggeredBy"`
 }
@@ -31,4 +31,16 @@ type RollbackRequest struct {
 	App         string `json:"app"`
 	TargetSHA   string `json:"targetSHA"`
 	TriggeredBy string `json:"triggeredBy"`
+}
+
+//GitopsStatus holds the gitops references that were created based on an event
+type GitopsStatus struct {
+	GitopsHashes []string        `json:"gitopsHashes"`
+	Applied      map[string]bool `json:"applied"`
+}
+
+type ReleaseStatus struct {
+	Status       string
+	StatusDesc   string
+	GitopsStatus *GitopsStatus
 }

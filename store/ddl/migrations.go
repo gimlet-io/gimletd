@@ -16,6 +16,7 @@ package ddl
 
 const createTableUsers = "create-table-users"
 const createTableEvents = "create-table-events"
+const addGitopsStatusColumnToEventsTable = "add-gitops_status-to-events-table"
 
 type migration struct {
 	name string
@@ -57,6 +58,10 @@ artifact_id   TEXT,
 UNIQUE(id)
 );
 `,
+		},
+		{
+			name: addGitopsStatusColumnToEventsTable,
+			stmt: `ALTER TABLE events ADD COLUMN gitops_status TEXT;`,
 		},
 	},
 	"postgres": {},

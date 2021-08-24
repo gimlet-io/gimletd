@@ -2,6 +2,7 @@ package notifications
 
 import (
 	"fmt"
+	"github.com/gimlet-io/gimletd/dx"
 	githubLib "github.com/google/go-github/v33/github"
 	"strings"
 	"time"
@@ -11,7 +12,7 @@ const githubCommitLink = "https://github.com/%s/commit/%s"
 const contextFormat = "gitops/%s@%s"
 
 type gitopsMessage struct {
-	event *GitopsEvent
+	event *dx.GitopsEvent
 }
 
 func (gm *gitopsMessage) AsSlackMessage() (*slackMessage, error) {
@@ -20,7 +21,7 @@ func (gm *gitopsMessage) AsSlackMessage() (*slackMessage, error) {
 		Blocks: []Block{},
 	}
 
-	if gm.event.Status == Failure {
+	if gm.event.Status == dx.Failure {
 		msg.Text = fmt.Sprintf("Failed to roll out %s of %s", gm.event.Manifest.App, gm.event.Artifact.Version.RepositoryName)
 		msg.Blocks = append(msg.Blocks,
 			Block{
@@ -89,7 +90,7 @@ func (gm *gitopsMessage) AsGithubStatus() (*githubLib.RepoStatus, error) {
 	targetURL := fmt.Sprintf(githubCommitLink, gm.event.GitopsRepo, gm.event.GitopsRef)
 	targetURLPtr := &targetURL
 
-	if gm.event.Status == Failure {
+	if gm.event.Status == dx.Failure {
 		state = "failure"
 		targetURLPtr = nil
 	}
@@ -102,7 +103,7 @@ func (gm *gitopsMessage) AsGithubStatus() (*githubLib.RepoStatus, error) {
 	}, nil
 }
 
-func MessageFromGitOpsEvent(event *GitopsEvent) Message {
+func MessageFromGitOpsEvent(event *dx.GitopsEvent) Message {
 	return &gitopsMessage{
 		event: event,
 	}

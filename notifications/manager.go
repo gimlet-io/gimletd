@@ -1,29 +1,9 @@
 package notifications
 
 import (
-	"github.com/gimlet-io/gimletd/dx"
 	"github.com/sirupsen/logrus"
 	"strings"
 )
-
-type Status int
-
-const (
-	Success Status = iota
-	Failure
-)
-
-type GitopsEvent struct {
-	Manifest    *dx.Manifest
-	Artifact    *dx.Artifact
-	TriggeredBy string
-
-	Status     Status
-	StatusDesc string
-
-	GitopsRef  string
-	GitopsRepo string
-}
 
 type Manager interface {
 	Broadcast(msg Message)

@@ -54,7 +54,6 @@ func (w *GitopsWorker) Run() {
 	for {
 		events, err := w.store.UnprocessedEvents()
 		if err != nil {
-
 			logrus.Errorf("Could not fetch unprocessed events %s", err.Error())
 			time.Sleep(1 * time.Second)
 			continue
@@ -85,30 +84,69 @@ func processEvent(
 	notificationsManager notifications.Manager,
 	repoCache *githelper.RepoCache,
 ) {
+	// process event based on type
+	var err error
+	var gitopsEvents []*dx.GitopsEvent
 	switch event.Type {
 	case model.TypeArtifact:
-		err := processArtifactEvent(gitopsRepo, gitopsRepoDeployKeyPath, githubChartAccessDeployKeyPath, event, notificationsManager, repoCache)
-		if err != nil {
-			administerError(err, event, store)
-			return
+		gitopsEvents, err = processArtifactEvent(gitopsRepo, gitopsRepoDeployKeyPath, githubChartAccessDeployKeyPath, event, repoCache)
+		if len(gitopsEvents) > 0 {
+			repoCache.Invalidate()
 		}
 	case model.TypeRelease:
-		err := processReleaseEvent(store, gitopsRepo, gitopsRepoDeployKeyPath, githubChartAccessDeployKeyPath, event, notificationsManager)
-		if err != nil {
-			administerError(err, event, store)
-			return
-		}
+		gitopsEvents, err = processReleaseEvent(store, gitopsRepo, gitopsRepoDeployKeyPath, githubChartAccessDeployKeyPath, event)
 		repoCache.Invalidate()
 	case model.TypeRollback:
-		err := processRollbackEvent(gitopsRepo, gitopsRepoDeployKeyPath, event, notificationsManager)
-		if err != nil {
-			administerError(err, event, store)
-			return
-		}
+		err = processRollbackEvent(gitopsRepo, gitopsRepoDeployKeyPath, event)
 		repoCache.Invalidate()
 	}
 
-	administerSuccess(store, event)
+	// send out notifications based on gitops events
+	for _, gitopsEvent := range gitopsEvents {
+		notificationsManager.Broadcast(notifications.MessageFromGitOpsEvent(gitopsEvent))
+	}
+
+	for _, gitopsEvent := range gitopsEvents {
+		setGitopsHashOnEvent(event, gitopsEvent)
+	}
+
+	// store event state
+	if err != nil {
+		logrus.Errorf("error in processing event: %s", err.Error())
+		event.Status = model.StatusError
+		event.StatusDesc = err.Error()
+		err := updateEvent(store, event)
+		if err != nil {
+			logrus.Warnf("could not update event status %v", err)
+		}
+	} else {
+		event.Status = model.StatusProcessed
+		err := updateEvent(store, event)
+		if err != nil {
+			logrus.Warnf("could not update event status %v", err)
+		}
+	}
+}
+
+func setGitopsHashOnEvent(event *model.Event, gitopsEvent *dx.GitopsEvent) {
+	gitopsSha := gitopsEvent.GitopsRef
+
+	if gitopsSha == "" {
+		return
+	}
+
+	if event.GitopsStatus == nil {
+		event.GitopsStatus = &dx.GitopsStatus{
+			GitopsHashes: []string{},
+			Applied:      map[string]bool{},
+		}
+	}
+
+	event.GitopsStatus.GitopsHashes = append(
+		event.GitopsStatus.GitopsHashes,
+		gitopsSha,
+	)
+	event.GitopsStatus.Applied[gitopsSha] = false
 }
 
 func processReleaseEvent(
@@ -117,21 +155,21 @@ func processReleaseEvent(
 	gitopsRepoDeployKeyPath string,
 	githubChartAccessDeployKeyPath string,
 	event *model.Event,
-	notificationsManager notifications.Manager,
-) error {
+) ([]*dx.GitopsEvent, error) {
+	var gitopsEvents []*dx.GitopsEvent
 	var releaseRequest dx.ReleaseRequest
 	err := json.Unmarshal([]byte(event.Blob), &releaseRequest)
 	if err != nil {
-		return fmt.Errorf("cannot parse release request with id: %s", event.ID)
+		return gitopsEvents, fmt.Errorf("cannot parse release request with id: %s", event.ID)
 	}
 
 	artifactEvent, err := store.Artifact(releaseRequest.ArtifactID)
 	if err != nil {
-		return fmt.Errorf("cannot find artifact with id: %s", event.ArtifactID)
+		return gitopsEvents, fmt.Errorf("cannot find artifact with id: %s", event.ArtifactID)
 	}
 	artifact, err := model.ToArtifact(artifactEvent)
 	if err != nil {
-		return fmt.Errorf("cannot parse artifact %s", err.Error())
+		return gitopsEvents, fmt.Errorf("cannot parse artifact %s", err.Error())
 	}
 
 	for _, env := range artifact.Environments {
@@ -143,28 +181,27 @@ func processReleaseEvent(
 			continue
 		}
 
-		err = cloneTemplateWriteAndPush(
+		gitopsEvent, err := cloneTemplateWriteAndPush(
 			gitopsRepo,
 			gitopsRepoDeployKeyPath,
 			githubChartAccessDeployKeyPath,
-			notificationsManager,
 			artifact,
 			env,
 			releaseRequest.TriggeredBy,
 		)
+		gitopsEvents = append(gitopsEvents, gitopsEvent)
 		if err != nil {
-			return err
+			return gitopsEvents, err
 		}
 	}
 
-	return nil
+	return gitopsEvents, nil
 }
 
 func processRollbackEvent(
 	gitopsRepo string,
 	gitopsRepoDeployKeyPath string,
 	event *model.Event,
-	notificationsManager notifications.Manager,
 ) error {
 	var rollbackRequest dx.RollbackRequest
 	err := json.Unmarshal([]byte(event.Blob), &rollbackRequest)
@@ -202,12 +239,12 @@ func processArtifactEvent(
 	gitopsRepoDeployKeyPath string,
 	githubChartAccessDeployKeyPath string,
 	event *model.Event,
-	notificationsManager notifications.Manager,
 	repoCache *githelper.RepoCache,
-) error {
+) ([]*dx.GitopsEvent, error) {
+	var gitopsEvents []*dx.GitopsEvent
 	artifact, err := model.ToArtifact(event)
 	if err != nil {
-		return fmt.Errorf("cannot parse artifact %s", err.Error())
+		return gitopsEvents, fmt.Errorf("cannot parse artifact %s", err.Error())
 	}
 
 	for _, env := range artifact.Environments {
@@ -215,50 +252,55 @@ func processArtifactEvent(
 			continue
 		}
 
-		err = cloneTemplateWriteAndPush(
+		gitopsEvent, err := cloneTemplateWriteAndPush(
 			gitopsRepo,
 			gitopsRepoDeployKeyPath,
 			githubChartAccessDeployKeyPath,
-			notificationsManager,
 			artifact,
 			env,
 			"policy",
 		)
+		gitopsEvents = append(gitopsEvents, gitopsEvent)
 		if err != nil {
-			return err
+			return gitopsEvents, err
 		}
 
 		repoCache.Invalidate()
 	}
 
-	return nil
+	return gitopsEvents, nil
 }
 
 func cloneTemplateWriteAndPush(
 	gitopsRepo string,
 	gitopsRepoDeployKeyPath string,
 	githubChartAccessDeployKeyPath string,
-	notificationsManager notifications.Manager,
 	artifact *dx.Artifact,
 	env *dx.Manifest,
 	triggeredBy string,
-) error {
-	repo, err := githelper.CloneToMemory(gitopsRepo, gitopsRepoDeployKeyPath, true)
+) (*dx.GitopsEvent, error) {
+	gitopsEvent := &dx.GitopsEvent{
+		Manifest:    env,
+		Artifact:    artifact,
+		TriggeredBy: triggeredBy,
+		Status:      dx.Success,
+		GitopsRepo:  gitopsRepo,
+	}
+
+	repoTmpPath, repo, err := githelper.CloneToTmpFs(gitopsRepo, gitopsRepoDeployKeyPath)
+	defer githelper.TmpFsCleanup(repoTmpPath)
 	if err != nil {
-		return err
+		gitopsEvent.Status = dx.Failure
+		gitopsEvent.StatusDesc = err.Error()
+		return gitopsEvent, err
 	}
 
 	err = env.ResolveVars(artifact.Context)
 	if err != nil {
-		return fmt.Errorf("cannot resolve manifest vars %s", err.Error())
-	}
-
-	gitopsEvent := &notifications.GitopsEvent{
-		Manifest:    env,
-		Artifact:    artifact,
-		TriggeredBy: triggeredBy,
-		Status:      notifications.Success,
-		GitopsRepo:  gitopsRepo,
+		err = fmt.Errorf("cannot resolve manifest vars %s", err.Error())
+		gitopsEvent.Status = dx.Failure
+		gitopsEvent.StatusDesc = err.Error()
+		return gitopsEvent, err
 	}
 
 	releaseMeta := &dx.Release{
@@ -276,23 +318,23 @@ func cloneTemplateWriteAndPush(
 		githubChartAccessDeployKeyPath,
 	)
 	if err != nil {
-		gitopsEvent.Status = notifications.Failure
+		gitopsEvent.Status = dx.Failure
 		gitopsEvent.StatusDesc = err.Error()
-		notificationsManager.Broadcast(notifications.MessageFromGitOpsEvent(gitopsEvent))
-		return err
+		return gitopsEvent, err
 	}
 
 	err = githelper.Push(repo, gitopsRepoDeployKeyPath)
 	if err != nil {
-		return err
+		gitopsEvent.Status = dx.Failure
+		gitopsEvent.StatusDesc = err.Error()
+		return gitopsEvent, err
 	}
 
 	if sha != "" { // if there is a change to push
 		gitopsEvent.GitopsRef = sha
-		notificationsManager.Broadcast(notifications.MessageFromGitOpsEvent(gitopsEvent))
 	}
 
-	return nil
+	return gitopsEvent, nil
 }
 
 func revertTo(env string, app string, repo *git.Repository, repoTmpPath string, sha string) error {
@@ -334,28 +376,25 @@ func revertTo(env string, app string, repo *git.Repository, repoTmpPath string, 
 	return nil
 }
 
-func administerSuccess(store *store.Store, event *model.Event) {
-	event.Status = model.StatusProcessed
-	updateEvent(store, event)
-}
+func updateEvent(store *store.Store, event *model.Event) error {
+	if event.GitopsStatus == nil {
+		event.GitopsStatus = &dx.GitopsStatus{
+			GitopsHashes: []string{},
+			Applied:      map[string]bool{},
+		}
+	}
 
-func updateEvent(store *store.Store, event *model.Event) {
-	err := store.UpdateEventStatus(
+	gitopsStatusString, err := json.Marshal(event.GitopsStatus)
+	if err != nil {
+		return fmt.Errorf("cannot marshal gitopsStatusString %s", err.Error())
+	}
+
+	return store.UpdateEventStatus(
 		event.ID,
 		event.Status,
 		event.StatusDesc,
+		string(gitopsStatusString),
 	)
-	if err != nil {
-		logrus.Warnf("could not update event status %v", err)
-	}
-}
-
-func administerError(err error, event *model.Event, store *store.Store) {
-	logrus.Errorf("error in processing event: %s", err.Error())
-	event.Status = model.StatusError
-	event.StatusDesc = err.Error()
-
-	updateEvent(store, event)
 }
 
 func gitopsTemplateAndWrite(

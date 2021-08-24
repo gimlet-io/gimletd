@@ -8,12 +8,9 @@ import (
 	"github.com/gimlet-io/gimlet-cli/commands"
 	"github.com/gimlet-io/gimletd/dx"
 	"github.com/go-git/go-billy/v5"
-	"github.com/go-git/go-billy/v5/memfs"
 	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
-	"github.com/go-git/go-git/v5/storage/memory"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
@@ -26,33 +23,6 @@ import (
 )
 
 const gitSSHAddressFormat = "git@github.com:%s.git"
-
-// CloneToMemory checks out a repo to an in-memory filesystem
-func CloneToMemory(repoName string, privateKeyPath string, shallow bool) (*git.Repository, error) {
-	url := fmt.Sprintf(gitSSHAddressFormat, repoName)
-	publicKeys, err := ssh.NewPublicKeysFromFile("git", privateKeyPath, "")
-	if err != nil {
-		return nil, fmt.Errorf("cannot generate public key from private: %s", err.Error())
-	}
-
-	fs := memfs.New()
-	opts := &git.CloneOptions{
-		URL:  url,
-		Auth: publicKeys,
-	}
-	if shallow {
-		opts.Depth = 1
-	}
-	repo, err := git.Clone(memory.NewStorage(), fs, opts)
-
-	if err != nil && strings.Contains(err.Error(), "remote repository is empty") {
-		repo, _ := git.Init(memory.NewStorage(), memfs.New())
-		_, err = repo.CreateRemote(&config.RemoteConfig{Name: "origin", URLs: []string{url}})
-		return repo, err
-	}
-
-	return repo, err
-}
 
 func CloneToTmpFs(repoName string, privateKeyPath string) (string, *git.Repository, error) {
 	path, err := ioutil.TempDir("", "gitops-")

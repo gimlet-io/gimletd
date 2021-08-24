@@ -111,6 +111,18 @@ WHERE id = ?;
 	return &data, err
 }
 
+// EventGitopsStatus returns the gitops status of a release event
+// Meddler can't handle nils for json types, so we decode them by hand
+func (db *Store) EventGitopsStatus(id string) (status *string, err error) {
+	query := fmt.Sprintf(`
+SELECT gitops_status
+FROM events
+WHERE id = ?;
+`)
+	err = db.QueryRow(query, id).Scan(&status)
+	return status, err
+}
+
 // UnprocessedEvents selects an event timeline
 func (db *Store) UnprocessedEvents() (events []*model.Event, err error) {
 	stmt := sql.Stmt(db.driver, sql.SelectUnprocessedEvents)
@@ -119,9 +131,9 @@ func (db *Store) UnprocessedEvents() (events []*model.Event, err error) {
 }
 
 // UpdateEventStatus updates an event status in the database
-func (db *Store) UpdateEventStatus(id string, status string, desc string) error {
+func (db *Store) UpdateEventStatus(id string, status string, desc string, gitopsStatus string) error {
 	stmt := sql.Stmt(db.driver, sql.UpdateEventStatus)
-	_, err := db.Exec(stmt, status, desc, id)
+	_, err := db.Exec(stmt, status, desc, gitopsStatus, id)
 	return err
 }
 

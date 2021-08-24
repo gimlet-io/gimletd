@@ -266,9 +266,20 @@ func getEvent(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 
-	statusBytes, _ := json.Marshal(map[string]string{
-		"status": event.Status,
-		"desc":   event.StatusDesc,
+	var gitopsStatus dx.GitopsStatus
+	gitopsStatusString, err := store.EventGitopsStatus(id)
+	if err != nil {
+		logrus.Errorf("cannot get event gitops status: %s", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	}
+	if gitopsStatusString != nil {
+		json.Unmarshal([]byte(*gitopsStatusString), &gitopsStatus)
+	}
+
+	statusBytes, _ := json.Marshal(dx.ReleaseStatus{
+		Status:       event.Status,
+		StatusDesc:   event.StatusDesc,
+		GitopsStatus: &gitopsStatus,
 	})
 
 	w.WriteHeader(http.StatusOK)
