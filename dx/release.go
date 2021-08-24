@@ -40,7 +40,7 @@ type GitopsStatus struct {
 }
 
 type ReleaseStatus struct {
-	Status       string
-	StatusDesc   string
-	GitopsStatus *GitopsStatus
+	Status       string        `json:"status"`
+	StatusDesc   string        `json:"statusDesc"`
+	GitopsStatus *GitopsStatus `json:"gitopsStatus"`
 }
