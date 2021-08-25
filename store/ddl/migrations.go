@@ -62,26 +62,16 @@ UNIQUE(id)
 		},
 		{
 			name: addGitopsStatusColumnToEventsTable,
-			stmt: `ALTER TABLE events ADD COLUMN gitops_status TEXT;`,
+			stmt: `ALTER TABLE events ADD COLUMN gitops_hashes TEXT DEFAULT '[]';`,
 		},
 		{
 			name: createTableGitopsCommits,
 			stmt: `
 CREATE TABLE IF NOT EXISTS gitops_commits (
-id            TEXT,
-created       INTEGER,
-type          TEXT,
-blob          TEXT,
-status        TEXT DEFAULT 'new',
-status_desc   TEXT DEFAULT '',
-repository    TEXT,
-branch        TEXT,
-event         TEXT,
-source_branch TEXT,
-target_branch TEXT,
-tag           TEXT,
-sha           TEXT,
-artifact_id   TEXT,
+id          INTEGER PRIMARY KEY AUTOINCREMENT,
+sha         TEXT,
+status      TEXT,
+status_desc TEXT,
 UNIQUE(id)
 );
 `,

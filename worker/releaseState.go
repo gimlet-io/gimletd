@@ -22,7 +22,6 @@ func (w *ReleaseStateWorker) Run() {
 	for {
 		t0 := time.Now()
 		repo := w.RepoCache.InstanceForRead()
-		logrus.Infof("releaseState_clone: %f", time.Since(t0).Seconds())
 		w.Perf.WithLabelValues("releaseState_clone").Observe(time.Since(t0).Seconds())
 
 		envs, err := githelper.Envs(repo)
@@ -41,7 +40,6 @@ func (w *ReleaseStateWorker) Run() {
 				time.Sleep(30 * time.Second)
 				continue
 			}
-			logrus.Infof("releaseState_appReleases: %f", time.Since(t1).Seconds())
 			w.Perf.WithLabelValues("releaseState_appReleases").Observe(time.Since(t1).Seconds())
 
 			for app, release := range appReleases {
@@ -52,7 +50,6 @@ func (w *ReleaseStateWorker) Run() {
 					time.Sleep(30 * time.Second)
 					continue
 				}
-				logrus.Infof("releaseState_appRelease: %f", time.Since(t2).Seconds())
 				w.Perf.WithLabelValues("releaseState_appRelease").Observe(time.Since(t2).Seconds())
 
 				gitopsRef := fmt.Sprintf("https://github.com/%s/commit/%s", w.GitopsRepo, commit.Hash.String())
@@ -79,7 +76,6 @@ func (w *ReleaseStateWorker) Run() {
 				}
 			}
 		}
-		logrus.Infof("releaseState_run: %f", time.Since(t0).Seconds())
 		w.Perf.WithLabelValues("releaseState_run").Observe(time.Since(t0).Seconds())
 		time.Sleep(30 * time.Second)
 	}

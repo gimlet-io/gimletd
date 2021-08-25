@@ -453,7 +453,6 @@ func Status(
 		}
 	}
 
-	logrus.Infof("githelper_status: %f", time.Since(t0).Seconds())
 	perf.WithLabelValues("githelper_status").Observe(time.Since(t0).Seconds())
 	return appReleases, nil
 }

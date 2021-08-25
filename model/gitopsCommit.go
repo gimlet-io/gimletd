@@ -6,8 +6,8 @@ const ValidationFailed = "ValidationFailed"
 const ReconciliationFailed = "ReconciliationFailed"
 
 type GitopsCommit struct {
-	ID         string `json:"id,omitempty"  meddler:"id"`
+	ID         int64  `json:"-"  meddler:"id,pk"`
 	Sha        string `json:"sha,omitempty"  meddler:"sha"`
 	Status     string `json:"status,omitempty"  meddler:"status"`
-	StatusDesc string `json:"statusDesc,omitempty"  meddler:"statusDesc"`
+	StatusDesc string `json:"statusDesc,omitempty"  meddler:"status_desc"`
 }

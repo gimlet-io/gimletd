@@ -29,7 +29,7 @@ func fluxEvent(w http.ResponseWriter, r *http.Request) {
 	notificationsManager.Broadcast(notifications.NewMessage(gitopsRepo, gitopsCommit))
 
 	store := ctx.Value("store").(*store.Store)
-	err = store.SaveOrUpdateGitopsCommit(*gitopsCommit)
+	err = store.SaveOrUpdateGitopsCommit(gitopsCommit)
 	if err != nil {
 		log.Errorf("could not save or update gitops commit: %s", err)
 	}
