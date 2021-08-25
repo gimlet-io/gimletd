@@ -81,7 +81,7 @@ func Push(repo *git.Repository, privateKeyPath string) error {
 		return nil
 	}
 
-	return nil
+	return err
 }
 
 func NothingToCommit(repo *git.Repository) (bool, error) {
