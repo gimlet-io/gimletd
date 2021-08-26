@@ -81,7 +81,7 @@ func Push(repo *git.Repository, privateKeyPath string) error {
 		return nil
 	}
 
-	return nil
+	return err
 }
 
 func NothingToCommit(repo *git.Repository) (bool, error) {
@@ -453,7 +453,6 @@ func Status(
 		}
 	}
 
-	logrus.Infof("githelper_status: %f", time.Since(t0).Seconds())
 	perf.WithLabelValues("githelper_status").Observe(time.Since(t0).Seconds())
 	return appReleases, nil
 }

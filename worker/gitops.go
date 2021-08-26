@@ -135,18 +135,11 @@ func setGitopsHashOnEvent(event *model.Event, gitopsEvent *dx.GitopsEvent) {
 		return
 	}
 
-	if event.GitopsStatus == nil {
-		event.GitopsStatus = &dx.GitopsStatus{
-			GitopsHashes: []string{},
-			Applied:      map[string]bool{},
-		}
+	if event.GitopsHashes == nil {
+		event.GitopsHashes = []string{}
 	}
 
-	event.GitopsStatus.GitopsHashes = append(
-		event.GitopsStatus.GitopsHashes,
-		gitopsSha,
-	)
-	event.GitopsStatus.Applied[gitopsSha] = false
+	event.GitopsHashes = append(event.GitopsHashes, gitopsSha)
 }
 
 func processReleaseEvent(
@@ -377,24 +370,11 @@ func revertTo(env string, app string, repo *git.Repository, repoTmpPath string, 
 }
 
 func updateEvent(store *store.Store, event *model.Event) error {
-	if event.GitopsStatus == nil {
-		event.GitopsStatus = &dx.GitopsStatus{
-			GitopsHashes: []string{},
-			Applied:      map[string]bool{},
-		}
-	}
-
-	gitopsStatusString, err := json.Marshal(event.GitopsStatus)
+	gitopsHashesString, err := json.Marshal(event.GitopsHashes)
 	if err != nil {
-		return fmt.Errorf("cannot marshal gitopsStatusString %s", err.Error())
+		return err
 	}
-
-	return store.UpdateEventStatus(
-		event.ID,
-		event.Status,
-		event.StatusDesc,
-		string(gitopsStatusString),
-	)
+	return store.UpdateEventStatus(event.ID, event.Status, event.StatusDesc, string(gitopsHashesString))
 }
 
 func gitopsTemplateAndWrite(

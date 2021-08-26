@@ -15,13 +15,13 @@ const TypeRelease = "release"
 const TypeRollback = "rollback"
 
 type Event struct {
-	ID           string           `json:"id,omitempty"  meddler:"id"`
-	Created      int64            `json:"created,omitempty"  meddler:"created"`
-	Type         string           `json:"type,omitempty"  meddler:"type"`
-	Blob         string           `json:"blob,omitempty"  meddler:"blob"`
-	Status       string           `json:"status"  meddler:"status"`
-	StatusDesc   string           `json:"statusDesc"  meddler:"status_desc"`
-	GitopsStatus *dx.GitopsStatus `json:"gitopsStatus"  meddler:"gitops_status,json"`
+	ID           string   `json:"id,omitempty"  meddler:"id"`
+	Created      int64    `json:"created,omitempty"  meddler:"created"`
+	Type         string   `json:"type,omitempty"  meddler:"type"`
+	Blob         string   `json:"blob,omitempty"  meddler:"blob"`
+	Status       string   `json:"status"  meddler:"status"`
+	StatusDesc   string   `json:"statusDesc"  meddler:"status_desc"`
+	GitopsHashes []string `json:"gitopsHashes"  meddler:"gitops_hashes,json"`
 
 	// denormalized artifact fields
 	Repository   string      `json:"repository,omitempty"  meddler:"repository"`

@@ -17,6 +17,7 @@ package ddl
 const createTableUsers = "create-table-users"
 const createTableEvents = "create-table-events"
 const addGitopsStatusColumnToEventsTable = "add-gitops_status-to-events-table"
+const createTableGitopsCommits = "create-table-gitopsCommits"
 
 type migration struct {
 	name string
@@ -61,7 +62,19 @@ UNIQUE(id)
 		},
 		{
 			name: addGitopsStatusColumnToEventsTable,
-			stmt: `ALTER TABLE events ADD COLUMN gitops_status TEXT;`,
+			stmt: `ALTER TABLE events ADD COLUMN gitops_hashes TEXT DEFAULT '[]';`,
+		},
+		{
+			name: createTableGitopsCommits,
+			stmt: `
+CREATE TABLE IF NOT EXISTS gitops_commits (
+id          INTEGER PRIMARY KEY AUTOINCREMENT,
+sha         TEXT,
+status      TEXT,
+status_desc TEXT,
+UNIQUE(id)
+);
+`,
 		},
 	},
 	"postgres": {},

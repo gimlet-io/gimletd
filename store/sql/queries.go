@@ -20,6 +20,7 @@ const SelectAllUser = "select-all-user"
 const DeleteUser = "deleteUser"
 const SelectUnprocessedEvents = "select-unprocessed-events"
 const UpdateEventStatus = "update-event-status"
+const SelectGitopsCommitBySha = "select-gitops-commit-by-sha"
 
 var queries = map[string]map[string]string{
 	"sqlite3": {
@@ -44,7 +45,12 @@ FROM events
 WHERE status='new' order by created ASC limit 10;
 `,
 		UpdateEventStatus: `
-UPDATE events SET status = ?, status_desc = ?, gitops_status = ? WHERE id = ?;
+UPDATE events SET status = ?, status_desc = ?, gitops_hashes = ? WHERE id = ?;
+`,
+		SelectGitopsCommitBySha: `
+SELECT id, sha, status, status_desc
+FROM gitops_commits
+WHERE sha = ?;
 `,
 	},
 	"postgres": {},

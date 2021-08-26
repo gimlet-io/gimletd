@@ -22,3 +22,13 @@ build:
 dist:
 	mkdir -p bin
 	GOOS=linux GOARCH=amd64 go build -ldflags $(LDFLAGS) -a -installsuffix cgo -o bin/gimletd-linux-x86_64 github.com/gimlet-io/gimletd/cmd
+
+start-local-env:
+	docker-compose -f fixtures/k3s/docker-compose.yml up -d
+
+stop-local-env:
+	docker-compose -f fixtures/k3s/docker-compose.yml stop
+
+clean-local-env:
+	docker-compose -f fixtures/k3s/docker-compose.yml down
+	docker volume rm k3s_k3s-gimlet

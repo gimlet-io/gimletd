@@ -173,9 +173,10 @@ func release(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	event, err := store.CreateEvent(&model.Event{
-		Type:       model.TypeRelease,
-		Blob:       string(releaseRequestStr),
-		Repository: artifact.Repository,
+		Type:         model.TypeRelease,
+		Blob:         string(releaseRequestStr),
+		Repository:   artifact.Repository,
+		GitopsHashes: []string{},
 	})
 	if err != nil {
 		http.Error(w, fmt.Sprintf("%s - cannot save release request: %s", http.StatusText(http.StatusInternalServerError), err), http.StatusInternalServerError)
@@ -266,20 +267,30 @@ func getEvent(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 
-	var gitopsStatus dx.GitopsStatus
-	gitopsStatusString, err := store.EventGitopsStatus(id)
-	if err != nil {
-		logrus.Errorf("cannot get event gitops status: %s", err)
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-	}
-	if gitopsStatusString != nil {
-		json.Unmarshal([]byte(*gitopsStatusString), &gitopsStatus)
+	gitopsStatus := map[string]dx.GitopsStatus{}
+	for _, gitopsHash := range event.GitopsHashes {
+		gitopsCommit, err := store.GitopsCommit(gitopsHash)
+		if err != nil {
+			logrus.Warnf("cannot get gitops commit: %s", err)
+			continue
+		}
+
+		gitopsStatus[gitopsHash] = dx.GitopsStatus{
+			Status: "N/A",
+		}
+
+		if gitopsCommit != nil {
+			gitopsStatus[gitopsHash] = dx.GitopsStatus{
+				Status:     gitopsCommit.Status,
+				StatusDesc: gitopsCommit.StatusDesc,
+			}
+		}
 	}
 
 	statusBytes, _ := json.Marshal(dx.ReleaseStatus{
 		Status:       event.Status,
 		StatusDesc:   event.StatusDesc,
-		GitopsStatus: &gitopsStatus,
+		GitopsHashes: gitopsStatus,
 	})
 
 	w.WriteHeader(http.StatusOK)
