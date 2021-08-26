@@ -1,6 +1,7 @@
 package server
 
 import (
+	"encoding/json"
 	"github.com/gimlet-io/gimletd/cmd/config"
 	"github.com/gimlet-io/gimletd/githelper"
 	"github.com/gimlet-io/gimletd/notifications"
@@ -56,6 +57,13 @@ func SetupRouter(
 		r.Post("/api/rollback", rollback)
 		r.Get("/api/event", getEvent)
 		r.Post("/api/flux-events", fluxEvent)
+
+		r.Get("/api/gitopsRepo", func(w http.ResponseWriter, r *http.Request) {
+			gitopsRepo := r.Context().Value("gitopsRepo").(string)
+			gitopsRepoJson, _ := json.Marshal(GitopsRepoResult{GitopsRepo: gitopsRepo})
+			w.WriteHeader(http.StatusOK)
+			w.Write(gitopsRepoJson)
+		})
 	})
 
 	r.Group(func(r chi.Router) {
@@ -72,4 +80,8 @@ func SetupRouter(
 	})
 
 	return r
+}
+
+type GitopsRepoResult struct {
+	GitopsRepo string `json:"gitopsRepo"`
 }

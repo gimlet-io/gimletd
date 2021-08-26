@@ -31,13 +31,14 @@ import (
 )
 
 const (
-	pathArtifact  = "%s/api/artifact"
-	pathArtifacts = "%s/api/artifacts"
-	pathReleases  = "%s/api/releases"
-	pathStatus    = "%s/api/status"
-	pathRollback  = "%s/api/rollback"
-	pathEvent     = "%s/api/event"
-	pathUser      = "%s/api/user"
+	pathArtifact   = "%s/api/artifact"
+	pathArtifacts  = "%s/api/artifacts"
+	pathReleases   = "%s/api/releases"
+	pathStatus     = "%s/api/status"
+	pathRollback   = "%s/api/rollback"
+	pathEvent      = "%s/api/event"
+	pathUser       = "%s/api/user"
+	pathGitopsRepo = "%s/api/gitopsRepo"
 )
 
 type client struct {
@@ -334,6 +335,23 @@ func (c *client) UserPost(toSave *model.User) (*model.User, error) {
 		return nil, err
 	}
 	return createdUser, nil
+}
+
+type GitopsRepoResult struct {
+	GitopsRepo string `json:"gitopsRepo"`
+}
+
+// GitopsRepoGet returns the configured gitops repo name
+func (c *client) GitopsRepoGet() (string, error) {
+	uri := fmt.Sprintf(pathGitopsRepo, c.addr)
+
+	gitopsRepo := new(GitopsRepoResult)
+	err := c.get(uri, gitopsRepo)
+	if err != nil {
+		return "", err
+	}
+
+	return gitopsRepo.GitopsRepo, nil
 }
 
 func (c *client) get(rawURL string, out interface{}) error {

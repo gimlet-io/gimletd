@@ -72,4 +72,7 @@ type Client interface {
 
 	// UserPost creates a user
 	UserPost(user *model.User) (*model.User, error)
+
+	// GitopsRepoGet returns the configured gitops repo name
+	GitopsRepoGet() (string, error)
 }
