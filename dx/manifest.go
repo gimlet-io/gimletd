@@ -59,13 +59,18 @@ func (m *Manifest) ResolveVars(vars map[string]string) error {
 	return yaml.Unmarshal(templated.Bytes(), m)
 }
 
+// adheres to the Kubernetes resource name spec:
+// a lowercase RFC 1123 label must consist of lower case alphanumeric characters or '-',
+// and must start and end with an alphanumeric character
+//(e.g. 'my-name',  or '123-abc', regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?')
 func sanitizeDNSName(str string) string {
-	r := regexp.MustCompile("[^0-9A-Za-z_\\\\.]+")
-	str = r.ReplaceAllString(str, "-")
 	str = strings.ToLower(str)
+	r := regexp.MustCompile("[^0-9a-z]+")
+	str = r.ReplaceAllString(str, "-")
 	if len(str) > 63 {
 		str = str[0:63]
 	}
 	str = strings.TrimSuffix(str, "-")
+	str = strings.TrimPrefix(str, "-")
 	return str
 }

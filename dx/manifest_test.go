@@ -48,3 +48,20 @@ func Test_resolveVars(t *testing.T) {
 	assert.Equal(t, "my-app-feature-my-feature", m.App)
 	assert.Equal(t, "debian:feature-my-feature", m.Values["image"])
 }
+
+func Test_sanitizeDNSName(t *testing.T) {
+	sanitized := sanitizeDNSName("CamelCase_with_snake")
+	assert.Equal(t, "camelcase-with-snake", sanitized)
+
+	sanitized = sanitizeDNSName("dependabot/npm_and_yarn/ws-5.2.3")
+	assert.Equal(t, "dependabot-npm-and-yarn-ws-5-2-3", sanitized)
+
+	sanitized = sanitizeDNSName("-can't start with dashes, nor end-")
+	assert.Equal(t, "can-t-start-with-dashes-nor-end", sanitized)
+
+	sanitized = sanitizeDNSName("!nope")
+	assert.Equal(t, "nope", sanitized)
+
+	sanitized = sanitizeDNSName("dope")
+	assert.Equal(t, "dope", sanitized)
+}
