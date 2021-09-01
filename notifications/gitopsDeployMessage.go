@@ -2,7 +2,7 @@ package notifications
 
 import (
 	"fmt"
-	"github.com/gimlet-io/gimletd/dx"
+	"github.com/gimlet-io/gimletd/worker/events"
 	githubLib "github.com/google/go-github/v33/github"
 	"strings"
 	"time"
@@ -11,17 +11,17 @@ import (
 const githubCommitLink = "https://github.com/%s/commit/%s"
 const contextFormat = "gitops/%s@%s"
 
-type gitopsMessage struct {
-	event *dx.GitopsEvent
+type gitopsDeployMessage struct {
+	event *events.DeployEvent
 }
 
-func (gm *gitopsMessage) AsSlackMessage() (*slackMessage, error) {
+func (gm *gitopsDeployMessage) AsSlackMessage() (*slackMessage, error) {
 	msg := &slackMessage{
 		Text:   "",
 		Blocks: []Block{},
 	}
 
-	if gm.event.Status == dx.Failure {
+	if gm.event.Status == events.Failure {
 		msg.Text = fmt.Sprintf("Failed to roll out %s of %s", gm.event.Manifest.App, gm.event.Artifact.Version.RepositoryName)
 		msg.Blocks = append(msg.Blocks,
 			Block{
@@ -78,11 +78,11 @@ func (gm *gitopsMessage) AsSlackMessage() (*slackMessage, error) {
 	return msg, nil
 }
 
-func (gm *gitopsMessage) Env() string {
+func (gm *gitopsDeployMessage) Env() string {
 	return gm.event.Manifest.Env
 }
 
-func (gm *gitopsMessage) AsGithubStatus() (*githubLib.RepoStatus, error) {
+func (gm *gitopsDeployMessage) AsGithubStatus() (*githubLib.RepoStatus, error) {
 	context := fmt.Sprintf(contextFormat, gm.event.Manifest.Env, time.Now().Format(time.RFC3339))
 	desc := gm.event.StatusDesc
 
@@ -90,7 +90,7 @@ func (gm *gitopsMessage) AsGithubStatus() (*githubLib.RepoStatus, error) {
 	targetURL := fmt.Sprintf(githubCommitLink, gm.event.GitopsRepo, gm.event.GitopsRef)
 	targetURLPtr := &targetURL
 
-	if gm.event.Status == dx.Failure {
+	if gm.event.Status == events.Failure {
 		state = "failure"
 		targetURLPtr = nil
 	}
@@ -103,16 +103,16 @@ func (gm *gitopsMessage) AsGithubStatus() (*githubLib.RepoStatus, error) {
 	}, nil
 }
 
-func MessageFromGitOpsEvent(event *dx.GitopsEvent) Message {
-	return &gitopsMessage{
+func MessageFromGitOpsEvent(event *events.DeployEvent) Message {
+	return &gitopsDeployMessage{
 		event: event,
 	}
 }
 
-func (gm *gitopsMessage) RepositoryName() string {
+func (gm *gitopsDeployMessage) RepositoryName() string {
 	return gm.event.Artifact.Version.RepositoryName
 }
 
-func (gm *gitopsMessage) SHA() string {
+func (gm *gitopsDeployMessage) SHA() string {
 	return gm.event.Artifact.Version.SHA
 }
