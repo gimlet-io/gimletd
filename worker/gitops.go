@@ -215,6 +215,7 @@ func processRollbackEvent(
 	repoTmpPath, repo, err := githelper.CloneToTmpFs(gitopsRepo, gitopsRepoDeployKeyPath)
 	if err != nil {
 		rollbackEvent.Status = events.Failure
+		rollbackEvent.StatusDesc = err.Error()
 		return rollbackEvent, err
 	}
 	defer githelper.TmpFsCleanup(repoTmpPath)
@@ -230,18 +231,21 @@ func processRollbackEvent(
 	)
 	if err != nil {
 		rollbackEvent.Status = events.Failure
+		rollbackEvent.StatusDesc = err.Error()
 		return rollbackEvent, err
 	}
 
 	hashes, err := shasSince(repo, headSha.Hash().String())
 	if err != nil {
 		rollbackEvent.Status = events.Failure
+		rollbackEvent.StatusDesc = err.Error()
 		return rollbackEvent, err
 	}
 
 	err = githelper.Push(repo, gitopsRepoDeployKeyPath)
 	if err != nil {
 		rollbackEvent.Status = events.Failure
+		rollbackEvent.StatusDesc = err.Error()
 		return rollbackEvent, err
 	}
 
