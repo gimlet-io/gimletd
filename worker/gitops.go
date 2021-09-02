@@ -9,6 +9,7 @@ import (
 	"github.com/gimlet-io/gimletd/model"
 	"github.com/gimlet-io/gimletd/notifications"
 	"github.com/gimlet-io/gimletd/store"
+	"github.com/gimlet-io/gimletd/worker/events"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/gobwas/glob"
@@ -86,7 +87,8 @@ func processEvent(
 ) {
 	// process event based on type
 	var err error
-	var gitopsEvents []*dx.GitopsEvent
+	var gitopsEvents []*events.DeployEvent
+	var rollbackEvent *events.RollbackEvent
 	switch event.Type {
 	case model.TypeArtifact:
 		gitopsEvents, err = processArtifactEvent(gitopsRepo, gitopsRepoDeployKeyPath, githubChartAccessDeployKeyPath, event, repoCache)
@@ -97,7 +99,11 @@ func processEvent(
 		gitopsEvents, err = processReleaseEvent(store, gitopsRepo, gitopsRepoDeployKeyPath, githubChartAccessDeployKeyPath, event)
 		repoCache.Invalidate()
 	case model.TypeRollback:
-		err = processRollbackEvent(gitopsRepo, gitopsRepoDeployKeyPath, event)
+		rollbackEvent, err = processRollbackEvent(gitopsRepo, gitopsRepoDeployKeyPath, event)
+		notificationsManager.Broadcast(notifications.MessageFromRollbackEvent(rollbackEvent))
+		for _, sha := range rollbackEvent.GitopsRefs {
+			setGitopsHashOnEvent(event, sha)
+		}
 		repoCache.Invalidate()
 	}
 
@@ -106,8 +112,9 @@ func processEvent(
 		notificationsManager.Broadcast(notifications.MessageFromGitOpsEvent(gitopsEvent))
 	}
 
+	// record gitops hashes on events
 	for _, gitopsEvent := range gitopsEvents {
-		setGitopsHashOnEvent(event, gitopsEvent)
+		setGitopsHashOnEvent(event, gitopsEvent.GitopsRef)
 	}
 
 	// store event state
@@ -128,9 +135,7 @@ func processEvent(
 	}
 }
 
-func setGitopsHashOnEvent(event *model.Event, gitopsEvent *dx.GitopsEvent) {
-	gitopsSha := gitopsEvent.GitopsRef
-
+func setGitopsHashOnEvent(event *model.Event, gitopsSha string) {
 	if gitopsSha == "" {
 		return
 	}
@@ -148,8 +153,8 @@ func processReleaseEvent(
 	gitopsRepoDeployKeyPath string,
 	githubChartAccessDeployKeyPath string,
 	event *model.Event,
-) ([]*dx.GitopsEvent, error) {
-	var gitopsEvents []*dx.GitopsEvent
+) ([]*events.DeployEvent, error) {
+	var gitopsEvents []*events.DeployEvent
 	var releaseRequest dx.ReleaseRequest
 	err := json.Unmarshal([]byte(event.Blob), &releaseRequest)
 	if err != nil {
@@ -195,18 +200,26 @@ func processRollbackEvent(
 	gitopsRepo string,
 	gitopsRepoDeployKeyPath string,
 	event *model.Event,
-) error {
+) (*events.RollbackEvent, error) {
 	var rollbackRequest dx.RollbackRequest
 	err := json.Unmarshal([]byte(event.Blob), &rollbackRequest)
 	if err != nil {
-		return fmt.Errorf("cannot parse release request with id: %s", event.ID)
+		return nil, fmt.Errorf("cannot parse release request with id: %s", event.ID)
+	}
+
+	rollbackEvent := &events.RollbackEvent{
+		RollbackRequest: &rollbackRequest,
+		GitopsRepo:      gitopsRepo,
 	}
 
 	repoTmpPath, repo, err := githelper.CloneToTmpFs(gitopsRepo, gitopsRepoDeployKeyPath)
 	if err != nil {
-		return err
+		rollbackEvent.Status = events.Failure
+		return rollbackEvent, err
 	}
 	defer githelper.TmpFsCleanup(repoTmpPath)
+
+	headSha, _ := repo.Head()
 
 	err = revertTo(
 		rollbackRequest.Env,
@@ -216,15 +229,48 @@ func processRollbackEvent(
 		rollbackRequest.TargetSHA,
 	)
 	if err != nil {
-		return err
+		rollbackEvent.Status = events.Failure
+		return rollbackEvent, err
+	}
+
+	hashes, err := shasSince(repo, headSha.Hash().String())
+	if err != nil {
+		rollbackEvent.Status = events.Failure
+		return rollbackEvent, err
 	}
 
 	err = githelper.Push(repo, gitopsRepoDeployKeyPath)
 	if err != nil {
-		return err
+		rollbackEvent.Status = events.Failure
+		return rollbackEvent, err
 	}
 
-	return nil
+	rollbackEvent.GitopsRefs = hashes
+	rollbackEvent.Status = events.Success
+	return rollbackEvent, nil
+}
+
+func shasSince(repo *git.Repository, since string) ([]string, error) {
+	var hashes []string
+	commitWalker, err := repo.Log(&git.LogOptions{})
+	if err != nil {
+		return hashes, fmt.Errorf("cannot walk commits: %s", err)
+	}
+
+	err = commitWalker.ForEach(func(c *object.Commit) error {
+		if c.Hash.String() == since {
+			return fmt.Errorf("%s", "FOUND")
+		}
+		hashes = append(hashes, c.Hash.String())
+		return nil
+	})
+	if err != nil &&
+		err.Error() != "EOF" &&
+		err.Error() != "FOUND" {
+		return hashes, fmt.Errorf("cannot walk commits: %s", err)
+	}
+
+	return hashes, nil
 }
 
 func processArtifactEvent(
@@ -233,8 +279,8 @@ func processArtifactEvent(
 	githubChartAccessDeployKeyPath string,
 	event *model.Event,
 	repoCache *githelper.RepoCache,
-) ([]*dx.GitopsEvent, error) {
-	var gitopsEvents []*dx.GitopsEvent
+) ([]*events.DeployEvent, error) {
+	var gitopsEvents []*events.DeployEvent
 	artifact, err := model.ToArtifact(event)
 	if err != nil {
 		return gitopsEvents, fmt.Errorf("cannot parse artifact %s", err.Error())
@@ -271,19 +317,19 @@ func cloneTemplateWriteAndPush(
 	artifact *dx.Artifact,
 	env *dx.Manifest,
 	triggeredBy string,
-) (*dx.GitopsEvent, error) {
-	gitopsEvent := &dx.GitopsEvent{
+) (*events.DeployEvent, error) {
+	gitopsEvent := &events.DeployEvent{
 		Manifest:    env,
 		Artifact:    artifact,
 		TriggeredBy: triggeredBy,
-		Status:      dx.Success,
+		Status:      events.Success,
 		GitopsRepo:  gitopsRepo,
 	}
 
 	repoTmpPath, repo, err := githelper.CloneToTmpFs(gitopsRepo, gitopsRepoDeployKeyPath)
 	defer githelper.TmpFsCleanup(repoTmpPath)
 	if err != nil {
-		gitopsEvent.Status = dx.Failure
+		gitopsEvent.Status = events.Failure
 		gitopsEvent.StatusDesc = err.Error()
 		return gitopsEvent, err
 	}
@@ -291,7 +337,7 @@ func cloneTemplateWriteAndPush(
 	err = env.ResolveVars(artifact.Context)
 	if err != nil {
 		err = fmt.Errorf("cannot resolve manifest vars %s", err.Error())
-		gitopsEvent.Status = dx.Failure
+		gitopsEvent.Status = events.Failure
 		gitopsEvent.StatusDesc = err.Error()
 		return gitopsEvent, err
 	}
@@ -311,14 +357,14 @@ func cloneTemplateWriteAndPush(
 		githubChartAccessDeployKeyPath,
 	)
 	if err != nil {
-		gitopsEvent.Status = dx.Failure
+		gitopsEvent.Status = events.Failure
 		gitopsEvent.StatusDesc = err.Error()
 		return gitopsEvent, err
 	}
 
 	err = githelper.Push(repo, gitopsRepoDeployKeyPath)
 	if err != nil {
-		gitopsEvent.Status = dx.Failure
+		gitopsEvent.Status = events.Failure
 		gitopsEvent.StatusDesc = err.Error()
 		return gitopsEvent, err
 	}

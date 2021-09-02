@@ -1,0 +1,32 @@
+package events
+
+import "github.com/gimlet-io/gimletd/dx"
+
+type Status int
+
+const (
+	Success Status = iota
+	Failure
+)
+
+type DeployEvent struct {
+	Manifest    *dx.Manifest
+	Artifact    *dx.Artifact
+	TriggeredBy string
+
+	Status     Status
+	StatusDesc string
+
+	GitopsRef  string
+	GitopsRepo string
+}
+
+type RollbackEvent struct {
+	RollbackRequest *dx.RollbackRequest
+
+	Status     Status
+	StatusDesc string
+
+	GitopsRefs []string
+	GitopsRepo string
+}
