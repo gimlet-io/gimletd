@@ -12,7 +12,6 @@ import (
 
 type Manifest struct {
 	App       string                 `yaml:"app" json:"app"`
-	AppAlias  string                 `yaml:"appAlias,omitempty" json:"appAlias,omitempty"`
 	Env       string                 `yaml:"env" json:"env"`
 	Namespace string                 `yaml:"namespace" json:"namespace"`
 	Deploy    *Deploy                `yaml:"deploy,omitempty" json:"deploy,omitempty"`
