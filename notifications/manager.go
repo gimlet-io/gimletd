@@ -15,6 +15,9 @@ type ManagerImpl struct {
 	broadcast chan Message
 }
 
+type DummyManagerImpl struct {
+}
+
 func NewManager() *ManagerImpl {
 	return &ManagerImpl{
 		provider:  []provider{},
@@ -22,8 +25,18 @@ func NewManager() *ManagerImpl {
 	}
 }
 
+func NewDummyManager() *DummyManagerImpl {
+	return &DummyManagerImpl{}
+}
+
 func (m *ManagerImpl) Broadcast(msg Message) {
 	m.broadcast <- msg
+}
+
+func (m *DummyManagerImpl) Broadcast(msg Message) {
+}
+
+func (m *DummyManagerImpl) AddProvider(providerType string, token string, defaultChannel string, channelMapping string) {
 }
 
 func (m *ManagerImpl) AddProvider(providerType string, token string, defaultChannel string, channelMapping string) {

@@ -16,7 +16,7 @@ import (
 )
 
 func Test_fluxEvent(t *testing.T) {
-	notificationsManager := notifications.NewManager()
+	notificationsManager := notifications.NewDummyManager()
 	notificationsManager.AddProvider(
 		"",
 		"",
