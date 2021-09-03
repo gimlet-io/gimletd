@@ -174,6 +174,7 @@ func processReleaseEvent(
 		if env.Env != releaseRequest.Env {
 			continue
 		}
+		env.ResolveVars(artifact.Context)
 		if releaseRequest.App != "" &&
 			env.App != releaseRequest.App {
 			continue
