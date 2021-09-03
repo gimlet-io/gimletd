@@ -23,10 +23,7 @@ func NewManager() *ManagerImpl {
 }
 
 func (m *ManagerImpl) Broadcast(msg Message) {
-	select {
-	case m.broadcast <- msg:
-	default:
-	}
+	m.broadcast <- msg
 }
 
 func (m *ManagerImpl) AddProvider(providerType string, token string, defaultChannel string, channelMapping string) {
