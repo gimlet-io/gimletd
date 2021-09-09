@@ -64,10 +64,10 @@ func getReleases(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
-	repoCache := ctx.Value("repoCache").(*githelper.RepoCache)
+	gitopsRepoCache := ctx.Value("gitopsRepoCache").(*githelper.GitopsRepoCache)
 	gitopsRepo := ctx.Value("gitopsRepo").(string)
 
-	releases, err := githelper.Releases(repoCache.InstanceForRead(), app, env, since, until, limit, gitRepo)
+	releases, err := githelper.Releases(gitopsRepoCache.InstanceForRead(), app, env, since, until, limit, gitRepo)
 	if err != nil {
 		logrus.Errorf("cannot get releases: %s", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -104,11 +104,11 @@ func getStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
-	repoCache := ctx.Value("repoCache").(*githelper.RepoCache)
+	gitopsRepoCache := ctx.Value("gitopsRepoCache").(*githelper.GitopsRepoCache)
 	gitopsRepo := ctx.Value("gitopsRepo").(string)
 	perf := ctx.Value("perf").(*prometheus.HistogramVec)
 
-	appReleases, err := githelper.Status(repoCache.InstanceForRead(), app, env, perf)
+	appReleases, err := githelper.Status(gitopsRepoCache.InstanceForRead(), app, env, perf)
 	if err != nil {
 		logrus.Errorf("cannot get status: %s", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -249,7 +249,7 @@ func rollback(w http.ResponseWriter, r *http.Request) {
 func delete(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user := ctx.Value("user").(*model.User)
-	repoCache := ctx.Value("repoCache").(*githelper.RepoCache)
+	gitopsRepoCache := ctx.Value("gitopsRepoCache").(*githelper.GitopsRepoCache)
 	gitopsRepoDeployKeyPath := ctx.Value("gitopsRepoDeployKeyPath").(string)
 
 	params := r.URL.Query()
@@ -267,8 +267,8 @@ func delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	repo, pathToClanUp, err := repoCache.InstanceForWrite()
-	defer repoCache.CleanupWrittenRepo(pathToClanUp)
+	repo, pathToClanUp, err := gitopsRepoCache.InstanceForWrite()
+	defer gitopsRepoCache.CleanupWrittenRepo(pathToClanUp)
 	if err != nil {
 		logrus.Errorf("cannot get gitops repo for write: %s", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -297,7 +297,7 @@ func delete(w http.ResponseWriter, r *http.Request) {
 	gitMessage := fmt.Sprintf("[GimletD delete] %s/%s deleted by %s", env, app, user.Login)
 	_, err = githelper.Commit(repo, gitMessage)
 	githelper.Push(repo, gitopsRepoDeployKeyPath)
-	repoCache.Invalidate()
+	gitopsRepoCache.Invalidate()
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("{}"))

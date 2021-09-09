@@ -28,7 +28,7 @@ type GitopsWorker struct {
 	githubChartAccessDeployKeyPath string
 	notificationsManager           notifications.Manager
 	eventsProcessed                prometheus.Counter
-	repoCache                      *githelper.RepoCache
+	repoCache                      *githelper.GitopsRepoCache
 }
 
 func NewGitopsWorker(
@@ -38,7 +38,7 @@ func NewGitopsWorker(
 	githubChartAccessDeployKeyPath string,
 	notificationsManager notifications.Manager,
 	eventsProcessed prometheus.Counter,
-	repoCache *githelper.RepoCache,
+	repoCache *githelper.GitopsRepoCache,
 ) *GitopsWorker {
 	return &GitopsWorker{
 		store:                          store,
@@ -83,7 +83,7 @@ func processEvent(
 	githubChartAccessDeployKeyPath string,
 	event *model.Event,
 	notificationsManager notifications.Manager,
-	repoCache *githelper.RepoCache,
+	repoCache *githelper.GitopsRepoCache,
 ) {
 	// process event based on type
 	var err error
@@ -283,7 +283,7 @@ func processArtifactEvent(
 	gitopsRepoDeployKeyPath string,
 	githubChartAccessDeployKeyPath string,
 	event *model.Event,
-	repoCache *githelper.RepoCache,
+	repoCache *githelper.GitopsRepoCache,
 ) ([]*events.DeployEvent, error) {
 	var gitopsEvents []*events.DeployEvent
 	artifact, err := model.ToArtifact(event)

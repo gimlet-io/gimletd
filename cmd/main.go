@@ -59,7 +59,7 @@ func main() {
 	stopCh := make(chan struct{})
 	defer close(stopCh)
 
-	repoCache, err := githelper.NewRepoCache(config.GitopsRepo, config.GitopsRepoDeployKeyPath, stopCh)
+	repoCache, err := githelper.NewGitopsRepoCache(config.GitopsRepo, config.GitopsRepoDeployKeyPath, stopCh)
 	if err != nil {
 		panic(err)
 	}

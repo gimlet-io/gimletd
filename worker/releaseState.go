@@ -13,7 +13,7 @@ import (
 
 type ReleaseStateWorker struct {
 	GitopsRepo string
-	RepoCache  *githelper.RepoCache
+	RepoCache  *githelper.GitopsRepoCache
 	Releases   *prometheus.GaugeVec
 	Perf       *prometheus.HistogramVec
 }

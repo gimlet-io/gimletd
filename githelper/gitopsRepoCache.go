@@ -17,7 +17,7 @@ var fetchRefSpec = []config.RefSpec{
 	"refs/heads/*:refs/heads/*",
 }
 
-type RepoCache struct {
+type GitopsRepoCache struct {
 	gitopsRepo              string
 	gitopsRepoDeployKeyPath string
 	repo                    *git.Repository
@@ -26,17 +26,17 @@ type RepoCache struct {
 	invalidateCh            chan string
 }
 
-func NewRepoCache(
+func NewGitopsRepoCache(
 	gitopsRepo string,
 	gitopsRepoDeployKeyPath string,
 	stopCh chan struct{},
-) (*RepoCache, error) {
+) (*GitopsRepoCache, error) {
 	cachePath, repo, err := CloneToTmpFs(gitopsRepo, gitopsRepoDeployKeyPath)
 	if err != nil {
 		return nil, err
 	}
 
-	return &RepoCache{
+	return &GitopsRepoCache{
 		gitopsRepo:              gitopsRepo,
 		gitopsRepoDeployKeyPath: gitopsRepoDeployKeyPath,
 		repo:                    repo,
@@ -46,7 +46,7 @@ func NewRepoCache(
 	}, nil
 }
 
-func (r *RepoCache) Run() {
+func (r *GitopsRepoCache) Run() {
 	for {
 		r.syncGitRepo()
 
@@ -62,7 +62,7 @@ func (r *RepoCache) Run() {
 	}
 }
 
-func (r *RepoCache) syncGitRepo() {
+func (r *GitopsRepoCache) syncGitRepo() {
 	publicKeys, err := ssh.NewPublicKeysFromFile("git", r.gitopsRepoDeployKeyPath, "")
 	if err != nil {
 		logrus.Errorf("cannot generate public key from private: %s", err.Error())
@@ -82,11 +82,11 @@ func (r *RepoCache) syncGitRepo() {
 	}
 }
 
-func (r *RepoCache) InstanceForRead() *git.Repository {
+func (r *GitopsRepoCache) InstanceForRead() *git.Repository {
 	return r.repo
 }
 
-func (r *RepoCache) InstanceForWrite() (*git.Repository, string, error) {
+func (r *GitopsRepoCache) InstanceForWrite() (*git.Repository, string, error) {
 	tmpPath, err := ioutil.TempDir("", "gitops-")
 	if err != nil {
 		errors.WithMessage(err, "couldn't get temporary directory")
@@ -105,10 +105,10 @@ func (r *RepoCache) InstanceForWrite() (*git.Repository, string, error) {
 	return copiedRepo, tmpPath, nil
 }
 
-func (r *RepoCache) CleanupWrittenRepo(path string) error {
+func (r *GitopsRepoCache) CleanupWrittenRepo(path string) error {
 	return os.RemoveAll(path)
 }
 
-func (r *RepoCache) Invalidate() {
+func (r *GitopsRepoCache) Invalidate() {
 	r.invalidateCh <- "invalidate"
 }
