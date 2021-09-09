@@ -484,23 +484,45 @@ func deployTrigger(artifactToCheck *dx.Artifact, deployPolicy *dx.Deploy) bool {
 	}
 
 	if deployPolicy.Tag != "" {
+		negate := false
+		tag := deployPolicy.Branch
+		if strings.HasPrefix(deployPolicy.Tag, "!"){
+			negate = true
+			tag = deployPolicy.Tag[1:]
+		}
 		g := glob.MustCompile(deployPolicy.Tag)
 
-		exactMatch := deployPolicy.Tag == artifactToCheck.Version.Tag
+		exactMatch := tag == artifactToCheck.Version.Tag
 		patternMatch := g.Match(artifactToCheck.Version.Tag)
 
-		if !exactMatch && !patternMatch {
+		match := exactMatch || patternMatch
+
+		if negate && match {
+			return false
+		}
+		if !negate && !match {
 			return false
 		}
 	}
 
 	if deployPolicy.Branch != "" {
-		g := glob.MustCompile(deployPolicy.Branch)
+		negate := false
+		branch := deployPolicy.Branch
+		if strings.HasPrefix(deployPolicy.Branch, "!"){
+			negate = true
+			branch = deployPolicy.Branch[1:]
+		}
+		g := glob.MustCompile(branch)
 
-		exactMatch := deployPolicy.Branch == artifactToCheck.Version.Branch
+		exactMatch := branch == artifactToCheck.Version.Branch
 		patternMatch := g.Match(artifactToCheck.Version.Branch)
 
-		if !exactMatch && !patternMatch {
+		match := exactMatch || patternMatch
+
+		if negate && match {
+			return false
+		}
+		if !negate && !match {
 			return false
 		}
 	}
