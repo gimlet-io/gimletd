@@ -19,7 +19,7 @@ func SetupRouter(
 	config *config.Config,
 	store *store.Store,
 	notificationsManager notifications.Manager,
-	repoCache *githelper.GitopsRepoCache,
+	repoCache *git.GitopsRepoCache,
 	perf *prometheus.HistogramVec,
 ) *chi.Mux {
 	r := chi.NewRouter()

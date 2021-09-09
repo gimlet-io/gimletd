@@ -1,4 +1,4 @@
-package githelper
+package git
 
 import (
 	"bytes"

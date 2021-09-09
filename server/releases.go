@@ -64,10 +64,10 @@ func getReleases(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
-	gitopsRepoCache := ctx.Value("gitopsRepoCache").(*githelper.GitopsRepoCache)
+	gitopsRepoCache := ctx.Value("gitopsRepoCache").(*git.GitopsRepoCache)
 	gitopsRepo := ctx.Value("gitopsRepo").(string)
 
-	releases, err := githelper.Releases(gitopsRepoCache.InstanceForRead(), app, env, since, until, limit, gitRepo)
+	releases, err := git.Releases(gitopsRepoCache.InstanceForRead(), app, env, since, until, limit, gitRepo)
 	if err != nil {
 		logrus.Errorf("cannot get releases: %s", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -104,11 +104,11 @@ func getStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
-	gitopsRepoCache := ctx.Value("gitopsRepoCache").(*githelper.GitopsRepoCache)
+	gitopsRepoCache := ctx.Value("gitopsRepoCache").(*git.GitopsRepoCache)
 	gitopsRepo := ctx.Value("gitopsRepo").(string)
 	perf := ctx.Value("perf").(*prometheus.HistogramVec)
 
-	appReleases, err := githelper.Status(gitopsRepoCache.InstanceForRead(), app, env, perf)
+	appReleases, err := git.Status(gitopsRepoCache.InstanceForRead(), app, env, perf)
 	if err != nil {
 		logrus.Errorf("cannot get status: %s", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -249,7 +249,7 @@ func rollback(w http.ResponseWriter, r *http.Request) {
 func delete(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user := ctx.Value("user").(*model.User)
-	gitopsRepoCache := ctx.Value("gitopsRepoCache").(*githelper.GitopsRepoCache)
+	gitopsRepoCache := ctx.Value("gitopsRepoCache").(*git.GitopsRepoCache)
 	gitopsRepoDeployKeyPath := ctx.Value("gitopsRepoDeployKeyPath").(string)
 
 	params := r.URL.Query()
@@ -275,14 +275,14 @@ func delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = githelper.DelDir(repo, filepath.Join(env, app))
+	err = git.DelDir(repo, filepath.Join(env, app))
 	if err != nil {
 		logrus.Errorf("cannot delete release: %s", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
-	empty, err := githelper.NothingToCommit(repo)
+	empty, err := git.NothingToCommit(repo)
 	if err != nil {
 		logrus.Errorf("cannot determine git status: %s", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -295,8 +295,8 @@ func delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	gitMessage := fmt.Sprintf("[GimletD delete] %s/%s deleted by %s", env, app, user.Login)
-	_, err = githelper.Commit(repo, gitMessage)
-	githelper.Push(repo, gitopsRepoDeployKeyPath)
+	_, err = git.Commit(repo, gitMessage)
+	git.Push(repo, gitopsRepoDeployKeyPath)
 	gitopsRepoCache.Invalidate()
 
 	w.WriteHeader(http.StatusOK)

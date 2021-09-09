@@ -145,9 +145,9 @@ func Test_gitopsTemplateAndWrite_deleteStaleFiles(t *testing.T) {
 	_, err = gitopsTemplateAndWrite(repo, a.Environments[0], &dx.Release{}, "")
 	assert.Nil(t, err)
 
-	content, _ := githelper.Content(repo, "staging/my-app/deployment.yaml")
+	content, _ := git.Content(repo, "staging/my-app/deployment.yaml")
 	assert.True(t, len(content) > 100)
-	content, _ = githelper.Content(repo, "staging/my-app/pvc.yaml")
+	content, _ = git.Content(repo, "staging/my-app/pvc.yaml")
 	assert.True(t, len(content) > 100)
 
 	withoutVolume := `
@@ -183,7 +183,7 @@ func Test_gitopsTemplateAndWrite_deleteStaleFiles(t *testing.T) {
 	_, err = gitopsTemplateAndWrite(repo, b.Environments[0], &dx.Release{}, "")
 	assert.Nil(t, err)
 
-	content, _ = githelper.Content(repo, "staging/my-app/pvc.yaml")
+	content, _ = git.Content(repo, "staging/my-app/pvc.yaml")
 	assert.Equal(t, content, "")
 }
 
@@ -389,7 +389,7 @@ func Test_revertTo(t *testing.T) {
 		SHAs[2],
 	)
 	assert.Nil(t, err)
-	content, _ := githelper.Content(repo, "staging/my-app/file")
+	content, _ := git.Content(repo, "staging/my-app/file")
 	assert.Equal(t, "1\n", content)
 
 	SHAs = []string{}
@@ -408,7 +408,7 @@ func Test_revertTo(t *testing.T) {
 		SHAs[4],
 	)
 	assert.Nil(t, err)
-	content, _ = githelper.Content(repo, "staging/my-app/file")
+	content, _ = git.Content(repo, "staging/my-app/file")
 	assert.Equal(t, "1\n", content)
 
 	err = revertTo(
@@ -419,12 +419,12 @@ func Test_revertTo(t *testing.T) {
 		SHAs[5],
 	)
 	assert.Nil(t, err)
-	content, _ = githelper.Content(repo, "staging/my-app/file")
+	content, _ = git.Content(repo, "staging/my-app/file")
 	assert.Equal(t, "0\n", content)
 }
 
 func initHistory(repo *git.Repository) {
-	sha, _ := githelper.CommitFilesToGit(
+	sha, _ := git.CommitFilesToGit(
 		repo,
 		map[string]string{
 			"file": `0`,
@@ -435,7 +435,7 @@ func initHistory(repo *git.Repository) {
 		"",
 	)
 	fmt.Printf("%s - %s\n", sha, "0")
-	sha, _ = githelper.CommitFilesToGit(
+	sha, _ = git.CommitFilesToGit(
 		repo,
 		map[string]string{
 			"file": `1`,
@@ -446,7 +446,7 @@ func initHistory(repo *git.Repository) {
 		"",
 	)
 	fmt.Printf("%s - %s\n", sha, "1")
-	sha, _ = githelper.CommitFilesToGit(
+	sha, _ = git.CommitFilesToGit(
 		repo,
 		map[string]string{
 			"file": `2`,
@@ -457,7 +457,7 @@ func initHistory(repo *git.Repository) {
 		"",
 	)
 	fmt.Printf("%s - %s\n", sha, "2")
-	sha, _ = githelper.CommitFilesToGit(
+	sha, _ = git.CommitFilesToGit(
 		repo,
 		map[string]string{
 			"file": `3`,

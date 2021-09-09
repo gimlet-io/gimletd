@@ -28,7 +28,7 @@ type GitopsWorker struct {
 	githubChartAccessDeployKeyPath string
 	notificationsManager           notifications.Manager
 	eventsProcessed                prometheus.Counter
-	repoCache                      *githelper.GitopsRepoCache
+	repoCache                      *git.GitopsRepoCache
 }
 
 func NewGitopsWorker(
@@ -38,7 +38,7 @@ func NewGitopsWorker(
 	githubChartAccessDeployKeyPath string,
 	notificationsManager notifications.Manager,
 	eventsProcessed prometheus.Counter,
-	repoCache *githelper.GitopsRepoCache,
+	repoCache *git.GitopsRepoCache,
 ) *GitopsWorker {
 	return &GitopsWorker{
 		store:                          store,
@@ -83,7 +83,7 @@ func processEvent(
 	githubChartAccessDeployKeyPath string,
 	event *model.Event,
 	notificationsManager notifications.Manager,
-	repoCache *githelper.GitopsRepoCache,
+	repoCache *git.GitopsRepoCache,
 ) {
 	// process event based on type
 	var err error
@@ -213,13 +213,13 @@ func processRollbackEvent(
 		GitopsRepo:      gitopsRepo,
 	}
 
-	repoTmpPath, repo, err := githelper.CloneToTmpFs(gitopsRepo, gitopsRepoDeployKeyPath)
+	repoTmpPath, repo, err := git.CloneToTmpFs(gitopsRepo, gitopsRepoDeployKeyPath)
 	if err != nil {
 		rollbackEvent.Status = events.Failure
 		rollbackEvent.StatusDesc = err.Error()
 		return rollbackEvent, err
 	}
-	defer githelper.TmpFsCleanup(repoTmpPath)
+	defer git.TmpFsCleanup(repoTmpPath)
 
 	headSha, _ := repo.Head()
 
@@ -243,7 +243,7 @@ func processRollbackEvent(
 		return rollbackEvent, err
 	}
 
-	err = githelper.Push(repo, gitopsRepoDeployKeyPath)
+	err = git.Push(repo, gitopsRepoDeployKeyPath)
 	if err != nil {
 		rollbackEvent.Status = events.Failure
 		rollbackEvent.StatusDesc = err.Error()
@@ -283,7 +283,7 @@ func processArtifactEvent(
 	gitopsRepoDeployKeyPath string,
 	githubChartAccessDeployKeyPath string,
 	event *model.Event,
-	repoCache *githelper.GitopsRepoCache,
+	repoCache *git.GitopsRepoCache,
 ) ([]*events.DeployEvent, error) {
 	var gitopsEvents []*events.DeployEvent
 	artifact, err := model.ToArtifact(event)
@@ -331,8 +331,8 @@ func cloneTemplateWriteAndPush(
 		GitopsRepo:  gitopsRepo,
 	}
 
-	repoTmpPath, repo, err := githelper.CloneToTmpFs(gitopsRepo, gitopsRepoDeployKeyPath)
-	defer githelper.TmpFsCleanup(repoTmpPath)
+	repoTmpPath, repo, err := git.CloneToTmpFs(gitopsRepo, gitopsRepoDeployKeyPath)
+	defer git.TmpFsCleanup(repoTmpPath)
 	if err != nil {
 		gitopsEvent.Status = events.Failure
 		gitopsEvent.StatusDesc = err.Error()
@@ -367,7 +367,7 @@ func cloneTemplateWriteAndPush(
 		return gitopsEvent, err
 	}
 
-	err = githelper.Push(repo, gitopsRepoDeployKeyPath)
+	err = git.Push(repo, gitopsRepoDeployKeyPath)
 	if err != nil {
 		gitopsEvent.Status = events.Failure
 		gitopsEvent.StatusDesc = err.Error()
@@ -398,7 +398,7 @@ func revertTo(env string, app string, repo *git.Repository, repoTmpPath string, 
 			return fmt.Errorf("EOF")
 		}
 
-		if !githelper.RollbackCommit(c) {
+		if !git.RollbackCommit(c) {
 			hashesToRevert = append(hashesToRevert, c.Hash.String())
 		}
 		return nil
@@ -408,10 +408,10 @@ func revertTo(env string, app string, repo *git.Repository, repoTmpPath string, 
 	}
 
 	for _, hash := range hashesToRevert {
-		hasBeenReverted, err := githelper.HasBeenReverted(repo, hash, env, app)
+		hasBeenReverted, err := git.HasBeenReverted(repo, hash, env, app)
 		if !hasBeenReverted {
 			logrus.Infof("reverting %s", hash)
-			err = githelper.NativeRevert(repoTmpPath, hash)
+			err = git.NativeRevert(repoTmpPath, hash)
 			if err != nil {
 				return errors.WithMessage(err, "could not revert")
 			}
@@ -454,7 +454,7 @@ func gitopsTemplateAndWrite(
 		return "", fmt.Errorf("cannot marshal release meta data %s", err.Error())
 	}
 
-	sha, err := githelper.CommitFilesToGit(repo, files, env.Env, env.App, "automated deploy", string(releaseString))
+	sha, err := git.CommitFilesToGit(repo, files, env.Env, env.App, "automated deploy", string(releaseString))
 	if err != nil {
 		return "", fmt.Errorf("cannot write to git: %s", err.Error())
 	}
