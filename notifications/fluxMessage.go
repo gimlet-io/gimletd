@@ -3,7 +3,7 @@ package notifications
 import (
 	"fmt"
 	"github.com/gimlet-io/gimletd/model"
-	githubLib "github.com/google/go-github/v33/github"
+	githubLib "github.com/google/go-github/v37/github"
 )
 
 type fluxMessage struct {

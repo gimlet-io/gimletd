@@ -3,7 +3,7 @@ package notifications
 import (
 	"fmt"
 	"github.com/gimlet-io/gimletd/worker/events"
-	githubLib "github.com/google/go-github/v33/github"
+	githubLib "github.com/google/go-github/v37/github"
 	"strings"
 )
 

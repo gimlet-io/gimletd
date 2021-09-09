@@ -17,10 +17,10 @@ const contextString = "context"
 const githubCommitLinkFormat = "<https://github.com/%s/commit/%s|%s>"
 const bitbucketServerLinkFormat = "<http://%s/projects/%s/repos/%s/commits/%s|%s>"
 
-type slackProvider struct {
-	token          string
-	defaultChannel string
-	channelMapping map[string]string
+type SlackProvider struct {
+	Token          string
+	DefaultChannel string
+	ChannelMapping map[string]string
 }
 
 type slackMessage struct {
@@ -40,7 +40,7 @@ type Text struct {
 	Text string `json:"text"`
 }
 
-func (s *slackProvider) send(msg Message) error {
+func (s *SlackProvider) send(msg Message) error {
 	slackMessage, err := msg.AsSlackMessage()
 	if err != nil {
 		return fmt.Errorf("cannot create slack message: %s", err)
@@ -50,8 +50,8 @@ func (s *slackProvider) send(msg Message) error {
 		return nil
 	}
 
-	channel := s.defaultChannel
-	if ch, ok := s.channelMapping[msg.Env()]; ok {
+	channel := s.DefaultChannel
+	if ch, ok := s.ChannelMapping[msg.Env()]; ok {
 		channel = ch
 	}
 	slackMessage.Channel = channel
@@ -59,7 +59,7 @@ func (s *slackProvider) send(msg Message) error {
 	return s.post(slackMessage)
 }
 
-func (s *slackProvider) post(msg *slackMessage) error {
+func (s *SlackProvider) post(msg *slackMessage) error {
 	b := new(bytes.Buffer)
 	err := json.NewEncoder(b).Encode(msg)
 	if err != nil {
@@ -69,7 +69,7 @@ func (s *slackProvider) post(msg *slackMessage) error {
 
 	req, _ := http.NewRequest("POST", "https://slack.com/api/chat.postMessage", b)
 	req.Header.Set("Content-Type", "application/json; charset=utf-8")
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", s.token))
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", s.Token))
 	req = req.WithContext(context.TODO())
 
 	client := &http.Client{}

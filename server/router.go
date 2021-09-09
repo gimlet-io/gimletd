@@ -3,7 +3,7 @@ package server
 import (
 	"encoding/json"
 	"github.com/gimlet-io/gimletd/cmd/config"
-	"github.com/gimlet-io/gimletd/githelper"
+	"github.com/gimlet-io/gimletd/git/nativeGit"
 	"github.com/gimlet-io/gimletd/notifications"
 	"github.com/gimlet-io/gimletd/server/session"
 	"github.com/gimlet-io/gimletd/store"
@@ -19,7 +19,7 @@ func SetupRouter(
 	config *config.Config,
 	store *store.Store,
 	notificationsManager notifications.Manager,
-	repoCache *git.GitopsRepoCache,
+	repoCache *nativeGit.GitopsRepoCache,
 	perf *prometheus.HistogramVec,
 ) *chi.Mux {
 	r := chi.NewRouter()

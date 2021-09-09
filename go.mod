@@ -13,14 +13,14 @@ require (
 	github.com/go-git/go-git/v5 v5.2.0
 	github.com/go-sql-driver/mysql v1.4.1
 	github.com/gobwas/glob v0.2.3
-	github.com/google/go-github/v33 v33.0.0
+	github.com/google/go-github/v37 v37.0.0
 	github.com/google/uuid v1.1.1
 	github.com/gorilla/securecookie v1.1.1
 	github.com/joho/godotenv v1.3.0
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/lib/pq v1.8.0
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
-	github.com/otiai10/copy v1.6.0 // indirect
+	github.com/otiai10/copy v1.6.0
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.7.1
 	github.com/russross/meddler v1.0.0

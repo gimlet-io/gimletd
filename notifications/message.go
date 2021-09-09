@@ -1,6 +1,6 @@
 package notifications
 
-import githubLib "github.com/google/go-github/v33/github"
+import githubLib "github.com/google/go-github/v37/github"
 
 type Message interface {
 	AsSlackMessage() (*slackMessage, error)
