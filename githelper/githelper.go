@@ -44,25 +44,6 @@ func CloneToTmpFs(repoName string, privateKeyPath string) (string, *git.Reposito
 	return path, repo, err
 }
 
-func RemoteHasChanges(repo *git.Repository, privateKeyPath string) (bool, error) {
-	publicKeys, err := ssh.NewPublicKeysFromFile("git", privateKeyPath, "")
-	if err != nil {
-		return false, fmt.Errorf("cannot generate public key from private: %s", err.Error())
-	}
-
-	err = repo.Fetch(&git.FetchOptions{
-		Auth: publicKeys,
-	})
-	if err == git.NoErrAlreadyUpToDate {
-		return false, nil
-	}
-	if err != nil {
-		return false, err
-	}
-
-	return true, nil
-}
-
 func TmpFsCleanup(path string) error {
 	return os.RemoveAll(path)
 }
@@ -354,7 +335,7 @@ func Releases(
 			releaseFile, err = c.File(path + "/release.json")
 			if err != nil {
 				logrus.Debugf("no release file for %s: %s", c.Hash.String(), err)
-				releases = append(releases, relaseFromCommit(c, app, env))
+				releases = append(releases, releaseFromCommit(c, app, env))
 				return nil
 			}
 		}
@@ -363,7 +344,7 @@ func Releases(
 		reader, err := releaseFile.Blob.Reader()
 		if err != nil {
 			logrus.Warnf("cannot parse release file for %s: %s", c.Hash.String(), err)
-			releases = append(releases, relaseFromCommit(c, app, env))
+			releases = append(releases, releaseFromCommit(c, app, env))
 			return nil
 		}
 
@@ -374,7 +355,7 @@ func Releases(
 		err = json.Unmarshal(releaseBytes, &release)
 		if err != nil {
 			logrus.Warnf("cannot parse release file for %s: %s", c.Hash.String(), err)
-			releases = append(releases, relaseFromCommit(c, app, env))
+			releases = append(releases, releaseFromCommit(c, app, env))
 		}
 
 		if gitRepo != "" { // gitRepo filter
@@ -389,7 +370,7 @@ func Releases(
 		rolledBack, err := HasBeenReverted(repo, c.Hash.String(), env, app)
 		if err != nil {
 			logrus.Warnf("cannot determine if commit was rolled back %s: %s", c.Hash.String(), err)
-			releases = append(releases, relaseFromCommit(c, app, env))
+			releases = append(releases, releaseFromCommit(c, app, env))
 		}
 		release.RolledBack = rolledBack
 
@@ -531,7 +512,7 @@ func HasBeenReverted(repo *git.Repository, sha string, env string, app string) (
 	return hasBeenReverted, nil
 }
 
-func relaseFromCommit(c *object.Commit, app string, env string) *dx.Release {
+func releaseFromCommit(c *object.Commit, app string, env string) *dx.Release {
 	return &dx.Release{
 		App:       app,
 		Env:       env,
