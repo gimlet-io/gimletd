@@ -64,6 +64,9 @@ type Client interface {
 	// RollbackPost rolls back to the given sha
 	RollbackPost(env string, app string, targetSHA string) (string, error)
 
+	// DeletePost deletes an application in an env
+	DeletePost(env string, app string) error
+
 	// TrackGet returns the state of an event
 	TrackGet(trackingID string) (*dx.ReleaseStatus, error)
 

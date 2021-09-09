@@ -1,16 +1,27 @@
 package githelper
 
 import (
+	"fmt"
 	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/config"
+	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
+	"github.com/otiai10/copy"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"io/ioutil"
+	"os"
 	"time"
 )
+
+var fetchRefSpec = []config.RefSpec{
+	"refs/heads/*:refs/heads/*",
+}
 
 type RepoCache struct {
 	gitopsRepo              string
 	gitopsRepoDeployKeyPath string
 	repo                    *git.Repository
-	repoTmpPath             string
+	cachePath               string
 	stopCh                  chan struct{}
 	invalidateCh            chan string
 }
@@ -20,7 +31,7 @@ func NewRepoCache(
 	gitopsRepoDeployKeyPath string,
 	stopCh chan struct{},
 ) (*RepoCache, error) {
-	repoTmpPath, repo, err := CloneToTmpFs(gitopsRepo, gitopsRepoDeployKeyPath)
+	cachePath, repo, err := CloneToTmpFs(gitopsRepo, gitopsRepoDeployKeyPath)
 	if err != nil {
 		return nil, err
 	}
@@ -29,58 +40,75 @@ func NewRepoCache(
 		gitopsRepo:              gitopsRepo,
 		gitopsRepoDeployKeyPath: gitopsRepoDeployKeyPath,
 		repo:                    repo,
-		repoTmpPath:             repoTmpPath,
+		cachePath:               cachePath,
 		stopCh:                  stopCh,
 		invalidateCh:            make(chan string),
 	}, nil
 }
 
-func (w *RepoCache) Run() {
+func (r *RepoCache) Run() {
 	for {
-		w.syncGitRepo()
+		r.syncGitRepo()
 
 		select {
-		case <-w.stopCh:
-			logrus.Infof("cleaning up git repo cache at %s", w.repoTmpPath)
-			TmpFsCleanup(w.repoTmpPath)
+		case <-r.stopCh:
+			logrus.Infof("cleaning up git repo cache at %s", r.cachePath)
+			TmpFsCleanup(r.cachePath)
 			return
-		case <-w.invalidateCh:
+		case <-r.invalidateCh:
 			logrus.Info("received cache invalidate message")
 		case <-time.After(30 * time.Second):
 		}
 	}
 }
 
-func (w *RepoCache) syncGitRepo() {
-	hasChanges, err := RemoteHasChanges(w.repo, w.gitopsRepoDeployKeyPath)
-
-	if hasChanges || err != nil {
-		logrus.Info("repo cache is stale, updating")
-		err := w.updateRepo()
-		if err != nil {
-			logrus.Errorf("could not update git repo %s", err)
-		}
-	}
-}
-
-func (w *RepoCache) updateRepo() error {
-	defer TmpFsCleanup(w.repoTmpPath)
-
-	repoTmpPath, repo, err := CloneToTmpFs(w.gitopsRepo, w.gitopsRepoDeployKeyPath)
+func (r *RepoCache) syncGitRepo() {
+	publicKeys, err := ssh.NewPublicKeysFromFile("git", r.gitopsRepoDeployKeyPath, "")
 	if err != nil {
-		return err
+		logrus.Errorf("cannot generate public key from private: %s", err.Error())
 	}
 
-	w.repoTmpPath = repoTmpPath
-	w.repo = repo
-
-	return nil
+	err = r.repo.Fetch(&git.FetchOptions{
+		RefSpecs: fetchRefSpec,
+		Auth:     publicKeys,
+		Depth:    100,
+		Tags:     git.NoTags,
+	})
+	if err == git.NoErrAlreadyUpToDate {
+		return
+	}
+	if err != nil {
+		logrus.Errorf("could not fetch: %s", err)
+	}
 }
 
-func (w *RepoCache) InstanceForRead() *git.Repository {
-	return w.repo
+func (r *RepoCache) InstanceForRead() *git.Repository {
+	return r.repo
 }
 
-func (w *RepoCache) Invalidate() {
-	w.invalidateCh <- "invalidate"
+func (r *RepoCache) InstanceForWrite() (*git.Repository, string, error) {
+	tmpPath, err := ioutil.TempDir("", "gitops-")
+	if err != nil {
+		errors.WithMessage(err, "couldn't get temporary directory")
+	}
+
+	err = copy.Copy(r.cachePath, tmpPath)
+	if err != nil {
+		errors.WithMessage(err, "could not make copy of repo")
+	}
+
+	copiedRepo, err := git.PlainOpen(tmpPath)
+	if err != nil {
+		return nil, "", fmt.Errorf("cannot open git repository at %s: %s", tmpPath, err)
+	}
+
+	return copiedRepo, tmpPath, nil
+}
+
+func (r *RepoCache) CleanupWrittenRepo(path string) error {
+	return os.RemoveAll(path)
+}
+
+func (r *RepoCache) Invalidate() {
+	r.invalidateCh <- "invalidate"
 }
