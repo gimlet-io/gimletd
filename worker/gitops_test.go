@@ -327,6 +327,46 @@ func Test_tag_and_branch_pattern_triggers(t *testing.T) {
 	assert.False(t, triggered, "Non matching tag pattern should not trigger a deploy")
 }
 
+func Test_negative_tag_and_branch_triggers(t *testing.T) {
+	triggered := deployTrigger(
+		&dx.Artifact{
+			Version: dx.Version{
+				Branch: "a-bugfix",
+				Event:  *dx.PushPtr(),
+			},
+		},
+		&dx.Deploy{
+			Branch: "!main",
+			Event:  dx.PushPtr(),
+		})
+	assert.True(t, triggered, "Matching branch pattern should trigger a deploy")
+
+	triggered = deployTrigger(
+		&dx.Artifact{
+			Version: dx.Version{
+				Tag:   "v2",
+				Event: *dx.TagPtr(),
+			},
+		},
+		&dx.Deploy{
+			Tag:   "!v1",
+			Event: dx.TagPtr(),
+		})
+	assert.True(t, triggered, "Matching tag pattern should trigger a deploy")
+
+	triggered = deployTrigger(
+		&dx.Artifact{
+			Version: dx.Version{
+				Branch: "main",
+			},
+		},
+		&dx.Deploy{
+			Branch:   "!main",
+			Event: dx.TagPtr(),
+		})
+	assert.False(t, triggered, "Non matching branch pattern should not trigger a deploy")
+}
+
 func Test_revertTo(t *testing.T) {
 	path, _ := ioutil.TempDir("", "gitops-")
 	defer os.RemoveAll(path)
