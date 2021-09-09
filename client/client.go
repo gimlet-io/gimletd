@@ -36,6 +36,7 @@ const (
 	pathReleases   = "%s/api/releases"
 	pathStatus     = "%s/api/status"
 	pathRollback   = "%s/api/rollback"
+	pathDelete     = "%s/api/delete"
 	pathEvent      = "%s/api/event"
 	pathUser       = "%s/api/user"
 	pathGitopsRepo = "%s/api/gitopsRepo"
@@ -293,6 +294,17 @@ func (c *client) RollbackPost(env string, app string, targetSHA string) (string,
 	}
 	res := *result
 	return res["id"].(string), nil
+}
+
+// DeletePost deletes an application in an env
+func (c *client) DeletePost(env string, app string) error {
+	uri := fmt.Sprintf(pathDelete+"?env=%s&app=%s", c.addr, env, app)
+	result := new(map[string]interface{})
+	err := c.post(uri, nil, result)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // TrackGet gets the status of an event

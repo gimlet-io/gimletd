@@ -13,6 +13,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"io/ioutil"
 	"net/http"
+	"path/filepath"
 	"strconv"
 	"time"
 )
@@ -243,6 +244,63 @@ func rollback(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusCreated)
 	w.Write(eventIDBytes)
+}
+
+func delete(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	user := ctx.Value("user").(*model.User)
+	repoCache := ctx.Value("repoCache").(*githelper.RepoCache)
+	gitopsRepoDeployKeyPath := ctx.Value("gitopsRepoDeployKeyPath").(string)
+
+	params := r.URL.Query()
+	var env, app string
+	if val, ok := params["env"]; ok {
+		env = val[0]
+	} else {
+		http.Error(w, fmt.Sprintf("%s: %s", http.StatusText(http.StatusBadRequest), "env parameter is mandatory"), http.StatusBadRequest)
+		return
+	}
+	if val, ok := params["app"]; ok {
+		app = val[0]
+	} else {
+		http.Error(w, fmt.Sprintf("%s: %s", http.StatusText(http.StatusBadRequest), "app parameter is mandatory"), http.StatusBadRequest)
+		return
+	}
+
+	repo, pathToClanUp, err := repoCache.InstanceForWrite()
+	defer repoCache.CleanupWrittenRepo(pathToClanUp)
+	if err != nil {
+		logrus.Errorf("cannot get gitops repo for write: %s", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	err = githelper.DelDir(repo, filepath.Join(env, app))
+	if err != nil {
+		logrus.Errorf("cannot delete release: %s", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	empty, err := githelper.NothingToCommit(repo)
+	if err != nil {
+		logrus.Errorf("cannot determine git status: %s", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+	if empty {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("{}"))
+		return
+	}
+
+	gitMessage := fmt.Sprintf("[GimletD delete] %s/%s deleted by %s", env, app, user.Login)
+	_, err = githelper.Commit(repo, gitMessage)
+	githelper.Push(repo, gitopsRepoDeployKeyPath)
+	repoCache.Invalidate()
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("{}"))
 }
 
 func getEvent(w http.ResponseWriter, r *http.Request) {

@@ -55,6 +55,7 @@ func SetupRouter(
 		r.Get("/api/status", getStatus)
 		r.Post("/api/releases", release)
 		r.Post("/api/rollback", rollback)
+		r.Post("/api/delete", delete)
 		r.Get("/api/event", getEvent)
 		r.Post("/api/flux-events", fluxEvent)
 
