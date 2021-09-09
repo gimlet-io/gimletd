@@ -4,7 +4,9 @@ import (
 	"encoding/base32"
 	"fmt"
 	"github.com/gimlet-io/gimletd/cmd/config"
-	"github.com/gimlet-io/gimletd/githelper"
+	"github.com/gimlet-io/gimletd/git/customScm"
+	"github.com/gimlet-io/gimletd/git/customScm/customGithub"
+	"github.com/gimlet-io/gimletd/git/nativeGit"
 	"github.com/gimlet-io/gimletd/model"
 	"github.com/gimlet-io/gimletd/notifications"
 	"github.com/gimlet-io/gimletd/server"
@@ -17,6 +19,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
 	"net/http"
+	"strings"
 )
 
 func main() {
@@ -44,22 +47,25 @@ func main() {
 		panic(err)
 	}
 
+	var tokenManager customScm.NonImpersonatedTokenManager
+	if config.Github.AppID != "" {
+		tokenManager, err = customGithub.NewGithubOrgTokenManager(config)
+		if err != nil {
+			panic(err)
+		}
+	}
+
 	notificationsManager := notifications.NewManager()
-	notificationsManager.AddProvider(
-		config.Notifications.Provider,
-		config.Notifications.Token,
-		config.Notifications.DefaultChannel,
-		config.Notifications.ChannelMapping,
-	)
-	if config.GithubStatusToken != "" {
-		notificationsManager.AddProvider("github", config.GithubStatusToken, "", "")
+	notificationsManager = addSlackNotificationProvider(config, notificationsManager)
+	if config.Github.AppID != "" {
+		notificationsManager.AddProvider(notifications.NewGithubProvider(tokenManager))
 	}
 	go notificationsManager.Run()
 
 	stopCh := make(chan struct{})
 	defer close(stopCh)
 
-	repoCache, err := githelper.NewRepoCache(config.GitopsRepo, config.GitopsRepoDeployKeyPath, stopCh)
+	repoCache, err := nativeGit.NewGitopsRepoCache(config.GitopsRepo, config.GitopsRepoDeployKeyPath, stopCh)
 	if err != nil {
 		panic(err)
 	}
@@ -72,7 +78,7 @@ func main() {
 			store,
 			config.GitopsRepo,
 			config.GitopsRepoDeployKeyPath,
-			config.GithubChartAccessDeployKeyPath,
+			tokenManager,
 			notificationsManager,
 			eventsProcessed,
 			repoCache,
@@ -100,6 +106,24 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func addSlackNotificationProvider(config *config.Config, notificationsManager *notifications.ManagerImpl) *notifications.ManagerImpl {
+	channelMap := map[string]string{}
+	if config.Notifications.ChannelMapping != "" {
+		pairs := strings.Split(config.Notifications.ChannelMapping, ",")
+		for _, p := range pairs {
+			keyValue := strings.Split(p, "=")
+			channelMap[keyValue[0]] = keyValue[1]
+		}
+	}
+	notificationsManager.AddProvider(&notifications.SlackProvider{
+		Token:          config.Notifications.Token,
+		ChannelMapping: channelMap,
+		DefaultChannel: config.Notifications.DefaultChannel,
+	})
+
+	return notificationsManager
 }
 
 // helper function configures the logging.

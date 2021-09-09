@@ -3,23 +3,20 @@ package notifications
 import (
 	"context"
 	"fmt"
-	githubLib "github.com/google/go-github/v33/github"
+	"github.com/gimlet-io/gimletd/git/customScm"
+	githubLib "github.com/google/go-github/v37/github"
 	"golang.org/x/oauth2"
 	"strings"
 	"time"
 )
 
 type github struct {
-	client *githubLib.Client
+	tokenManager customScm.NonImpersonatedTokenManager
 }
 
-func newGithubProvider(token string) *github {
-	ctx := context.Background()
-	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})
-	tc := oauth2.NewClient(ctx, ts)
-	client := githubLib.NewClient(tc)
+func NewGithubProvider(tokenManager customScm.NonImpersonatedTokenManager) *github {
 	return &github{
-		client: client,
+		tokenManager: tokenManager,
 	}
 }
 
@@ -50,8 +47,16 @@ func (g *github) post(owner string, repo string, sha string, status *githubLib.R
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
+	token, _, err := g.tokenManager.Token()
+	if err != nil {
+		return fmt.Errorf("couldn't get scm token: %s", err)
+	}
+	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})
+	tc := oauth2.NewClient(ctx, ts)
+	client := githubLib.NewClient(tc)
+
 	opts := &githubLib.ListOptions{PerPage: 50}
-	statuses, _, err := g.client.Repositories.ListStatuses(ctx, owner, repo, sha, opts)
+	statuses, _, err := client.Repositories.ListStatuses(ctx, owner, repo, sha, opts)
 	if err != nil {
 		return fmt.Errorf("could not list commit statuses: %v", err)
 	}
@@ -59,7 +64,7 @@ func (g *github) post(owner string, repo string, sha string, status *githubLib.R
 		return nil
 	}
 
-	_, _, err = g.client.Repositories.CreateStatus(ctx, owner, repo, sha, status)
+	_, _, err = client.Repositories.CreateStatus(ctx, owner, repo, sha, status)
 	if err != nil {
 		return fmt.Errorf("could not create commit status: %v", err)
 	}

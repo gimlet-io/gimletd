@@ -18,7 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gimlet-io/gimletd/dx"
-	"github.com/gimlet-io/gimletd/githelper"
+	"github.com/gimlet-io/gimletd/git/nativeGit"
 	"github.com/go-git/go-billy/v5/memfs"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
@@ -145,9 +145,9 @@ func Test_gitopsTemplateAndWrite_deleteStaleFiles(t *testing.T) {
 	_, err = gitopsTemplateAndWrite(repo, a.Environments[0], &dx.Release{}, "")
 	assert.Nil(t, err)
 
-	content, _ := githelper.Content(repo, "staging/my-app/deployment.yaml")
+	content, _ := nativeGit.Content(repo, "staging/my-app/deployment.yaml")
 	assert.True(t, len(content) > 100)
-	content, _ = githelper.Content(repo, "staging/my-app/pvc.yaml")
+	content, _ = nativeGit.Content(repo, "staging/my-app/pvc.yaml")
 	assert.True(t, len(content) > 100)
 
 	withoutVolume := `
@@ -183,7 +183,7 @@ func Test_gitopsTemplateAndWrite_deleteStaleFiles(t *testing.T) {
 	_, err = gitopsTemplateAndWrite(repo, b.Environments[0], &dx.Release{}, "")
 	assert.Nil(t, err)
 
-	content, _ = githelper.Content(repo, "staging/my-app/pvc.yaml")
+	content, _ = nativeGit.Content(repo, "staging/my-app/pvc.yaml")
 	assert.Equal(t, content, "")
 }
 
@@ -361,8 +361,8 @@ func Test_negative_tag_and_branch_triggers(t *testing.T) {
 			},
 		},
 		&dx.Deploy{
-			Branch:   "!main",
-			Event: dx.TagPtr(),
+			Branch: "!main",
+			Event:  dx.TagPtr(),
 		})
 	assert.False(t, triggered, "Non matching branch pattern should not trigger a deploy")
 }
@@ -389,7 +389,7 @@ func Test_revertTo(t *testing.T) {
 		SHAs[2],
 	)
 	assert.Nil(t, err)
-	content, _ := githelper.Content(repo, "staging/my-app/file")
+	content, _ := nativeGit.Content(repo, "staging/my-app/file")
 	assert.Equal(t, "1\n", content)
 
 	SHAs = []string{}
@@ -408,7 +408,7 @@ func Test_revertTo(t *testing.T) {
 		SHAs[4],
 	)
 	assert.Nil(t, err)
-	content, _ = githelper.Content(repo, "staging/my-app/file")
+	content, _ = nativeGit.Content(repo, "staging/my-app/file")
 	assert.Equal(t, "1\n", content)
 
 	err = revertTo(
@@ -419,12 +419,12 @@ func Test_revertTo(t *testing.T) {
 		SHAs[5],
 	)
 	assert.Nil(t, err)
-	content, _ = githelper.Content(repo, "staging/my-app/file")
+	content, _ = nativeGit.Content(repo, "staging/my-app/file")
 	assert.Equal(t, "0\n", content)
 }
 
 func initHistory(repo *git.Repository) {
-	sha, _ := githelper.CommitFilesToGit(
+	sha, _ := nativeGit.CommitFilesToGit(
 		repo,
 		map[string]string{
 			"file": `0`,
@@ -435,7 +435,7 @@ func initHistory(repo *git.Repository) {
 		"",
 	)
 	fmt.Printf("%s - %s\n", sha, "0")
-	sha, _ = githelper.CommitFilesToGit(
+	sha, _ = nativeGit.CommitFilesToGit(
 		repo,
 		map[string]string{
 			"file": `1`,
@@ -446,7 +446,7 @@ func initHistory(repo *git.Repository) {
 		"",
 	)
 	fmt.Printf("%s - %s\n", sha, "1")
-	sha, _ = githelper.CommitFilesToGit(
+	sha, _ = nativeGit.CommitFilesToGit(
 		repo,
 		map[string]string{
 			"file": `2`,
@@ -457,7 +457,7 @@ func initHistory(repo *git.Repository) {
 		"",
 	)
 	fmt.Printf("%s - %s\n", sha, "2")
-	sha, _ = githelper.CommitFilesToGit(
+	sha, _ = nativeGit.CommitFilesToGit(
 		repo,
 		map[string]string{
 			"file": `3`,

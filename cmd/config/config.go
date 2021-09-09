@@ -3,6 +3,7 @@ package config
 import (
 	"github.com/kelseyhightower/envconfig"
 	"gopkg.in/yaml.v2"
+	"strings"
 )
 
 // Environ returns the settings from the environment.
@@ -37,8 +38,7 @@ type Config struct {
 	GitopsRepo                     string `envconfig:"GITOPS_REPO"`
 	GitopsRepoDeployKeyPath        string `envconfig:"GITOPS_REPO_DEPLOY_KEY_PATH"`
 	Notifications                  Notifications
-	GithubStatusToken              string `envconfig:"GITHUB_STATUS_TOKEN"` // a Github Personal Access Token with repo:status perm
-	GithubChartAccessDeployKeyPath string `envconfig:"GITOPS_CHART_ACCESS_DEPLOY_KEY_PATH"`
+	Github        Github
 }
 
 type Database struct {
@@ -60,4 +60,24 @@ type Notifications struct {
 	Token          string `envconfig:"NOTIFICATIONS_TOKEN"`
 	DefaultChannel string `envconfig:"NOTIFICATIONS_DEFAULT_CHANNEL"`
 	ChannelMapping string `envconfig:"NOTIFICATIONS_CHANNEL_MAPPING"`
+}
+
+type Github struct {
+	AppID          string    `envconfig:"GITHUB_APP_ID"`
+	InstallationID string    `envconfig:"GITHUB_INSTALLATION_ID"`
+	PrivateKey     Multiline `envconfig:"GITHUB_PRIVATE_KEY"`
+	SkipVerify     bool      `envconfig:"GITHUB_SKIP_VERIFY"`
+	Debug          bool      `envconfig:"GITHUB_DEBUG"`
+}
+
+type Multiline string
+
+func (m *Multiline) Decode(value string) error {
+	value = strings.ReplaceAll(value, "\\n", "\n")
+	*m = Multiline(value)
+	return nil
+}
+
+func (m *Multiline) String() string {
+	return string(*m)
 }

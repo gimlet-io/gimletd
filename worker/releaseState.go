@@ -2,7 +2,7 @@ package worker
 
 import (
 	"fmt"
-	"github.com/gimlet-io/gimletd/githelper"
+	"github.com/gimlet-io/gimletd/git/nativeGit"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/prometheus/client_golang/prometheus"
@@ -13,7 +13,7 @@ import (
 
 type ReleaseStateWorker struct {
 	GitopsRepo string
-	RepoCache  *githelper.RepoCache
+	RepoCache  *nativeGit.GitopsRepoCache
 	Releases   *prometheus.GaugeVec
 	Perf       *prometheus.HistogramVec
 }
@@ -24,7 +24,7 @@ func (w *ReleaseStateWorker) Run() {
 		repo := w.RepoCache.InstanceForRead()
 		w.Perf.WithLabelValues("releaseState_clone").Observe(time.Since(t0).Seconds())
 
-		envs, err := githelper.Envs(repo)
+		envs, err := nativeGit.Envs(repo)
 		if err != nil {
 			logrus.Errorf("cannot get envs: %s", err)
 			time.Sleep(30 * time.Second)
@@ -34,7 +34,7 @@ func (w *ReleaseStateWorker) Run() {
 		w.Releases.Reset()
 		for _, env := range envs {
 			t1 := time.Now()
-			appReleases, err := githelper.Status(repo, "", env, w.Perf)
+			appReleases, err := nativeGit.Status(repo, "", env, w.Perf)
 			if err != nil {
 				logrus.Errorf("cannot get status: %s", err)
 				time.Sleep(30 * time.Second)

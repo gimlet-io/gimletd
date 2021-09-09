@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gimlet-io/gimletd/dx"
-	"github.com/gimlet-io/gimletd/githelper"
+	"github.com/gimlet-io/gimletd/git/nativeGit"
 	"github.com/gimlet-io/gimletd/model"
 	"github.com/gimlet-io/gimletd/store"
 	"github.com/prometheus/client_golang/prometheus"
@@ -64,10 +64,10 @@ func getReleases(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
-	repoCache := ctx.Value("repoCache").(*githelper.RepoCache)
+	gitopsRepoCache := ctx.Value("gitopsRepoCache").(*nativeGit.GitopsRepoCache)
 	gitopsRepo := ctx.Value("gitopsRepo").(string)
 
-	releases, err := githelper.Releases(repoCache.InstanceForRead(), app, env, since, until, limit, gitRepo)
+	releases, err := nativeGit.Releases(gitopsRepoCache.InstanceForRead(), app, env, since, until, limit, gitRepo)
 	if err != nil {
 		logrus.Errorf("cannot get releases: %s", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -104,11 +104,11 @@ func getStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
-	repoCache := ctx.Value("repoCache").(*githelper.RepoCache)
+	gitopsRepoCache := ctx.Value("gitopsRepoCache").(*nativeGit.GitopsRepoCache)
 	gitopsRepo := ctx.Value("gitopsRepo").(string)
 	perf := ctx.Value("perf").(*prometheus.HistogramVec)
 
-	appReleases, err := githelper.Status(repoCache.InstanceForRead(), app, env, perf)
+	appReleases, err := nativeGit.Status(gitopsRepoCache.InstanceForRead(), app, env, perf)
 	if err != nil {
 		logrus.Errorf("cannot get status: %s", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -249,7 +249,7 @@ func rollback(w http.ResponseWriter, r *http.Request) {
 func delete(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user := ctx.Value("user").(*model.User)
-	repoCache := ctx.Value("repoCache").(*githelper.RepoCache)
+	gitopsRepoCache := ctx.Value("gitopsRepoCache").(*nativeGit.GitopsRepoCache)
 	gitopsRepoDeployKeyPath := ctx.Value("gitopsRepoDeployKeyPath").(string)
 
 	params := r.URL.Query()
@@ -267,22 +267,22 @@ func delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	repo, pathToClanUp, err := repoCache.InstanceForWrite()
-	defer repoCache.CleanupWrittenRepo(pathToClanUp)
+	repo, pathToClanUp, err := gitopsRepoCache.InstanceForWrite()
+	defer gitopsRepoCache.CleanupWrittenRepo(pathToClanUp)
 	if err != nil {
 		logrus.Errorf("cannot get gitops repo for write: %s", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
-	err = githelper.DelDir(repo, filepath.Join(env, app))
+	err = nativeGit.DelDir(repo, filepath.Join(env, app))
 	if err != nil {
 		logrus.Errorf("cannot delete release: %s", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
-	empty, err := githelper.NothingToCommit(repo)
+	empty, err := nativeGit.NothingToCommit(repo)
 	if err != nil {
 		logrus.Errorf("cannot determine git status: %s", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -295,9 +295,9 @@ func delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	gitMessage := fmt.Sprintf("[GimletD delete] %s/%s deleted by %s", env, app, user.Login)
-	_, err = githelper.Commit(repo, gitMessage)
-	githelper.Push(repo, gitopsRepoDeployKeyPath)
-	repoCache.Invalidate()
+	_, err = nativeGit.Commit(repo, gitMessage)
+	nativeGit.Push(repo, gitopsRepoDeployKeyPath)
+	gitopsRepoCache.Invalidate()
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("{}"))

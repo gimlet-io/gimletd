@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"github.com/gimlet-io/gimletd/dx"
 	"github.com/gimlet-io/gimletd/dx/helm"
-	"github.com/gimlet-io/gimletd/githelper"
+	"github.com/gimlet-io/gimletd/git/customScm"
+	"github.com/gimlet-io/gimletd/git/nativeGit"
 	"github.com/gimlet-io/gimletd/model"
 	"github.com/gimlet-io/gimletd/notifications"
 	"github.com/gimlet-io/gimletd/store"
@@ -22,32 +23,32 @@ import (
 )
 
 type GitopsWorker struct {
-	store                          *store.Store
-	gitopsRepo                     string
-	gitopsRepoDeployKeyPath        string
-	githubChartAccessDeployKeyPath string
-	notificationsManager           notifications.Manager
-	eventsProcessed                prometheus.Counter
-	repoCache                      *githelper.RepoCache
+	store                   *store.Store
+	gitopsRepo              string
+	gitopsRepoDeployKeyPath string
+	tokenManager            customScm.NonImpersonatedTokenManager
+	notificationsManager    notifications.Manager
+	eventsProcessed         prometheus.Counter
+	repoCache               *nativeGit.GitopsRepoCache
 }
 
 func NewGitopsWorker(
 	store *store.Store,
 	gitopsRepo string,
 	gitopsRepoDeployKeyPath string,
-	githubChartAccessDeployKeyPath string,
+	tokenManager customScm.NonImpersonatedTokenManager,
 	notificationsManager notifications.Manager,
 	eventsProcessed prometheus.Counter,
-	repoCache *githelper.RepoCache,
+	repoCache *nativeGit.GitopsRepoCache,
 ) *GitopsWorker {
 	return &GitopsWorker{
-		store:                          store,
-		gitopsRepo:                     gitopsRepo,
-		gitopsRepoDeployKeyPath:        gitopsRepoDeployKeyPath,
-		notificationsManager:           notificationsManager,
-		githubChartAccessDeployKeyPath: githubChartAccessDeployKeyPath,
-		eventsProcessed:                eventsProcessed,
-		repoCache:                      repoCache,
+		store:                   store,
+		gitopsRepo:              gitopsRepo,
+		gitopsRepoDeployKeyPath: gitopsRepoDeployKeyPath,
+		notificationsManager:    notificationsManager,
+		tokenManager:            tokenManager,
+		eventsProcessed:         eventsProcessed,
+		repoCache:               repoCache,
 	}
 }
 
@@ -65,7 +66,7 @@ func (w *GitopsWorker) Run() {
 			processEvent(w.store,
 				w.gitopsRepo,
 				w.gitopsRepoDeployKeyPath,
-				w.githubChartAccessDeployKeyPath,
+				w.tokenManager,
 				event,
 				w.notificationsManager,
 				w.repoCache,
@@ -80,23 +81,28 @@ func processEvent(
 	store *store.Store,
 	gitopsRepo string,
 	gitopsRepoDeployKeyPath string,
-	githubChartAccessDeployKeyPath string,
+	tokenManager customScm.NonImpersonatedTokenManager,
 	event *model.Event,
 	notificationsManager notifications.Manager,
-	repoCache *githelper.RepoCache,
+	repoCache *nativeGit.GitopsRepoCache,
 ) {
+	var token string
+	if tokenManager != nil { // only needed for private helm charts
+		token, _, _ = tokenManager.Token()
+	}
+
 	// process event based on type
 	var err error
 	var gitopsEvents []*events.DeployEvent
 	var rollbackEvent *events.RollbackEvent
 	switch event.Type {
 	case model.TypeArtifact:
-		gitopsEvents, err = processArtifactEvent(gitopsRepo, gitopsRepoDeployKeyPath, githubChartAccessDeployKeyPath, event, repoCache)
+		gitopsEvents, err = processArtifactEvent(gitopsRepo, gitopsRepoDeployKeyPath, token, event, repoCache)
 		if len(gitopsEvents) > 0 {
 			repoCache.Invalidate()
 		}
 	case model.TypeRelease:
-		gitopsEvents, err = processReleaseEvent(store, gitopsRepo, gitopsRepoDeployKeyPath, githubChartAccessDeployKeyPath, event)
+		gitopsEvents, err = processReleaseEvent(store, gitopsRepo, gitopsRepoDeployKeyPath, token, event)
 		repoCache.Invalidate()
 	case model.TypeRollback:
 		rollbackEvent, err = processRollbackEvent(gitopsRepo, gitopsRepoDeployKeyPath, event)
@@ -151,7 +157,7 @@ func processReleaseEvent(
 	store *store.Store,
 	gitopsRepo string,
 	gitopsRepoDeployKeyPath string,
-	githubChartAccessDeployKeyPath string,
+	githubChartAccessToken string,
 	event *model.Event,
 ) ([]*events.DeployEvent, error) {
 	var gitopsEvents []*events.DeployEvent
@@ -183,7 +189,7 @@ func processReleaseEvent(
 		gitopsEvent, err := cloneTemplateWriteAndPush(
 			gitopsRepo,
 			gitopsRepoDeployKeyPath,
-			githubChartAccessDeployKeyPath,
+			githubChartAccessToken,
 			artifact,
 			env,
 			releaseRequest.TriggeredBy,
@@ -213,13 +219,13 @@ func processRollbackEvent(
 		GitopsRepo:      gitopsRepo,
 	}
 
-	repoTmpPath, repo, err := githelper.CloneToTmpFs(gitopsRepo, gitopsRepoDeployKeyPath)
+	repoTmpPath, repo, err := nativeGit.CloneToTmpFs(gitopsRepo, gitopsRepoDeployKeyPath)
 	if err != nil {
 		rollbackEvent.Status = events.Failure
 		rollbackEvent.StatusDesc = err.Error()
 		return rollbackEvent, err
 	}
-	defer githelper.TmpFsCleanup(repoTmpPath)
+	defer nativeGit.TmpFsCleanup(repoTmpPath)
 
 	headSha, _ := repo.Head()
 
@@ -243,7 +249,7 @@ func processRollbackEvent(
 		return rollbackEvent, err
 	}
 
-	err = githelper.Push(repo, gitopsRepoDeployKeyPath)
+	err = nativeGit.Push(repo, gitopsRepoDeployKeyPath)
 	if err != nil {
 		rollbackEvent.Status = events.Failure
 		rollbackEvent.StatusDesc = err.Error()
@@ -281,9 +287,9 @@ func shasSince(repo *git.Repository, since string) ([]string, error) {
 func processArtifactEvent(
 	gitopsRepo string,
 	gitopsRepoDeployKeyPath string,
-	githubChartAccessDeployKeyPath string,
+	githubChartAccessToken string,
 	event *model.Event,
-	repoCache *githelper.RepoCache,
+	repoCache *nativeGit.GitopsRepoCache,
 ) ([]*events.DeployEvent, error) {
 	var gitopsEvents []*events.DeployEvent
 	artifact, err := model.ToArtifact(event)
@@ -299,7 +305,7 @@ func processArtifactEvent(
 		gitopsEvent, err := cloneTemplateWriteAndPush(
 			gitopsRepo,
 			gitopsRepoDeployKeyPath,
-			githubChartAccessDeployKeyPath,
+			githubChartAccessToken,
 			artifact,
 			env,
 			"policy",
@@ -318,7 +324,7 @@ func processArtifactEvent(
 func cloneTemplateWriteAndPush(
 	gitopsRepo string,
 	gitopsRepoDeployKeyPath string,
-	githubChartAccessDeployKeyPath string,
+	githubChartAccessToken string,
 	artifact *dx.Artifact,
 	env *dx.Manifest,
 	triggeredBy string,
@@ -331,8 +337,8 @@ func cloneTemplateWriteAndPush(
 		GitopsRepo:  gitopsRepo,
 	}
 
-	repoTmpPath, repo, err := githelper.CloneToTmpFs(gitopsRepo, gitopsRepoDeployKeyPath)
-	defer githelper.TmpFsCleanup(repoTmpPath)
+	repoTmpPath, repo, err := nativeGit.CloneToTmpFs(gitopsRepo, gitopsRepoDeployKeyPath)
+	defer nativeGit.TmpFsCleanup(repoTmpPath)
 	if err != nil {
 		gitopsEvent.Status = events.Failure
 		gitopsEvent.StatusDesc = err.Error()
@@ -359,7 +365,7 @@ func cloneTemplateWriteAndPush(
 		repo,
 		env,
 		releaseMeta,
-		githubChartAccessDeployKeyPath,
+		githubChartAccessToken,
 	)
 	if err != nil {
 		gitopsEvent.Status = events.Failure
@@ -367,7 +373,7 @@ func cloneTemplateWriteAndPush(
 		return gitopsEvent, err
 	}
 
-	err = githelper.Push(repo, gitopsRepoDeployKeyPath)
+	err = nativeGit.Push(repo, gitopsRepoDeployKeyPath)
 	if err != nil {
 		gitopsEvent.Status = events.Failure
 		gitopsEvent.StatusDesc = err.Error()
@@ -398,7 +404,7 @@ func revertTo(env string, app string, repo *git.Repository, repoTmpPath string, 
 			return fmt.Errorf("EOF")
 		}
 
-		if !githelper.RollbackCommit(c) {
+		if !nativeGit.RollbackCommit(c) {
 			hashesToRevert = append(hashesToRevert, c.Hash.String())
 		}
 		return nil
@@ -408,10 +414,10 @@ func revertTo(env string, app string, repo *git.Repository, repoTmpPath string, 
 	}
 
 	for _, hash := range hashesToRevert {
-		hasBeenReverted, err := githelper.HasBeenReverted(repo, hash, env, app)
+		hasBeenReverted, err := nativeGit.HasBeenReverted(repo, hash, env, app)
 		if !hasBeenReverted {
 			logrus.Infof("reverting %s", hash)
-			err = githelper.NativeRevert(repoTmpPath, hash)
+			err = nativeGit.NativeRevert(repoTmpPath, hash)
 			if err != nil {
 				return errors.WithMessage(err, "could not revert")
 			}
@@ -432,10 +438,10 @@ func gitopsTemplateAndWrite(
 	repo *git.Repository,
 	env *dx.Manifest,
 	release *dx.Release,
-	sshPrivateKeyPathForChartClone string,
+	tokenForChartClone string,
 ) (string, error) {
 	if strings.HasPrefix(env.Chart.Name, "git@") {
-		tmpChartDir, err := helm.CloneChartFromRepo(*env, sshPrivateKeyPathForChartClone)
+		tmpChartDir, err := helm.CloneChartFromRepo(*env, tokenForChartClone)
 		if err != nil {
 			return "", fmt.Errorf("cannot fetch chart from git %s", err.Error())
 		}
@@ -454,7 +460,7 @@ func gitopsTemplateAndWrite(
 		return "", fmt.Errorf("cannot marshal release meta data %s", err.Error())
 	}
 
-	sha, err := githelper.CommitFilesToGit(repo, files, env.Env, env.App, "automated deploy", string(releaseString))
+	sha, err := nativeGit.CommitFilesToGit(repo, files, env.Env, env.App, "automated deploy", string(releaseString))
 	if err != nil {
 		return "", fmt.Errorf("cannot write to git: %s", err.Error())
 	}
@@ -486,7 +492,7 @@ func deployTrigger(artifactToCheck *dx.Artifact, deployPolicy *dx.Deploy) bool {
 	if deployPolicy.Tag != "" {
 		negate := false
 		tag := deployPolicy.Branch
-		if strings.HasPrefix(deployPolicy.Tag, "!"){
+		if strings.HasPrefix(deployPolicy.Tag, "!") {
 			negate = true
 			tag = deployPolicy.Tag[1:]
 		}
@@ -508,7 +514,7 @@ func deployTrigger(artifactToCheck *dx.Artifact, deployPolicy *dx.Deploy) bool {
 	if deployPolicy.Branch != "" {
 		negate := false
 		branch := deployPolicy.Branch
-		if strings.HasPrefix(deployPolicy.Branch, "!"){
+		if strings.HasPrefix(deployPolicy.Branch, "!") {
 			negate = true
 			branch = deployPolicy.Branch[1:]
 		}

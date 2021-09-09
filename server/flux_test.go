@@ -17,12 +17,6 @@ import (
 
 func Test_fluxEvent(t *testing.T) {
 	notificationsManager := notifications.NewDummyManager()
-	notificationsManager.AddProvider(
-		"",
-		"",
-		"#channel",
-		"",
-	)
 
 	event := events.Event{
 		InvolvedObject: corev1.ObjectReference{

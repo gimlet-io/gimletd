@@ -1,5 +1,5 @@
 package notifications
 
-type provider interface {
+type Provider interface {
 	send(msg Message) error
 }

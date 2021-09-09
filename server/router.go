@@ -3,7 +3,7 @@ package server
 import (
 	"encoding/json"
 	"github.com/gimlet-io/gimletd/cmd/config"
-	"github.com/gimlet-io/gimletd/githelper"
+	"github.com/gimlet-io/gimletd/git/nativeGit"
 	"github.com/gimlet-io/gimletd/notifications"
 	"github.com/gimlet-io/gimletd/server/session"
 	"github.com/gimlet-io/gimletd/store"
@@ -19,7 +19,7 @@ func SetupRouter(
 	config *config.Config,
 	store *store.Store,
 	notificationsManager notifications.Manager,
-	repoCache *githelper.RepoCache,
+	repoCache *nativeGit.GitopsRepoCache,
 	perf *prometheus.HistogramVec,
 ) *chi.Mux {
 	r := chi.NewRouter()
@@ -34,7 +34,7 @@ func SetupRouter(
 	r.Use(middleware.WithValue("notificationsManager", notificationsManager))
 	r.Use(middleware.WithValue("gitopsRepo", config.GitopsRepo))
 	r.Use(middleware.WithValue("gitopsRepoDeployKeyPath", config.GitopsRepoDeployKeyPath))
-	r.Use(middleware.WithValue("repoCache", repoCache))
+	r.Use(middleware.WithValue("gitopsRepoCache", repoCache))
 	r.Use(middleware.WithValue("perf", perf))
 
 	r.Use(cors.Handler(cors.Options{

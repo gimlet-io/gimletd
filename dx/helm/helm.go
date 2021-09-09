@@ -5,7 +5,7 @@ import (
 	"github.com/gimlet-io/gimletd/dx"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
-	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
+	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	giturl "github.com/whilp/git-urls"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart/loader"
@@ -88,7 +88,7 @@ func SplitHelmOutput(input map[string]string) map[string]string {
 }
 
 // CloneChartFromRepo returns the chart location of the specified chart
-func CloneChartFromRepo(m dx.Manifest, privateKeyPath string) (string, error) {
+func CloneChartFromRepo(m dx.Manifest, token string) (string, error) {
 	gitAddress, err := giturl.ParseScp(m.Chart.Name)
 	if err != nil {
 		return "", fmt.Errorf("cannot parse chart's git address: %s", err)
@@ -104,12 +104,11 @@ func CloneChartFromRepo(m dx.Manifest, privateKeyPath string) (string, error) {
 	opts := &git.CloneOptions{
 		URL: gitUrl,
 	}
-	if privateKeyPath != "" {
-		publicKeys, err := ssh.NewPublicKeysFromFile("git", privateKeyPath, "")
-		if err != nil {
-			return "", fmt.Errorf("cannot generate public key from private: %s", err.Error())
+	if token != "" {
+		opts.Auth = &http.BasicAuth{
+			Username: "abc123", // this can be anything
+			Password: token,
 		}
-		opts.Auth = publicKeys
 	}
 	repo, err := git.PlainClone(tmpChartDir, false, opts)
 	if err != nil {

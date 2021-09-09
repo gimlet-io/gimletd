@@ -1,4 +1,4 @@
-package githelper
+package nativeGit
 
 import (
 	"github.com/go-git/go-billy/v5/memfs"
