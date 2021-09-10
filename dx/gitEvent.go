@@ -18,6 +18,14 @@ const (
 	PR
 )
 
+// CleanupEvent represents events that cause an app instance cleanup
+type CleanupEvent int
+
+const (
+	// BranchDeleted indicates if a git branch is deleted
+	BranchDeleted CleanupEvent = iota
+)
+
 func (s GitEvent) String() string {
 	return toString[s]
 }

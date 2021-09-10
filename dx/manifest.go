@@ -15,6 +15,7 @@ type Manifest struct {
 	Env       string                 `yaml:"env" json:"env"`
 	Namespace string                 `yaml:"namespace" json:"namespace"`
 	Deploy    *Deploy                `yaml:"deploy,omitempty" json:"deploy,omitempty"`
+	Cleanup   *Cleanup               `yaml:"cleanup,omitempty" json:"cleanup,omitempty"`
 	Chart     Chart                  `yaml:"chart" json:"chart"`
 	Values    map[string]interface{} `yaml:"values" json:"values"`
 }
@@ -29,6 +30,11 @@ type Deploy struct {
 	Tag    string    `yaml:"tag,omitempty" json:"tag,omitempty"`
 	Branch string    `yaml:"branch,omitempty" json:"branch,omitempty"`
 	Event  *GitEvent `yaml:"event,omitempty" json:"event,omitempty"`
+}
+
+type Cleanup struct {
+	AppToCleanup string       `yaml:"app" json:"app"`
+	Event        CleanupEvent `yaml:"event" json:"event"`
 }
 
 func (m *Manifest) ResolveVars(vars map[string]string) error {
