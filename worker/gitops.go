@@ -297,6 +297,10 @@ func processArtifactEvent(
 		return gitopsEvents, fmt.Errorf("cannot parse artifact %s", err.Error())
 	}
 
+	if artifactHasCleanupPolicy(artifact) {
+		keepReposWithCleanupPolicyUpToDate(artifact)
+	}
+
 	for _, env := range artifact.Environments {
 		if !deployTrigger(artifact, env.Deploy) {
 			continue
@@ -319,6 +323,27 @@ func processArtifactEvent(
 	}
 
 	return gitopsEvents, nil
+}
+
+func keepReposWithCleanupPolicyUpToDate(artifact *dx.Artifact) {
+	reposWithCleanupPolicy, err := store.ReposWithCleanupPolicy()
+	if err != nil {
+		logrus.Warnf("could not load repos with cleanup policy: %s", err)
+	}
+	repoIsNew := true
+	for _, r := range reposWithCleanupPolicy {
+		if r == artifact.Version.RepositoryName {
+			repoIsNew = false
+			break
+		}
+	}
+	if repoIsNew {
+		reposWithCleanupPolicy = append(reposWithCleanupPolicy, artifact.Version.RepositoryName)
+		err := store.SaveReposWithCleanipPolicy(reposWithCleanupPolicy)
+		if err != nil {
+			logrus.Warnf("could not update repos with cleanup policy: %s", err)
+		}
+	}
 }
 
 func cloneTemplateWriteAndPush(
