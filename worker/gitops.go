@@ -111,6 +111,8 @@ func processEvent(
 			setGitopsHashOnEvent(event, sha)
 		}
 		repoCache.Invalidate()
+	case model.TypeBranchDeleted:
+		TODO: delete branch in git, return event for notifications
 	}
 
 	// send out notifications based on gitops events
