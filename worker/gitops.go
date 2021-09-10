@@ -97,7 +97,7 @@ func processEvent(
 	var rollbackEvent *events.RollbackEvent
 	switch event.Type {
 	case model.TypeArtifact:
-		gitopsEvents, err = processArtifactEvent(gitopsRepo, gitopsRepoDeployKeyPath, token, event, repoCache)
+		gitopsEvents, err = processArtifactEvent(gitopsRepo, gitopsRepoDeployKeyPath, token, event, repoCache, store)
 		if len(gitopsEvents) > 0 {
 			repoCache.Invalidate()
 		}
@@ -112,7 +112,7 @@ func processEvent(
 		}
 		repoCache.Invalidate()
 	case model.TypeBranchDeleted:
-		TODO: delete branch in git, return event for notifications
+		//TODO: delete branch in git, return event for notifications
 	}
 
 	// send out notifications based on gitops events
@@ -292,6 +292,7 @@ func processArtifactEvent(
 	githubChartAccessToken string,
 	event *model.Event,
 	repoCache *nativeGit.GitopsRepoCache,
+	dao *store.Store,
 ) ([]*events.DeployEvent, error) {
 	var gitopsEvents []*events.DeployEvent
 	artifact, err := model.ToArtifact(event)
@@ -299,8 +300,8 @@ func processArtifactEvent(
 		return gitopsEvents, fmt.Errorf("cannot parse artifact %s", err.Error())
 	}
 
-	if artifactHasCleanupPolicy(artifact) {
-		keepReposWithCleanupPolicyUpToDate(artifact)
+	if artifact.HasCleanupPolicy() {
+		keepReposWithCleanupPolicyUpToDate(dao, artifact)
 	}
 
 	for _, env := range artifact.Environments {
@@ -327,11 +328,12 @@ func processArtifactEvent(
 	return gitopsEvents, nil
 }
 
-func keepReposWithCleanupPolicyUpToDate(artifact *dx.Artifact) {
-	reposWithCleanupPolicy, err := store.ReposWithCleanupPolicy()
+func keepReposWithCleanupPolicyUpToDate(dao *store.Store, artifact *dx.Artifact) {
+	reposWithCleanupPolicy, err := dao.ReposWithCleanupPolicy()
 	if err != nil {
 		logrus.Warnf("could not load repos with cleanup policy: %s", err)
 	}
+
 	repoIsNew := true
 	for _, r := range reposWithCleanupPolicy {
 		if r == artifact.Version.RepositoryName {
@@ -341,7 +343,7 @@ func keepReposWithCleanupPolicyUpToDate(artifact *dx.Artifact) {
 	}
 	if repoIsNew {
 		reposWithCleanupPolicy = append(reposWithCleanupPolicy, artifact.Version.RepositoryName)
-		err := store.SaveReposWithCleanipPolicy(reposWithCleanupPolicy)
+		err = dao.SaveReposWithCleanupPolicy(reposWithCleanupPolicy)
 		if err != nil {
 			logrus.Warnf("could not update repos with cleanup policy: %s", err)
 		}
@@ -418,7 +420,9 @@ func revertTo(env string, app string, repo *git.Repository, repoTmpPath string, 
 	path := fmt.Sprintf("%s/%s", env, app)
 	commits, err := repo.Log(
 		&git.LogOptions{
-			Path: &path,
+			PathFilter: func(s string) bool {
+				return s == path
+			},
 		},
 	)
 	if err != nil {

@@ -5,17 +5,19 @@ import (
 	"fmt"
 	"github.com/gimlet-io/gimletd/dx"
 	"github.com/gimlet-io/gimletd/git/customScm"
+	"github.com/gimlet-io/gimletd/git/nativeGit"
 	"github.com/gimlet-io/gimletd/model"
 	"github.com/gimlet-io/gimletd/store"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
+	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"os"
 	"path/filepath"
+	"sigs.k8s.io/yaml"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -52,20 +54,27 @@ func (r *BranchDeleteEventWorker) Run() {
 			logrus.Warnf("could not load repos with cleanup policy: %s", err)
 		}
 
-		for _, r := range reposWithCleanupPolicy {
-			repoPath := filepath.Join(r.cachePath, strings.ReplaceAll(r, "/", "%"))
+		for _, repoName := range reposWithCleanupPolicy {
+			repoPath := filepath.Join(r.cachePath, strings.ReplaceAll(repoName, "/", "%"))
 			if _, err := os.Stat(repoPath); err == nil { // repo exist
 				repo, err := git.PlainOpen(repoPath)
 				if err != nil {
 					logrus.Warnf("could not open %s: %s", repoPath, err)
 					continue
 				}
-				deletedBranches := r.detectDeletedBranches(r)
+				deletedBranches := r.detectDeletedBranches(repo)
 				for _, deletedBranch := range deletedBranches {
 
+					manifests, err := r.extractManifestsFromBranch(repo, deletedBranch)
+					if err != nil {
+						logrus.Warnf("could not extract manifests: %s", err)
+						continue
+					}
+
 					branchDeletedEventStr, err := json.Marshal(BranchDeletedEvent{
-						Branch: deletedBranch,
-						Manifests: extractManifestsFromBranch(repo, deletedBranch),
+						Repo: repoName,
+						Branch:    deletedBranch,
+						Manifests: manifests,
 					})
 					if err != nil {
 						logrus.Warnf("could not serialize branch deleted event: %s", err)
@@ -73,10 +82,10 @@ func (r *BranchDeleteEventWorker) Run() {
 					}
 
 					// store branch deleted event
-					event, err := r.dao.CreateEvent(&model.Event{
+					_, err = r.dao.CreateEvent(&model.Event{
 						Type:         model.TypeBranchDeleted,
 						Blob:         string(branchDeletedEventStr),
-						Repository:   r,
+						Repository:   repoName,
 						GitopsHashes: []string{},
 					})
 					if err != nil {
@@ -85,7 +94,7 @@ func (r *BranchDeleteEventWorker) Run() {
 					}
 				}
 			} else if os.IsNotExist(err) {
-				err := r.clone(r)
+				err := r.clone(repoName)
 				if err != nil {
 					logrus.Warnf("could not clone: %s", err)
 				}
@@ -99,31 +108,98 @@ func (r *BranchDeleteEventWorker) Run() {
 }
 
 func (r *BranchDeleteEventWorker) detectDeletedBranches(repo *git.Repository) []string {
+	var prunedBranches, staleBranches []string
+
+	refIter, _ := repo.References()
+	refIter.ForEach(func(r *plumbing.Reference) error {
+		if r.Name().IsRemote() {
+			staleBranches = append(staleBranches, strings.TrimPrefix(r.Name().Short(), "origin/"))
+		}
+		return nil
+	})
+
 	token, user, err := r.tokenManager.Token()
 	if err != nil {
 		logrus.Errorf("couldn't get scm token: %s", err)
 	}
 
 	err = repo.Fetch(&git.FetchOptions{
-		RefSpecs: fetchRefSpec,
 		Auth: &http.BasicAuth{
 			Username: user,
 			Password: token,
 		},
 		Depth: 100,
 		Tags:  git.NoTags,
+		Prune: true,
 	})
 	if err == git.NoErrAlreadyUpToDate {
-		return []string{}
-	}
-	if err != nil {
+		//return []string{}
+	} else if err != nil {
 		logrus.Errorf("could not fetch: %s", err)
 	}
 
-	return []string{}
+	refIter, _ = repo.References()
+	refIter.ForEach(func(r *plumbing.Reference) error {
+		if r.Name().IsRemote() {
+			prunedBranches = append(prunedBranches, strings.TrimPrefix(r.Name().Short(), "origin/"))
+		}
+		return nil
+	})
+
+	return difference(staleBranches, prunedBranches)
 }
 
-var mutex = &sync.Mutex{}
+func (r *BranchDeleteEventWorker) extractManifestsFromBranch(repo *git.Repository, branch string) ([]*dx.Manifest, error) {
+	var manifests []*dx.Manifest
+
+	head, err := repo.Head()
+	if err != nil {
+		return manifests, err
+	}
+	branchBkp := head.Target()
+
+	err = nativeGit.Branch(repo, branch)
+	if err != nil {
+		return manifests, err
+	}
+
+	files, err := nativeGit.Folder(repo, ".gimlet/")
+	if err != nil {
+		return manifests, err
+	}
+
+	for _, content := range files {
+		var mf dx.Manifest
+		err = yaml.Unmarshal([]byte(content), &mf)
+		if err != nil {
+			return manifests, err
+		}
+
+		manifests = append(manifests, &mf)
+	}
+
+	err = nativeGit.Branch(repo, branchBkp.Short())
+	if err != nil {
+		return manifests, err
+	}
+
+	return manifests, nil
+}
+
+// difference returns the elements in `a` that aren't in `b`.
+func difference(a, b []string) []string {
+	mb := make(map[string]struct{}, len(b))
+	for _, x := range b {
+		mb[x] = struct{}{}
+	}
+	var diff []string
+	for _, x := range a {
+		if _, found := mb[x]; !found {
+			diff = append(diff, x)
+		}
+	}
+	return diff
+}
 
 func (r *BranchDeleteEventWorker) clone(repoName string) error {
 	repoPath := filepath.Join(r.cachePath, strings.ReplaceAll(repoName, "/", "%"))
@@ -154,7 +230,6 @@ func (r *BranchDeleteEventWorker) clone(repoName string) error {
 	}
 
 	err = repo.Fetch(&git.FetchOptions{
-		RefSpecs: fetchRefSpec,
 		Auth: &http.BasicAuth{
 			Username: user,
 			Password: token,
@@ -173,4 +248,5 @@ func (r *BranchDeleteEventWorker) clone(repoName string) error {
 type BranchDeletedEvent struct {
 	Manifests []*dx.Manifest
 	Branch    string
+	Repo      string
 }

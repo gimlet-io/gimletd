@@ -21,6 +21,7 @@ const DeleteUser = "deleteUser"
 const SelectUnprocessedEvents = "select-unprocessed-events"
 const UpdateEventStatus = "update-event-status"
 const SelectGitopsCommitBySha = "select-gitops-commit-by-sha"
+const SelectKeyValue = "select-key-value"
 
 var queries = map[string]map[string]string{
 	"sqlite3": {
@@ -51,6 +52,11 @@ UPDATE events SET status = ?, status_desc = ?, gitops_hashes = ? WHERE id = ?;
 SELECT id, sha, status, status_desc
 FROM gitops_commits
 WHERE sha = ?;
+`,
+		SelectKeyValue: `
+SELECT id, key, value
+FROM key_values
+WHERE key = ?;
 `,
 	},
 	"postgres": {},

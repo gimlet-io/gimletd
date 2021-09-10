@@ -18,6 +18,7 @@ const createTableUsers = "create-table-users"
 const createTableEvents = "create-table-events"
 const addGitopsStatusColumnToEventsTable = "add-gitops_status-to-events-table"
 const createTableGitopsCommits = "create-table-gitopsCommits"
+const createTableKeyValues = "create-table-key-values"
 
 type migration struct {
 	name string
@@ -74,6 +75,17 @@ status      TEXT,
 status_desc TEXT,
 UNIQUE(id)
 );
+`,
+		},
+		{
+			name: createTableKeyValues,
+			stmt: `
+CREATE TABLE IF NOT EXISTS key_values (
+	id        INTEGER PRIMARY KEY AUTOINCREMENT,
+	key       TEXT,
+	value      TEXT,
+	UNIQUE(key)
+	);
 `,
 		},
 	},

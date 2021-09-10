@@ -84,7 +84,9 @@ func (w *ReleaseStateWorker) Run() {
 func lastCommitThatTouchedAFile(repo *git.Repository, path string) (*object.Commit, error) {
 	commits, err := repo.Log(
 		&git.LogOptions{
-			Path: &path,
+			PathFilter: func(s string) bool {
+				return s == path
+			},
 		},
 	)
 	if err != nil {
