@@ -25,6 +25,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/go-git/go-git/v5/storage/memory"
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v3"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -365,6 +366,27 @@ func Test_negative_tag_and_branch_triggers(t *testing.T) {
 			Event:  dx.TagPtr(),
 		})
 	assert.False(t, triggered, "Non matching branch pattern should not trigger a deploy")
+}
+
+func Test_unmarshal(t *testing.T) {
+	var many dx.Manifest
+	err := yaml.Unmarshal([]byte(`
+app: hello
+deploy:
+  branch: feature/*
+  event: push
+cleanup:
+  branch: feature/*
+  event: branchDeleted
+`), &many)
+	assert.Nil(t, err)
+	assert.NotNil(t, many.Cleanup)
+	assert.NotNil(t, many.Deploy)
+
+	a := &dx.Artifact{
+		Environments: []*dx.Manifest{&many},
+	}
+	assert.True(t, a.HasCleanupPolicy())
 }
 
 func Test_revertTo(t *testing.T) {

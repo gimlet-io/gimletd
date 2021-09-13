@@ -33,7 +33,6 @@ type Deploy struct {
 }
 
 type Cleanup struct {
-	AppToCleanup string       `yaml:"app" json:"app"`
 	Event        CleanupEvent `yaml:"event" json:"event"`
 	Branch       string       `yaml:"branch,omitempty" json:"branch,omitempty"`
 }

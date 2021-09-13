@@ -8,6 +8,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -85,7 +86,7 @@ func lastCommitThatTouchedAFile(repo *git.Repository, path string) (*object.Comm
 	commits, err := repo.Log(
 		&git.LogOptions{
 			PathFilter: func(s string) bool {
-				return s == path
+				return strings.HasPrefix(s, path)
 			},
 		},
 	)

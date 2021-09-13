@@ -18,14 +18,6 @@ const (
 	PR
 )
 
-// CleanupEvent represents events that cause an app instance cleanup
-type CleanupEvent int
-
-const (
-	// BranchDeleted indicates if a git branch is deleted
-	BranchDeleted CleanupEvent = iota
-)
-
 func (s GitEvent) String() string {
 	return toString[s]
 }
@@ -41,8 +33,6 @@ var toID = map[string]GitEvent{
 	"tag":  Tag,
 	"pr":   PR,
 }
-
-
 
 // MarshalJSON marshals the enum as a quoted json string
 func (s GitEvent) MarshalJSON() ([]byte, error) {

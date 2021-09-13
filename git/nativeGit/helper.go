@@ -363,7 +363,7 @@ func Releases(
 	commits, err := repo.Log(
 		&git.LogOptions{
 			PathFilter: func(s string) bool {
-				return s == path
+				return strings.HasPrefix(s, path)
 			},
 			Since: since,
 			Until: until,
@@ -543,7 +543,7 @@ func HasBeenReverted(repo *git.Repository, sha string, env string, app string) (
 	commits, err := repo.Log(
 		&git.LogOptions{
 			PathFilter: func(s string) bool {
-				return s == path
+				return strings.HasPrefix(s, path)
 			},
 		},
 	)

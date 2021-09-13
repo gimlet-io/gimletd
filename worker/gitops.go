@@ -421,7 +421,7 @@ func revertTo(env string, app string, repo *git.Repository, repoTmpPath string, 
 	commits, err := repo.Log(
 		&git.LogOptions{
 			PathFilter: func(s string) bool {
-				return s == path
+				return strings.HasPrefix(s, path)
 			},
 		},
 	)
