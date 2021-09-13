@@ -713,6 +713,10 @@ func cleanupTrigger(branch string, cleanupPolicy *dx.Cleanup) bool {
 		return false
 	}
 
+	if cleanupPolicy.AppToCleanup == "" {
+		return false
+	}
+
 	g := glob.MustCompile(cleanupPolicy.Branch)
 
 	exactMatch := branch == cleanupPolicy.Branch

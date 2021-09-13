@@ -65,7 +65,7 @@ func (r *BranchDeleteEventWorker) Run() {
 				}
 				deletedBranches := r.detectDeletedBranches(repo)
 				for _, deletedBranch := range deletedBranches {
-
+					// TODO: prune already deleted the branch
 					manifests, err := r.extractManifestsFromBranch(repo, deletedBranch)
 					if err != nil {
 						logrus.Warnf("could not extract manifests: %s", err)

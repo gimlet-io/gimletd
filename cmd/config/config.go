@@ -23,7 +23,7 @@ func defaults(c *Config) {
 		c.Database.Config = "gimletd.sqlite"
 	}
 	if c.RepoCachePath == "" {
-		c.RepoCachePath = "/tmp/gimlet-dashboard"
+		c.RepoCachePath = "/tmp/gimletd"
 	}
 }
 

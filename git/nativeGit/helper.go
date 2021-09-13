@@ -339,7 +339,6 @@ func Folder(repo *git.Repository, path string) (map[string]string, error) {
 	return files, nil
 }
 
-
 func Releases(
 	repo *git.Repository,
 	app, env string,
@@ -378,7 +377,8 @@ func Releases(
 			return fmt.Errorf("%s", "LIMIT")
 		}
 
-		if RollbackCommit(c) {
+		if RollbackCommit(c) ||
+			DeleteCommit(c) {
 			return nil
 		}
 
@@ -387,7 +387,6 @@ func Releases(
 			releaseFile, err = c.File(path + "/release.json")
 			if err != nil {
 				logrus.Debugf("no release file for %s: %s", c.Hash.String(), err)
-				releases = append(releases, releaseFromCommit(c, app, env))
 				return nil
 			}
 		}
@@ -407,12 +406,13 @@ func Releases(
 		err = json.Unmarshal(releaseBytes, &release)
 		if err != nil {
 			logrus.Warnf("cannot parse release file for %s: %s", c.Hash.String(), err)
-			releases = append(releases, releaseFromCommit(c, app, env))
+			//releases = append(releases, releaseFromCommit(c, app, env))
+			return nil
 		}
 
 		if gitRepo != "" { // gitRepo filter
 			if release.Version == nil ||
-			release.Version.RepositoryName != gitRepo {
+				release.Version.RepositoryName != gitRepo {
 				return nil
 			}
 		}
@@ -537,6 +537,10 @@ func readAppStatus(fs billy.Filesystem, path string) (*dx.Release, error) {
 
 func RollbackCommit(c *object.Commit) bool {
 	return strings.Contains(c.Message, "This reverts commit")
+}
+
+func DeleteCommit(c *object.Commit) bool {
+	return strings.Contains(c.Message, "[GimletD delete]")
 }
 
 func HasBeenReverted(repo *git.Repository, sha string, env string, app string) (bool, error) {
