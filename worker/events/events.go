@@ -1,6 +1,8 @@
 package events
 
-import "github.com/gimlet-io/gimletd/dx"
+import (
+	"github.com/gimlet-io/gimletd/dx"
+)
 
 type Status int
 
@@ -29,4 +31,16 @@ type RollbackEvent struct {
 
 	GitopsRefs []string
 	GitopsRepo string
+}
+
+type DeleteEvent struct {
+	DeployEvent
+	BranchDeletedEvent BranchDeletedEvent
+}
+
+// BranchDeletedEvent contains all metadata about the deleted branch
+type BranchDeletedEvent struct {
+	Manifests []*dx.Manifest
+	Branch    string
+	Repo      string
 }

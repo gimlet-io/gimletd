@@ -491,3 +491,31 @@ func initHistory(repo *git.Repository) {
 	)
 	fmt.Printf("%s - %s\n", sha, "3")
 }
+
+func Test_cleanupTrigger(t *testing.T) {
+	triggered := cleanupTrigger("feature/test-case-1", &dx.Cleanup{
+		Branch: "feature/*",
+		Event:  dx.BranchDeleted,
+	})
+	assert.True(t, triggered, "Should trigger on branch pattern")
+
+	triggered = cleanupTrigger("fix1", &dx.Cleanup{
+		Branch: "feature/*",
+		Event:  dx.BranchDeleted,
+	})
+	assert.False(t, triggered, "Should not trigger on non matching branch pattern")
+
+	triggered = cleanupTrigger("fix1", &dx.Cleanup{
+		Branch: "preview-test",
+		Event:  dx.BranchDeleted,
+	})
+	assert.False(t, triggered, "Should not trigger on non matching branch")
+
+	triggered = cleanupTrigger("preview-test", &dx.Cleanup{
+		Branch: "preview-test",
+	})
+	assert.True(t, triggered, "Should trigger on matching branch")
+
+	triggered = cleanupTrigger("preview-test", &dx.Cleanup{Event: dx.BranchDeleted})
+	assert.False(t, triggered, "Should not trigger on missing branch filter")
+}

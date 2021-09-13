@@ -15,14 +15,14 @@ func (db *Store) SaveKeyValue(setting *model.KeyValue) error {
 	if err != nil {
 		switch err {
 		case database_sql.ErrNoRows:
-			return meddler.Insert(db, "settings", setting)
+			return meddler.Insert(db, "key_values", setting)
 		default:
 			return err
 		}
 	}
 
 	storedSetting.Value = setting.Value
-	return meddler.Update(db, "settings", storedSetting)
+	return meddler.Update(db, "key_values", storedSetting)
 }
 
 // KeyValue returns the value of a given KeyValue key
@@ -41,24 +41,22 @@ func (db *Store) ReposWithCleanupPolicy() ([]string, error) {
 	var reposWithCleanupPolicy []string
 	err = json.Unmarshal([]byte(reposWithCleanupPolicyKeyValue.Value), &reposWithCleanupPolicy)
 	if err != nil {
-		return []string{},err
+		return []string{}, err
 	}
 
 	return reposWithCleanupPolicy, nil
 }
 
-func (db *Store) SaveReposWithCleanupPolicy(reposWithCleanupPolicy []string) (error) {
-	reposWithCleanupPolicyKeyValue, err := db.KeyValue(model.ReposWithCleanupPolicy)
-	if err != nil {
-		return err
-	}
-
+func (db *Store) SaveReposWithCleanupPolicy(reposWithCleanupPolicy []string) error {
 	reposWithCleanupPolicyBytes, err := json.Marshal(reposWithCleanupPolicy)
 	if err != nil {
 		return err
 	}
 
-	reposWithCleanupPolicyKeyValue.Value = string(reposWithCleanupPolicyBytes)
+	reposWithCleanupPolicyKeyValue := &model.KeyValue{
+		Key:   model.ReposWithCleanupPolicy,
+		Value: string(reposWithCleanupPolicyBytes),
+	}
 
 	return db.SaveKeyValue(reposWithCleanupPolicyKeyValue)
 }

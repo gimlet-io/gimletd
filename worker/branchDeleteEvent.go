@@ -8,6 +8,7 @@ import (
 	"github.com/gimlet-io/gimletd/git/nativeGit"
 	"github.com/gimlet-io/gimletd/model"
 	"github.com/gimlet-io/gimletd/store"
+	"github.com/gimlet-io/gimletd/worker/events"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
@@ -71,7 +72,7 @@ func (r *BranchDeleteEventWorker) Run() {
 						continue
 					}
 
-					branchDeletedEventStr, err := json.Marshal(BranchDeletedEvent{
+					branchDeletedEventStr, err := json.Marshal(events.BranchDeletedEvent{
 						Repo: repoName,
 						Branch:    deletedBranch,
 						Manifests: manifests,
@@ -156,7 +157,7 @@ func (r *BranchDeleteEventWorker) extractManifestsFromBranch(repo *git.Repositor
 	if err != nil {
 		return manifests, err
 	}
-	branchBkp := head.Target()
+	branchBkp := head.Name().Short()
 
 	err = nativeGit.Branch(repo, branch)
 	if err != nil {
@@ -178,7 +179,7 @@ func (r *BranchDeleteEventWorker) extractManifestsFromBranch(repo *git.Repositor
 		manifests = append(manifests, &mf)
 	}
 
-	err = nativeGit.Branch(repo, branchBkp.Short())
+	err = nativeGit.Branch(repo, branchBkp)
 	if err != nil {
 		return manifests, err
 	}
@@ -242,11 +243,4 @@ func (r *BranchDeleteEventWorker) clone(repoName string) error {
 	}
 
 	return nil
-}
-
-// BranchDeletedEvent contains all metadata about the deleted branch
-type BranchDeletedEvent struct {
-	Manifests []*dx.Manifest
-	Branch    string
-	Repo      string
 }

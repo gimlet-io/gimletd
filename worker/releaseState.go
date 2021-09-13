@@ -45,7 +45,7 @@ func (w *ReleaseStateWorker) Run() {
 
 			for app, release := range appReleases {
 				t2 := time.Now()
-				commit, err := lastCommitThatTouchedAFile(repo, filepath.Join(env, app))
+				commit, err := lastCommitThatTouchedAFile(repo, filepath.Join(env, app)+"/")
 				if err != nil {
 					logrus.Errorf("cannot find last commit: %s", err)
 					time.Sleep(30 * time.Second)

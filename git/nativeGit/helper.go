@@ -322,7 +322,7 @@ func Folder(repo *git.Repository, path string) (map[string]string, error) {
 			continue
 		}
 
-		f, err := worktree.Filesystem.Open(path)
+		f, err := worktree.Filesystem.Open(filepath.Join(path, fileInfo.Name()))
 		if err != nil {
 			return files, nil
 		}
@@ -354,7 +354,7 @@ func Releases(
 		return nil, fmt.Errorf("env is mandatory")
 	} else {
 		if app != "" {
-			path = fmt.Sprintf("%s/%s", env, app)
+			path = fmt.Sprintf("%s/%s/", env, app)
 		} else {
 			path = env
 		}
@@ -411,7 +411,8 @@ func Releases(
 		}
 
 		if gitRepo != "" { // gitRepo filter
-			if release.Version.RepositoryName != gitRepo {
+			if release.Version == nil || 
+			release.Version.RepositoryName != gitRepo {
 				return nil
 			}
 		}
@@ -539,7 +540,7 @@ func RollbackCommit(c *object.Commit) bool {
 }
 
 func HasBeenReverted(repo *git.Repository, sha string, env string, app string) (bool, error) {
-	path := fmt.Sprintf("%s/%s", env, app)
+	path := fmt.Sprintf("%s/%s/", env, app)
 	commits, err := repo.Log(
 		&git.LogOptions{
 			PathFilter: func(s string) bool {
