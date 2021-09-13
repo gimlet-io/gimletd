@@ -411,7 +411,7 @@ func Releases(
 		}
 
 		if gitRepo != "" { // gitRepo filter
-			if release.Version == nil || 
+			if release.Version == nil ||
 			release.Version.RepositoryName != gitRepo {
 				return nil
 			}

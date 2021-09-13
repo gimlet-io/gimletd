@@ -191,6 +191,10 @@ func processBranchDeletedEvent(
 			continue
 		}
 
+		env.ResolveVars(map[string]string{
+			"BRANCH": branchDeletedEvent.Branch,
+		})
+
 		if !cleanupTrigger(branchDeletedEvent.Branch, env.Cleanup) {
 			continue
 		}
@@ -509,7 +513,7 @@ func cloneTemplateDeleteAndPush(
 		return gitopsEvent, err
 	}
 
-	err = nativeGit.DelDir(repo, filepath.Join(env.Env, env.App))
+	err = nativeGit.DelDir(repo, filepath.Join(env.Env, env.Cleanup.AppToCleanup))
 	if err != nil {
 		gitopsEvent.Status = events.Failure
 		gitopsEvent.StatusDesc = err.Error()
