@@ -15,6 +15,7 @@ type Manifest struct {
 	Env       string                 `yaml:"env" json:"env"`
 	Namespace string                 `yaml:"namespace" json:"namespace"`
 	Deploy    *Deploy                `yaml:"deploy,omitempty" json:"deploy,omitempty"`
+	Cleanup   *Cleanup               `yaml:"cleanup,omitempty" json:"cleanup,omitempty"`
 	Chart     Chart                  `yaml:"chart" json:"chart"`
 	Values    map[string]interface{} `yaml:"values" json:"values"`
 }
@@ -29,6 +30,12 @@ type Deploy struct {
 	Tag    string    `yaml:"tag,omitempty" json:"tag,omitempty"`
 	Branch string    `yaml:"branch,omitempty" json:"branch,omitempty"`
 	Event  *GitEvent `yaml:"event,omitempty" json:"event,omitempty"`
+}
+
+type Cleanup struct {
+	AppToCleanup string       `yaml:"app" json:"app"`
+	Event        CleanupEvent `yaml:"event" json:"event"`
+	Branch       string       `yaml:"branch,omitempty" json:"branch,omitempty"`
 }
 
 func (m *Manifest) ResolveVars(vars map[string]string) error {
@@ -56,6 +63,33 @@ func (m *Manifest) ResolveVars(vars map[string]string) error {
 	}
 
 	return yaml.Unmarshal(templated.Bytes(), m)
+}
+
+func (c *Cleanup) ResolveVars(vars map[string]string) error {
+	cleanupPolicyString, err := yaml.Marshal(c)
+	if err != nil {
+		return fmt.Errorf("cannot marshal cleanup policy %s", err.Error())
+	}
+
+	functions := make(map[string]interface{})
+	for k, v := range sprig.GenericFuncMap() {
+		functions[k] = v
+	}
+	functions["sanitizeDNSName"] = sanitizeDNSName
+	tpl, err := template.New("").
+		Funcs(functions).
+		Parse(string(cleanupPolicyString))
+	if err != nil {
+		return err
+	}
+
+	var templated bytes.Buffer
+	err = tpl.Execute(&templated, vars)
+	if err != nil {
+		return err
+	}
+
+	return yaml.Unmarshal(templated.Bytes(), c)
 }
 
 // adheres to the Kubernetes resource name spec:

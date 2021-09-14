@@ -8,6 +8,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -44,7 +45,7 @@ func (w *ReleaseStateWorker) Run() {
 
 			for app, release := range appReleases {
 				t2 := time.Now()
-				commit, err := lastCommitThatTouchedAFile(repo, filepath.Join(env, app))
+				commit, err := lastCommitThatTouchedAFile(repo, filepath.Join(env, app)+"/")
 				if err != nil {
 					logrus.Errorf("cannot find last commit: %s", err)
 					time.Sleep(30 * time.Second)
@@ -84,7 +85,9 @@ func (w *ReleaseStateWorker) Run() {
 func lastCommitThatTouchedAFile(repo *git.Repository, path string) (*object.Commit, error) {
 	commits, err := repo.Log(
 		&git.LogOptions{
-			Path: &path,
+			PathFilter: func(s string) bool {
+				return strings.HasPrefix(s, path)
+			},
 		},
 	)
 	if err != nil {

@@ -25,6 +25,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/go-git/go-git/v5/storage/memory"
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v3"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -367,6 +368,27 @@ func Test_negative_tag_and_branch_triggers(t *testing.T) {
 	assert.False(t, triggered, "Non matching branch pattern should not trigger a deploy")
 }
 
+func Test_unmarshal(t *testing.T) {
+	var many dx.Manifest
+	err := yaml.Unmarshal([]byte(`
+app: hello
+deploy:
+  branch: feature/*
+  event: push
+cleanup:
+  branch: feature/*
+  event: branchDeleted
+`), &many)
+	assert.Nil(t, err)
+	assert.NotNil(t, many.Cleanup)
+	assert.NotNil(t, many.Deploy)
+
+	a := &dx.Artifact{
+		Environments: []*dx.Manifest{&many},
+	}
+	assert.True(t, a.HasCleanupPolicy())
+}
+
 func Test_revertTo(t *testing.T) {
 	path, _ := ioutil.TempDir("", "gitops-")
 	defer os.RemoveAll(path)
@@ -468,4 +490,45 @@ func initHistory(repo *git.Repository) {
 		"",
 	)
 	fmt.Printf("%s - %s\n", sha, "3")
+}
+
+func Test_cleanupTrigger(t *testing.T) {
+	triggered := cleanupTrigger("feature/test-case-1", &dx.Cleanup{
+		AppToCleanup: "app-{{ .BRANCH }}",
+		Branch:       "feature/*",
+		Event:        dx.BranchDeleted,
+	})
+	assert.True(t, triggered, "Should trigger on branch pattern")
+
+	triggered = cleanupTrigger("fix1", &dx.Cleanup{
+		AppToCleanup: "app-{{ .BRANCH }}",
+		Branch:       "feature/*",
+		Event:        dx.BranchDeleted,
+	})
+	assert.False(t, triggered, "Should not trigger on non matching branch pattern")
+
+	triggered = cleanupTrigger("fix1", &dx.Cleanup{
+		AppToCleanup: "app-{{ .BRANCH }}",
+		Branch:       "preview-test",
+		Event:        dx.BranchDeleted,
+	})
+	assert.False(t, triggered, "Should not trigger on non matching branch")
+
+	triggered = cleanupTrigger("preview-test", &dx.Cleanup{
+		AppToCleanup: "app-{{ .BRANCH }}",
+		Branch:       "preview-test",
+	})
+	assert.True(t, triggered, "Should trigger on matching branch")
+
+	triggered = cleanupTrigger("preview-test", &dx.Cleanup{
+		AppToCleanup: "app-{{ .BRANCH }}",
+		Event:        dx.BranchDeleted,
+	})
+	assert.False(t, triggered, "Should not trigger on missing branch filter")
+
+	triggered = cleanupTrigger("preview-test", &dx.Cleanup{
+		Branch:       "preview-test",
+		Event:        dx.BranchDeleted,
+	})
+	assert.False(t, triggered, "Should not trigger on missing app")
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/gimlet-io/gimletd/dx"
 	"github.com/go-git/go-billy/v5"
 	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
 	"github.com/pkg/errors"
@@ -270,6 +271,19 @@ func stageFile(worktree *git.Worktree, content string, path string) error {
 	return err
 }
 
+func Branch(repo *git.Repository, ref string) error {
+	b := plumbing.ReferenceName(ref)
+	w, err := repo.Worktree()
+	if err != nil {
+		return err
+	}
+	err = w.Checkout(&git.CheckoutOptions{Create: false, Force: false, Branch: b})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // Content returns the content of a file
 func Content(repo *git.Repository, path string) (string, error) {
 	worktree, err := repo.Worktree()
@@ -290,6 +304,41 @@ func Content(repo *git.Repository, path string) (string, error) {
 	return string(content), nil
 }
 
+// Folder returns the file contents of a folder (non-recursive)
+func Folder(repo *git.Repository, path string) (map[string]string, error) {
+	files := map[string]string{}
+
+	worktree, err := repo.Worktree()
+	if err != nil {
+		return files, err
+	}
+
+	fileInfos, err := worktree.Filesystem.ReadDir(path)
+	if err != nil {
+		return files, err
+	}
+	for _, fileInfo := range fileInfos {
+		if fileInfo.IsDir() {
+			continue
+		}
+
+		f, err := worktree.Filesystem.Open(filepath.Join(path, fileInfo.Name()))
+		if err != nil {
+			return files, nil
+		}
+		defer f.Close()
+
+		content, err := ioutil.ReadAll(f)
+		if err != nil {
+			return files, err
+		}
+
+		files[fileInfo.Name()] = string(content)
+	}
+
+	return files, nil
+}
+
 func Releases(
 	repo *git.Repository,
 	app, env string,
@@ -304,7 +353,7 @@ func Releases(
 		return nil, fmt.Errorf("env is mandatory")
 	} else {
 		if app != "" {
-			path = fmt.Sprintf("%s/%s", env, app)
+			path = fmt.Sprintf("%s/%s/", env, app)
 		} else {
 			path = env
 		}
@@ -312,7 +361,9 @@ func Releases(
 
 	commits, err := repo.Log(
 		&git.LogOptions{
-			Path:  &path,
+			PathFilter: func(s string) bool {
+				return strings.HasPrefix(s, path)
+			},
 			Since: since,
 			Until: until,
 		},
@@ -326,7 +377,8 @@ func Releases(
 			return fmt.Errorf("%s", "LIMIT")
 		}
 
-		if RollbackCommit(c) {
+		if RollbackCommit(c) ||
+			DeleteCommit(c) {
 			return nil
 		}
 
@@ -335,7 +387,6 @@ func Releases(
 			releaseFile, err = c.File(path + "/release.json")
 			if err != nil {
 				logrus.Debugf("no release file for %s: %s", c.Hash.String(), err)
-				releases = append(releases, releaseFromCommit(c, app, env))
 				return nil
 			}
 		}
@@ -355,11 +406,13 @@ func Releases(
 		err = json.Unmarshal(releaseBytes, &release)
 		if err != nil {
 			logrus.Warnf("cannot parse release file for %s: %s", c.Hash.String(), err)
-			releases = append(releases, releaseFromCommit(c, app, env))
+			//releases = append(releases, releaseFromCommit(c, app, env))
+			return nil
 		}
 
 		if gitRepo != "" { // gitRepo filter
-			if release.Version.RepositoryName != gitRepo {
+			if release.Version == nil ||
+				release.Version.RepositoryName != gitRepo {
 				return nil
 			}
 		}
@@ -486,11 +539,17 @@ func RollbackCommit(c *object.Commit) bool {
 	return strings.Contains(c.Message, "This reverts commit")
 }
 
+func DeleteCommit(c *object.Commit) bool {
+	return strings.Contains(c.Message, "[GimletD delete]")
+}
+
 func HasBeenReverted(repo *git.Repository, sha string, env string, app string) (bool, error) {
-	path := fmt.Sprintf("%s/%s", env, app)
+	path := fmt.Sprintf("%s/%s/", env, app)
 	commits, err := repo.Log(
 		&git.LogOptions{
-			Path: &path,
+			PathFilter: func(s string) bool {
+				return strings.HasPrefix(s, path)
+			},
 		},
 	)
 	if err != nil {

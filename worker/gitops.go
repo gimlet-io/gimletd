@@ -1,6 +1,7 @@
 package worker
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"github.com/gimlet-io/gimletd/dx"
@@ -18,6 +19,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -95,22 +97,53 @@ func processEvent(
 	var err error
 	var gitopsEvents []*events.DeployEvent
 	var rollbackEvent *events.RollbackEvent
+	var deleteEvents []*events.DeleteEvent
 	switch event.Type {
 	case model.TypeArtifact:
-		gitopsEvents, err = processArtifactEvent(gitopsRepo, gitopsRepoDeployKeyPath, token, event, repoCache)
+		gitopsEvents, err = processArtifactEvent(
+			gitopsRepo,
+			gitopsRepoDeployKeyPath,
+			token,
+			event,
+			repoCache,
+			store,
+		)
 		if len(gitopsEvents) > 0 {
 			repoCache.Invalidate()
 		}
 	case model.TypeRelease:
-		gitopsEvents, err = processReleaseEvent(store, gitopsRepo, gitopsRepoDeployKeyPath, token, event)
+		gitopsEvents, err = processReleaseEvent(
+			store,
+			gitopsRepo,
+			gitopsRepoDeployKeyPath,
+			token,
+			event,
+		)
 		repoCache.Invalidate()
 	case model.TypeRollback:
-		rollbackEvent, err = processRollbackEvent(gitopsRepo, gitopsRepoDeployKeyPath, event)
+		rollbackEvent, err = processRollbackEvent(
+			gitopsRepo,
+			gitopsRepoDeployKeyPath,
+			event,
+		)
 		notificationsManager.Broadcast(notifications.MessageFromRollbackEvent(rollbackEvent))
 		for _, sha := range rollbackEvent.GitopsRefs {
 			setGitopsHashOnEvent(event, sha)
 		}
 		repoCache.Invalidate()
+	case model.TypeBranchDeleted:
+		deleteEvents, err = processBranchDeletedEvent(
+			gitopsRepo,
+			gitopsRepoDeployKeyPath,
+			event,
+		)
+		for _, deleteEvent := range deleteEvents {
+			notificationsManager.Broadcast(notifications.MessageFromDeleteEvent(deleteEvent))
+			setGitopsHashOnEvent(event, deleteEvent.GitopsRef)
+		}
+		if len(deleteEvents) > 0 {
+			repoCache.Invalidate()
+		}
 	}
 
 	// send out notifications based on gitops events
@@ -139,6 +172,63 @@ func processEvent(
 			logrus.Warnf("could not update event status %v", err)
 		}
 	}
+}
+
+func processBranchDeletedEvent(
+	gitopsRepo string,
+	gitopsRepoDeployKeyPath string,
+	event *model.Event,
+) ([]*events.DeleteEvent, error) {
+	var deletedEvents []*events.DeleteEvent
+	var branchDeletedEvent events.BranchDeletedEvent
+	err := json.Unmarshal([]byte(event.Blob), &branchDeletedEvent)
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse delete request with id: %s", event.ID)
+	}
+
+	for _, env := range branchDeletedEvent.Manifests {
+		if env.Cleanup == nil {
+			continue
+		}
+
+		gitopsEvent := &events.DeleteEvent{
+			Env: env.Env,
+			App: env.Cleanup.AppToCleanup,
+			TriggeredBy: "policy",
+			Status:      events.Success,
+			GitopsRepo:  gitopsRepo,
+
+			BranchDeletedEvent: branchDeletedEvent,
+		}
+
+		err := env.Cleanup.ResolveVars(map[string]string{
+			"BRANCH": branchDeletedEvent.Branch,
+		})
+		if err != nil {
+			gitopsEvent.Status = events.Failure
+			gitopsEvent.StatusDesc = err.Error()
+			return []*events.DeleteEvent{gitopsEvent}, err
+		}
+
+		if !cleanupTrigger(branchDeletedEvent.Branch, env.Cleanup) {
+			continue
+		}
+
+		gitopsEvent, err = cloneTemplateDeleteAndPush(
+			gitopsRepo,
+			gitopsRepoDeployKeyPath,
+			env.Cleanup,
+			env.Env,
+			"policy",
+			gitopsEvent,
+		)
+		deletedEvents = append(deletedEvents, gitopsEvent)
+		if err != nil {
+			return deletedEvents, err
+		}
+	}
+
+	return deletedEvents, err
 }
 
 func setGitopsHashOnEvent(event *model.Event, gitopsSha string) {
@@ -290,11 +380,16 @@ func processArtifactEvent(
 	githubChartAccessToken string,
 	event *model.Event,
 	repoCache *nativeGit.GitopsRepoCache,
+	dao *store.Store,
 ) ([]*events.DeployEvent, error) {
 	var gitopsEvents []*events.DeployEvent
 	artifact, err := model.ToArtifact(event)
 	if err != nil {
 		return gitopsEvents, fmt.Errorf("cannot parse artifact %s", err.Error())
+	}
+
+	if artifact.HasCleanupPolicy() {
+		keepReposWithCleanupPolicyUpToDate(dao, artifact)
 	}
 
 	for _, env := range artifact.Environments {
@@ -314,11 +409,31 @@ func processArtifactEvent(
 		if err != nil {
 			return gitopsEvents, err
 		}
-
-		repoCache.Invalidate()
 	}
 
 	return gitopsEvents, nil
+}
+
+func keepReposWithCleanupPolicyUpToDate(dao *store.Store, artifact *dx.Artifact) {
+	reposWithCleanupPolicy, err := dao.ReposWithCleanupPolicy()
+	if err != nil && err != sql.ErrNoRows {
+		logrus.Warnf("could not load repos with cleanup policy: %s", err)
+	}
+
+	repoIsNew := true
+	for _, r := range reposWithCleanupPolicy {
+		if r == artifact.Version.RepositoryName {
+			repoIsNew = false
+			break
+		}
+	}
+	if repoIsNew {
+		reposWithCleanupPolicy = append(reposWithCleanupPolicy, artifact.Version.RepositoryName)
+		err = dao.SaveReposWithCleanupPolicy(reposWithCleanupPolicy)
+		if err != nil {
+			logrus.Warnf("could not update repos with cleanup policy: %s", err)
+		}
+	}
 }
 
 func cloneTemplateWriteAndPush(
@@ -387,11 +502,63 @@ func cloneTemplateWriteAndPush(
 	return gitopsEvent, nil
 }
 
+func cloneTemplateDeleteAndPush(
+	gitopsRepo string,
+	gitopsRepoDeployKeyPath string,
+	cleanupPolicy *dx.Cleanup,
+	env string,
+	triggeredBy string,
+	gitopsEvent *events.DeleteEvent,
+) (*events.DeleteEvent, error) {
+	repoTmpPath, repo, err := nativeGit.CloneToTmpFs(gitopsRepo, gitopsRepoDeployKeyPath)
+	defer nativeGit.TmpFsCleanup(repoTmpPath)
+	if err != nil {
+		gitopsEvent.Status = events.Failure
+		gitopsEvent.StatusDesc = err.Error()
+		return gitopsEvent, err
+	}
+
+	err = nativeGit.DelDir(repo, filepath.Join(env, cleanupPolicy.AppToCleanup))
+	if err != nil {
+		gitopsEvent.Status = events.Failure
+		gitopsEvent.StatusDesc = err.Error()
+		return gitopsEvent, err
+	}
+
+	empty, err := nativeGit.NothingToCommit(repo)
+	if err != nil {
+		gitopsEvent.Status = events.Failure
+		gitopsEvent.StatusDesc = err.Error()
+		return gitopsEvent, err
+	}
+	if empty {
+		return nil, nil
+	}
+
+	gitMessage := fmt.Sprintf("[GimletD delete] %s/%s deleted by %s", env, cleanupPolicy.AppToCleanup, triggeredBy)
+	sha, err := nativeGit.Commit(repo, gitMessage)
+
+	err = nativeGit.Push(repo, gitopsRepoDeployKeyPath)
+	if err != nil {
+		gitopsEvent.Status = events.Failure
+		gitopsEvent.StatusDesc = err.Error()
+		return gitopsEvent, err
+	}
+
+	if sha != "" { // if there is a change to push
+		gitopsEvent.GitopsRef = sha
+	}
+
+	return gitopsEvent, nil
+}
+
 func revertTo(env string, app string, repo *git.Repository, repoTmpPath string, sha string) error {
-	path := fmt.Sprintf("%s/%s", env, app)
+	path := fmt.Sprintf("%s/%s/", env, app)
 	commits, err := repo.Log(
 		&git.LogOptions{
-			Path: &path,
+			PathFilter: func(s string) bool {
+				return strings.HasPrefix(s, path)
+			},
 		},
 	)
 	if err != nil {
@@ -540,4 +707,29 @@ func deployTrigger(artifactToCheck *dx.Artifact, deployPolicy *dx.Deploy) bool {
 	}
 
 	return true
+}
+
+func cleanupTrigger(branch string, cleanupPolicy *dx.Cleanup) bool {
+	if cleanupPolicy == nil {
+		return false
+	}
+
+	if cleanupPolicy.Branch == "" {
+		return false
+	}
+
+	if cleanupPolicy.AppToCleanup == "" {
+		return false
+	}
+
+	g := glob.MustCompile(cleanupPolicy.Branch)
+
+	exactMatch := branch == cleanupPolicy.Branch
+	patternMatch := g.Match(branch)
+
+	if exactMatch || patternMatch {
+		return true
+	}
+
+	return false
 }

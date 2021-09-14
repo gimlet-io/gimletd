@@ -35,3 +35,12 @@ type Artifact struct {
 	// CI job information, test results, Docker image information, etc
 	Items []map[string]interface{} `json:"items,omitempty"`
 }
+
+func (a *Artifact) HasCleanupPolicy() bool {
+	for _, m := range a.Environments {
+		if m.Cleanup != nil {
+			return true
+		}
+	}
+	return false
+}

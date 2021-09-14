@@ -10,17 +10,20 @@ import (
 func Environ() (*Config, error) {
 	cfg := Config{}
 	err := envconfig.Process("", &cfg)
-	defaultDB(&cfg)
+	defaults(&cfg)
 
 	return &cfg, err
 }
 
-func defaultDB(c *Config) {
+func defaults(c *Config) {
 	if c.Database.Driver == "" {
 		c.Database.Driver = "sqlite3"
 	}
 	if c.Database.Config == "" {
 		c.Database.Config = "gimletd.sqlite"
+	}
+	if c.RepoCachePath == "" {
+		c.RepoCachePath = "/tmp/gimletd"
 	}
 }
 
@@ -31,14 +34,15 @@ func (c *Config) String() string {
 }
 
 type Config struct {
-	Debug                          bool `envconfig:"DEBUG"`
-	Logging                        Logging
-	Host                           string `envconfig:"HOST"`
-	Database                       Database
-	GitopsRepo                     string `envconfig:"GITOPS_REPO"`
-	GitopsRepoDeployKeyPath        string `envconfig:"GITOPS_REPO_DEPLOY_KEY_PATH"`
-	Notifications                  Notifications
-	Github        Github
+	Debug                   bool `envconfig:"DEBUG"`
+	Logging                 Logging
+	Host                    string `envconfig:"HOST"`
+	Database                Database
+	GitopsRepo              string `envconfig:"GITOPS_REPO"`
+	GitopsRepoDeployKeyPath string `envconfig:"GITOPS_REPO_DEPLOY_KEY_PATH"`
+	RepoCachePath           string `envconfig:"REPO_CACHE_PATH"`
+	Notifications           Notifications
+	Github                  Github
 }
 
 type Database struct {

@@ -13,6 +13,7 @@ const StatusError = "error"
 const TypeArtifact = "artifact"
 const TypeRelease = "release"
 const TypeRollback = "rollback"
+const TypeBranchDeleted = "branchDeleted"
 
 type Event struct {
 	ID           string   `json:"id,omitempty"  meddler:"id"`

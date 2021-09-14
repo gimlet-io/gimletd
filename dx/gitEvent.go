@@ -34,8 +34,6 @@ var toID = map[string]GitEvent{
 	"pr":   PR,
 }
 
-
-
 // MarshalJSON marshals the enum as a quoted json string
 func (s GitEvent) MarshalJSON() ([]byte, error) {
 	buffer := bytes.NewBufferString(`"`)

@@ -97,6 +97,13 @@ func main() {
 	}
 	go releaseStateWorker.Run()
 
+	branchDeleteEventWorker := worker.NewBranchDeleteEventWorker(
+		tokenManager,
+		config.RepoCachePath,
+		store,
+	)
+	go branchDeleteEventWorker.Run()
+
 	metricsRouter := chi.NewRouter()
 	metricsRouter.Get("/metrics", promhttp.Handler().ServeHTTP)
 	go http.ListenAndServe(":8889", metricsRouter)
