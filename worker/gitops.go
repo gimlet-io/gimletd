@@ -191,24 +191,38 @@ func processBranchDeletedEvent(
 			continue
 		}
 
-		env.ResolveVars(map[string]string{
+		gitopsEvent := &events.DeleteEvent{
+			Env: env.Env,
+			App: env.Cleanup.AppToCleanup,
+			TriggeredBy: "policy",
+			Status:      events.Success,
+			GitopsRepo:  gitopsRepo,
+
+			BranchDeletedEvent: branchDeletedEvent,
+		}
+
+		err := env.Cleanup.ResolveVars(map[string]string{
 			"BRANCH": branchDeletedEvent.Branch,
 		})
+		if err != nil {
+			gitopsEvent.Status = events.Failure
+			gitopsEvent.StatusDesc = err.Error()
+			return []*events.DeleteEvent{gitopsEvent}, err
+		}
 
 		if !cleanupTrigger(branchDeletedEvent.Branch, env.Cleanup) {
 			continue
 		}
 
-		deleteEvent, err := cloneTemplateDeleteAndPush(
+		gitopsEvent, err = cloneTemplateDeleteAndPush(
 			gitopsRepo,
 			gitopsRepoDeployKeyPath,
-			&branchDeletedEvent,
-			env,
+			env.Cleanup,
+			env.Env,
 			"policy",
+			gitopsEvent,
 		)
-		if deleteEvent != nil {
-			deletedEvents = append(deletedEvents, deleteEvent)
-		}
+		deletedEvents = append(deletedEvents, gitopsEvent)
 		if err != nil {
 			return deletedEvents, err
 		}
@@ -491,20 +505,11 @@ func cloneTemplateWriteAndPush(
 func cloneTemplateDeleteAndPush(
 	gitopsRepo string,
 	gitopsRepoDeployKeyPath string,
-	branchDeletedEvent *events.BranchDeletedEvent,
-	env *dx.Manifest,
+	cleanupPolicy *dx.Cleanup,
+	env string,
 	triggeredBy string,
+	gitopsEvent *events.DeleteEvent,
 ) (*events.DeleteEvent, error) {
-	gitopsEvent := &events.DeleteEvent{
-		DeployEvent: events.DeployEvent{
-			Manifest:    env,
-			TriggeredBy: triggeredBy,
-			Status:      events.Success,
-			GitopsRepo:  gitopsRepo,
-		},
-		BranchDeletedEvent: *branchDeletedEvent,
-	}
-
 	repoTmpPath, repo, err := nativeGit.CloneToTmpFs(gitopsRepo, gitopsRepoDeployKeyPath)
 	defer nativeGit.TmpFsCleanup(repoTmpPath)
 	if err != nil {
@@ -513,7 +518,7 @@ func cloneTemplateDeleteAndPush(
 		return gitopsEvent, err
 	}
 
-	err = nativeGit.DelDir(repo, filepath.Join(env.Env, env.Cleanup.AppToCleanup))
+	err = nativeGit.DelDir(repo, filepath.Join(env, cleanupPolicy.AppToCleanup))
 	if err != nil {
 		gitopsEvent.Status = events.Failure
 		gitopsEvent.StatusDesc = err.Error()
@@ -530,7 +535,7 @@ func cloneTemplateDeleteAndPush(
 		return nil, nil
 	}
 
-	gitMessage := fmt.Sprintf("[GimletD delete] %s/%s deleted by %s", env.Env, env.App, triggeredBy)
+	gitMessage := fmt.Sprintf("[GimletD delete] %s/%s deleted by %s", env, cleanupPolicy.AppToCleanup, triggeredBy)
 	sha, err := nativeGit.Commit(repo, gitMessage)
 
 	err = nativeGit.Push(repo, gitopsRepoDeployKeyPath)

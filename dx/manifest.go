@@ -65,6 +65,33 @@ func (m *Manifest) ResolveVars(vars map[string]string) error {
 	return yaml.Unmarshal(templated.Bytes(), m)
 }
 
+func (c *Cleanup) ResolveVars(vars map[string]string) error {
+	cleanupPolicyString, err := yaml.Marshal(c)
+	if err != nil {
+		return fmt.Errorf("cannot marshal cleanup policy %s", err.Error())
+	}
+
+	functions := make(map[string]interface{})
+	for k, v := range sprig.GenericFuncMap() {
+		functions[k] = v
+	}
+	functions["sanitizeDNSName"] = sanitizeDNSName
+	tpl, err := template.New("").
+		Funcs(functions).
+		Parse(string(cleanupPolicyString))
+	if err != nil {
+		return err
+	}
+
+	var templated bytes.Buffer
+	err = tpl.Execute(&templated, vars)
+	if err != nil {
+		return err
+	}
+
+	return yaml.Unmarshal(templated.Bytes(), c)
+}
+
 // adheres to the Kubernetes resource name spec:
 // a lowercase RFC 1123 label must consist of lower case alphanumeric characters or '-',
 // and must start and end with an alphanumeric character

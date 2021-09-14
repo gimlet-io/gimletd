@@ -34,7 +34,15 @@ type RollbackEvent struct {
 }
 
 type DeleteEvent struct {
-	DeployEvent
+	Env string
+	App string
+	TriggeredBy string
+
+	Status     Status
+	StatusDesc string
+
+	GitopsRef  string
+	GitopsRepo string
 	BranchDeletedEvent BranchDeletedEvent
 }
 

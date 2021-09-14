@@ -18,7 +18,7 @@ func (gm *gitopsDeleteMessage) AsSlackMessage() (*slackMessage, error) {
 	}
 
 	if gm.event.Status == events.Failure {
-		msg.Text = fmt.Sprintf("Failed to delete %s of %s", gm.event.Manifest.App, gm.event.Manifest.Env)
+		msg.Text = fmt.Sprintf("Failed to delete %s of %s", gm.event.App, gm.event.Env)
 		msg.Blocks = append(msg.Blocks,
 			Block{
 				Type: section,
@@ -40,7 +40,7 @@ func (gm *gitopsDeleteMessage) AsSlackMessage() (*slackMessage, error) {
 			},
 		)
 	} else {
-		msg.Text = fmt.Sprintf("Deleting %s of %s", gm.event.Manifest.App, gm.event.Manifest.Env)
+		msg.Text = fmt.Sprintf("Deleting %s of %s", gm.event.App, gm.event.Env)
 		msg.Blocks = append(msg.Blocks,
 			Block{
 				Type: section,
@@ -54,7 +54,7 @@ func (gm *gitopsDeleteMessage) AsSlackMessage() (*slackMessage, error) {
 			Block{
 				Type: contextString,
 				Elements: []Text{
-					{Type: markdown, Text: fmt.Sprintf(":dart: %s", strings.Title(gm.event.Manifest.Env))},
+					{Type: markdown, Text: fmt.Sprintf(":dart: %s", strings.Title(gm.event.Env))},
 					{Type: markdown, Text: fmt.Sprintf(":paperclip: %s", commitLink(gm.event.GitopsRepo, gm.event.GitopsRef))},
 				},
 			},
@@ -65,7 +65,7 @@ func (gm *gitopsDeleteMessage) AsSlackMessage() (*slackMessage, error) {
 }
 
 func (gm *gitopsDeleteMessage) Env() string {
-	return gm.event.Manifest.Env
+	return gm.event.Env
 }
 
 func (gm *gitopsDeleteMessage) AsGithubStatus() (*githubLib.RepoStatus, error) {

@@ -13,8 +13,10 @@ import (
 	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
+	"github.com/otiai10/copy"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sigs.k8s.io/yaml"
@@ -63,17 +65,22 @@ func (r *BranchDeleteEventWorker) Run() {
 					logrus.Warnf("could not open %s: %s", repoPath, err)
 					continue
 				}
+
+				copyOfOldState, err, oldStatePath := copyRepo(repoPath)
+				if oldStatePath != "" {
+					defer os.RemoveAll(oldStatePath)
+				}
+
 				deletedBranches := r.detectDeletedBranches(repo)
 				for _, deletedBranch := range deletedBranches {
-					// TODO: prune already deleted the branch
-					manifests, err := r.extractManifestsFromBranch(repo, deletedBranch)
+					manifests, err := r.extractManifestsFromBranch(copyOfOldState, deletedBranch)
 					if err != nil {
 						logrus.Warnf("could not extract manifests: %s", err)
 						continue
 					}
 
 					branchDeletedEventStr, err := json.Marshal(events.BranchDeletedEvent{
-						Repo: repoName,
+						Repo:      repoName,
 						Branch:    deletedBranch,
 						Manifests: manifests,
 					})
@@ -159,7 +166,7 @@ func (r *BranchDeleteEventWorker) extractManifestsFromBranch(repo *git.Repositor
 	}
 	branchBkp := head.Name().Short()
 
-	err = nativeGit.Branch(repo, branch)
+	err = nativeGit.Branch(repo, fmt.Sprintf("refs/remotes/origin/%s", branch))
 	if err != nil {
 		return manifests, err
 	}
@@ -179,7 +186,7 @@ func (r *BranchDeleteEventWorker) extractManifestsFromBranch(repo *git.Repositor
 		manifests = append(manifests, &mf)
 	}
 
-	err = nativeGit.Branch(repo, branchBkp)
+	err = nativeGit.Branch(repo, fmt.Sprintf("refs/heads/%s", branchBkp))
 	if err != nil {
 		return manifests, err
 	}
@@ -243,4 +250,19 @@ func (r *BranchDeleteEventWorker) clone(repoName string) error {
 	}
 
 	return nil
+}
+
+func copyRepo(repoPath string) (*git.Repository, error, string) {
+	tmpPath, err := ioutil.TempDir("", "gitops-")
+	if err != nil {
+		return nil, err, ""
+	}
+
+	err = copy.Copy(repoPath, tmpPath)
+	if err != nil {
+		return nil, errors.WithMessage(err, "could not make copy of repo"), tmpPath
+	}
+
+	copiedRepo, err := git.PlainOpen(tmpPath)
+	return copiedRepo, err, tmpPath
 }

@@ -271,8 +271,8 @@ func stageFile(worktree *git.Worktree, content string, path string) error {
 	return err
 }
 
-func Branch(repo *git.Repository, branch string) error {
-	b := plumbing.ReferenceName(fmt.Sprintf("refs/heads/%s", branch))
+func Branch(repo *git.Repository, ref string) error {
+	b := plumbing.ReferenceName(ref)
 	w, err := repo.Worktree()
 	if err != nil {
 		return err
