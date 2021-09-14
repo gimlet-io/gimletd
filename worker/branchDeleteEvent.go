@@ -1,6 +1,7 @@
 package worker
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"github.com/gimlet-io/gimletd/dx"
@@ -53,7 +54,7 @@ func NewBranchDeleteEventWorker(
 func (r *BranchDeleteEventWorker) Run() {
 	for {
 		reposWithCleanupPolicy, err := r.dao.ReposWithCleanupPolicy()
-		if err != nil {
+		if err != nil && err != sql.ErrNoRows {
 			logrus.Warnf("could not load repos with cleanup policy: %s", err)
 		}
 
