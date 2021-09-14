@@ -53,11 +53,13 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
+	} else {
+		logrus.Warnf("Please set Github Application based access for features like deleted branch detection and commit status pushing")
 	}
 
 	notificationsManager := notifications.NewManager()
 	notificationsManager = addSlackNotificationProvider(config, notificationsManager)
-	if config.Github.AppID != "" {
+	if tokenManager != nil {
 		notificationsManager.AddProvider(notifications.NewGithubProvider(tokenManager))
 	}
 	go notificationsManager.Run()
@@ -97,12 +99,14 @@ func main() {
 	}
 	go releaseStateWorker.Run()
 
-	branchDeleteEventWorker := worker.NewBranchDeleteEventWorker(
-		tokenManager,
-		config.RepoCachePath,
-		store,
-	)
-	go branchDeleteEventWorker.Run()
+	if tokenManager != nil {
+		branchDeleteEventWorker := worker.NewBranchDeleteEventWorker(
+			tokenManager,
+			config.RepoCachePath,
+			store,
+		)
+		go branchDeleteEventWorker.Run()
+	}
 
 	metricsRouter := chi.NewRouter()
 	metricsRouter.Get("/metrics", promhttp.Handler().ServeHTTP)
