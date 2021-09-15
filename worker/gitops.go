@@ -208,6 +208,7 @@ func processBranchDeletedEvent(
 			gitopsEvent.StatusDesc = err.Error()
 			return []*events.DeleteEvent{gitopsEvent}, err
 		}
+		gitopsEvent.App = env.Cleanup.AppToCleanup // vars are resolved now
 
 		if !cleanupTrigger(branchDeletedEvent.Branch, env.Cleanup) {
 			continue
