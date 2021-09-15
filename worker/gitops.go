@@ -721,12 +721,24 @@ func cleanupTrigger(branch string, cleanupPolicy *dx.Cleanup) bool {
 		return false
 	}
 
-	g := glob.MustCompile(cleanupPolicy.Branch)
+	negate := false
+	policyBranch := cleanupPolicy.Branch
+	if strings.HasPrefix(cleanupPolicy.Branch, "!") {
+		negate = true
+		branch = cleanupPolicy.Branch[1:]
+	}
 
-	exactMatch := branch == cleanupPolicy.Branch
+	g := glob.MustCompile(policyBranch)
+
+	exactMatch := branch == policyBranch
 	patternMatch := g.Match(branch)
 
-	if exactMatch || patternMatch {
+	match := exactMatch || patternMatch
+
+	if negate && !match {
+		return true
+	}
+	if !negate && match {
 		return true
 	}
 

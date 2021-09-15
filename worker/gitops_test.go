@@ -522,6 +522,12 @@ func Test_cleanupTrigger(t *testing.T) {
 
 	triggered = cleanupTrigger("preview-test", &dx.Cleanup{
 		AppToCleanup: "app-{{ .BRANCH }}",
+		Branch:       "!main",
+	})
+	assert.True(t, triggered, "Should trigger on matching negated branch")
+
+	triggered = cleanupTrigger("preview-test", &dx.Cleanup{
+		AppToCleanup: "app-{{ .BRANCH }}",
 		Event:        dx.BranchDeleted,
 	})
 	assert.False(t, triggered, "Should not trigger on missing branch filter")
