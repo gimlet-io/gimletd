@@ -64,6 +64,7 @@ func (r *BranchDeleteEventWorker) Run() {
 				repo, err := git.PlainOpen(repoPath)
 				if err != nil {
 					logrus.Warnf("could not open %s: %s", repoPath, err)
+					os.RemoveAll(repoPath)
 					continue
 				}
 
@@ -72,7 +73,11 @@ func (r *BranchDeleteEventWorker) Run() {
 					defer os.RemoveAll(oldStatePath)
 				}
 
-				deletedBranches := r.detectDeletedBranches(repo)
+				deletedBranches, err := r.detectDeletedBranches(repo)
+				if err != nil {
+					os.RemoveAll(repoPath)
+					continue
+				}
 				for _, deletedBranch := range deletedBranches {
 					manifests, err := r.extractManifestsFromBranch(copyOfOldState, deletedBranch)
 					if err != nil {
@@ -116,7 +121,7 @@ func (r *BranchDeleteEventWorker) Run() {
 	}
 }
 
-func (r *BranchDeleteEventWorker) detectDeletedBranches(repo *git.Repository) []string {
+func (r *BranchDeleteEventWorker) detectDeletedBranches(repo *git.Repository) ([]string, error) {
 	var prunedBranches, staleBranches []string
 
 	refIter, _ := repo.References()
@@ -129,7 +134,7 @@ func (r *BranchDeleteEventWorker) detectDeletedBranches(repo *git.Repository) []
 
 	token, user, err := r.tokenManager.Token()
 	if err != nil {
-		logrus.Errorf("couldn't get scm token: %s", err)
+		return []string{}, fmt.Errorf("couldn't get scm token: %s", err)
 	}
 
 	err = repo.Fetch(&git.FetchOptions{
@@ -144,7 +149,7 @@ func (r *BranchDeleteEventWorker) detectDeletedBranches(repo *git.Repository) []
 	if err == git.NoErrAlreadyUpToDate {
 		//return []string{}
 	} else if err != nil {
-		logrus.Errorf("could not fetch: %s", err)
+		return []string{}, fmt.Errorf("could not fetch: %s", err)
 	}
 
 	refIter, _ = repo.References()
@@ -155,7 +160,7 @@ func (r *BranchDeleteEventWorker) detectDeletedBranches(repo *git.Repository) []
 		return nil
 	})
 
-	return difference(staleBranches, prunedBranches)
+	return difference(staleBranches, prunedBranches), nil
 }
 
 func (r *BranchDeleteEventWorker) extractManifestsFromBranch(repo *git.Repository, branch string) ([]*dx.Manifest, error) {
@@ -220,6 +225,7 @@ func (r *BranchDeleteEventWorker) clone(repoName string) error {
 
 	token, user, err := r.tokenManager.Token()
 	if err != nil {
+		os.RemoveAll(repoPath)
 		return errors.WithMessage(err, "couldn't get scm token")
 	}
 
@@ -235,6 +241,7 @@ func (r *BranchDeleteEventWorker) clone(repoName string) error {
 
 	repo, err := git.PlainClone(repoPath, false, opts)
 	if err != nil {
+		os.RemoveAll(repoPath)
 		return errors.WithMessage(err, "couldn't clone")
 	}
 
@@ -247,6 +254,7 @@ func (r *BranchDeleteEventWorker) clone(repoName string) error {
 		Tags:  git.NoTags,
 	})
 	if err != nil && err != git.NoErrAlreadyUpToDate {
+		os.RemoveAll(repoPath)
 		return errors.WithMessage(err, "couldn't fetch")
 	}
 
