@@ -39,6 +39,8 @@ type Cleanup struct {
 }
 
 func (m *Manifest) ResolveVars(vars map[string]string) error {
+	cleanupBkp := m.Cleanup
+	m.Cleanup = nil // cleanup only supports the BRANCH variable, not resolving it here
 	manifestString, err := yaml.Marshal(m)
 	if err != nil {
 		return fmt.Errorf("cannot marshal manifest %s", err.Error())
@@ -62,7 +64,9 @@ func (m *Manifest) ResolveVars(vars map[string]string) error {
 		return err
 	}
 
-	return yaml.Unmarshal(templated.Bytes(), m)
+	err = yaml.Unmarshal(templated.Bytes(), m)
+	m.Cleanup = cleanupBkp // restoring Cleanup after vars are resolved
+	return err
 }
 
 func (c *Cleanup) ResolveVars(vars map[string]string) error {

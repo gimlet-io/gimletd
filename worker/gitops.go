@@ -105,7 +105,6 @@ func processEvent(
 			gitopsRepoDeployKeyPath,
 			token,
 			event,
-			repoCache,
 			store,
 		)
 		if len(gitopsEvents) > 0 {
@@ -379,7 +378,6 @@ func processArtifactEvent(
 	gitopsRepoDeployKeyPath string,
 	githubChartAccessToken string,
 	event *model.Event,
-	repoCache *nativeGit.GitopsRepoCache,
 	dao *store.Store,
 ) ([]*events.DeployEvent, error) {
 	var gitopsEvents []*events.DeployEvent
