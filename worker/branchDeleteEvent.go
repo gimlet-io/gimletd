@@ -75,6 +75,7 @@ func (r *BranchDeleteEventWorker) Run() {
 
 				deletedBranches, err := r.detectDeletedBranches(repo)
 				if err != nil {
+					logrus.Warnf("could not detect deleted branches in %s: %s", repoPath, err)
 					os.RemoveAll(repoPath)
 					continue
 				}
@@ -235,7 +236,7 @@ func (r *BranchDeleteEventWorker) clone(repoName string) error {
 			Username: user,
 			Password: token,
 		},
-		Depth: 100,
+		Depth: 1,
 		Tags:  git.NoTags,
 	}
 
@@ -250,7 +251,7 @@ func (r *BranchDeleteEventWorker) clone(repoName string) error {
 			Username: user,
 			Password: token,
 		},
-		Depth: 100,
+		Depth: 1,
 		Tags:  git.NoTags,
 	})
 	if err != nil && err != git.NoErrAlreadyUpToDate {
