@@ -25,6 +25,9 @@ func defaults(c *Config) {
 	if c.RepoCachePath == "" {
 		c.RepoCachePath = "/tmp/gimletd"
 	}
+	if c.ReleaseStats == "" {
+		c.ReleaseStats = "enabled"
+	}
 }
 
 // String returns the configuration in string format.
@@ -43,6 +46,7 @@ type Config struct {
 	RepoCachePath           string `envconfig:"REPO_CACHE_PATH"`
 	Notifications           Notifications
 	Github                  Github
+	ReleaseStats            string `envconfig:"RELEASE_STATS"`
 }
 
 type Database struct {

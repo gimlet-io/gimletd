@@ -93,13 +93,15 @@ func main() {
 		logrus.Warn("Not starting GitOps worker. GITOPS_REPO and GITOPS_REPO_DEPLOY_KEY_PATH must be set to start GitOps worker")
 	}
 
-	releaseStateWorker := &worker.ReleaseStateWorker{
-		GitopsRepo: config.GitopsRepo,
-		RepoCache:  repoCache,
-		Releases:   releases,
-		Perf:       perf,
+	if config.ReleaseStats == "enabled" {
+		releaseStateWorker := &worker.ReleaseStateWorker{
+			GitopsRepo: config.GitopsRepo,
+			RepoCache:  repoCache,
+			Releases:   releases,
+			Perf:       perf,
+		}
+		go releaseStateWorker.Run()
 	}
-	go releaseStateWorker.Run()
 
 	if tokenManager != nil {
 		branchDeleteEventWorker := worker.NewBranchDeleteEventWorker(
