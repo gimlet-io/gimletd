@@ -18,7 +18,9 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
+	"log"
 	"net/http"
+	_ "net/http/pprof"
 	"strings"
 )
 
@@ -111,6 +113,10 @@ func main() {
 	metricsRouter := chi.NewRouter()
 	metricsRouter.Get("/metrics", promhttp.Handler().ServeHTTP)
 	go http.ListenAndServe(":8889", metricsRouter)
+
+	go func() {
+		log.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
 
 	r := server.SetupRouter(config, store, notificationsManager, repoCache, perf)
 	err = http.ListenAndServe(":8888", r)
