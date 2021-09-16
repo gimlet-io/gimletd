@@ -607,6 +607,9 @@ func gitopsTemplateAndWrite(
 	tokenForChartClone string,
 ) (string, error) {
 	if strings.HasPrefix(env.Chart.Name, "git@") {
+		return "", fmt.Errorf("only HTTPS git repo urls supported in GimletD for git based charts")
+	}
+	if strings.Contains(env.Chart.Name, ".git") {
 		tmpChartDir, err := helm.CloneChartFromRepo(*env, tokenForChartClone)
 		if err != nil {
 			return "", fmt.Errorf("cannot fetch chart from git %s", err.Error())
@@ -614,6 +617,7 @@ func gitopsTemplateAndWrite(
 		env.Chart.Name = tmpChartDir
 		defer os.RemoveAll(tmpChartDir)
 	}
+
 
 	templatedManifests, err := helm.HelmTemplate(*env)
 	if err != nil {

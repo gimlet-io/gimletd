@@ -89,7 +89,7 @@ func SplitHelmOutput(input map[string]string) map[string]string {
 
 // CloneChartFromRepo returns the chart location of the specified chart
 func CloneChartFromRepo(m dx.Manifest, token string) (string, error) {
-	gitAddress, err := giturl.ParseScp(m.Chart.Name)
+	gitAddress, err := giturl.Parse(m.Chart.Name)
 	if err != nil {
 		return "", fmt.Errorf("cannot parse chart's git address: %s", err)
 	}
