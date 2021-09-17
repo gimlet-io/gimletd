@@ -564,14 +564,14 @@ func revertTo(env string, app string, repo *git.Repository, repoTmpPath string, 
 		return errors.WithMessage(err, "could not walk commits")
 	}
 
-	hashesToRevert := []string{}
+	commitsToRevert := []*object.Commit{}
 	err = commits.ForEach(func(c *object.Commit) error {
 		if c.Hash.String() == sha {
 			return fmt.Errorf("EOF")
 		}
 
 		if !nativeGit.RollbackCommit(c) {
-			hashesToRevert = append(hashesToRevert, c.Hash.String())
+			commitsToRevert = append(commitsToRevert, c)
 		}
 		return nil
 	})
@@ -579,11 +579,11 @@ func revertTo(env string, app string, repo *git.Repository, repoTmpPath string, 
 		return err
 	}
 
-	for _, hash := range hashesToRevert {
-		hasBeenReverted, err := nativeGit.HasBeenReverted(repo, hash, env, app)
+	for _, commit := range commitsToRevert {
+		hasBeenReverted, err := nativeGit.HasBeenReverted(repo, commit, env, app)
 		if !hasBeenReverted {
-			logrus.Infof("reverting %s", hash)
-			err = nativeGit.NativeRevert(repoTmpPath, hash)
+			logrus.Infof("reverting %s", commit.Hash.String())
+			err = nativeGit.NativeRevert(repoTmpPath, commit.Hash.String())
 			if err != nil {
 				return errors.WithMessage(err, "could not revert")
 			}

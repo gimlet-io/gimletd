@@ -37,4 +37,4 @@ require (
 )
 
 //replace github.com/go-git/go-git/v5 => github.com/juliens/go-git/v5 v5.4.3-0.20210820144752-1cb831023bcc
-replace github.com/go-git/go-git/v5 => github.com/gimlet-io/go-git/v5 v5.2.1-0.20210916071501-0120de9a980a
+replace github.com/go-git/go-git/v5 => github.com/gimlet-io/go-git/v5 v5.2.1-0.20210917081253-a2ab483ba818

@@ -365,7 +365,6 @@ func Releases(
 				return strings.HasPrefix(s, path)
 			},
 			Since: since,
-			Until: until,
 		},
 	)
 	if err != nil {
@@ -420,7 +419,7 @@ func Releases(
 		release.Created = c.Committer.When.Unix()
 		release.GitopsRef = c.Hash.String()
 
-		rolledBack, err := HasBeenReverted(repo, c.Hash.String(), env, app)
+		rolledBack, err := HasBeenReverted(repo, c, env, app)
 		if err != nil {
 			logrus.Warnf("cannot determine if commit was rolled back %s: %s", c.Hash.String(), err)
 			releases = append(releases, releaseFromCommit(c, app, env))
@@ -543,13 +542,14 @@ func DeleteCommit(c *object.Commit) bool {
 	return strings.Contains(c.Message, "[GimletD delete]")
 }
 
-func HasBeenReverted(repo *git.Repository, sha string, env string, app string) (bool, error) {
+func HasBeenReverted(repo *git.Repository, commit *object.Commit, env string, app string) (bool, error) {
 	path := fmt.Sprintf("%s/%s/", env, app)
 	commits, err := repo.Log(
 		&git.LogOptions{
 			PathFilter: func(s string) bool {
 				return strings.HasPrefix(s, path)
 			},
+			Since: &commit.Author.When,
 		},
 	)
 	if err != nil {
@@ -558,7 +558,7 @@ func HasBeenReverted(repo *git.Repository, sha string, env string, app string) (
 
 	hasBeenReverted := false
 	err = commits.ForEach(func(c *object.Commit) error {
-		if strings.Contains(c.Message, sha) {
+		if strings.Contains(c.Message, commit.Hash.String()) {
 			hasBeenReverted = true
 			return fmt.Errorf("EOF")
 		}
