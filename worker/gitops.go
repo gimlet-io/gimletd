@@ -552,17 +552,12 @@ func cloneTemplateDeleteAndPush(
 }
 
 func revertTo(env string, app string, repo *git.Repository, repoTmpPath string, sha string) error {
-	path := fmt.Sprintf("%s/%s/", env, app)
-	commits, err := repo.Log(
-		&git.LogOptions{
-			PathFilter: func(s string) bool {
-				return strings.HasPrefix(s, path)
-			},
-		},
-	)
+	path := fmt.Sprintf("%s/%s", env, app)
+	commits, err := repo.Log(&git.LogOptions{})
 	if err != nil {
 		return errors.WithMessage(err, "could not walk commits")
 	}
+	commits = nativeGit.NewCommitDirIterFromIter(path, commits, repo)
 
 	commitsToRevert := []*object.Commit{}
 	err = commits.ForEach(func(c *object.Commit) error {

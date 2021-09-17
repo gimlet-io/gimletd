@@ -353,7 +353,7 @@ func Releases(
 		return nil, fmt.Errorf("env is mandatory")
 	} else {
 		if app != "" {
-			path = fmt.Sprintf("%s/%s/", env, app)
+			path = fmt.Sprintf("%s/%s", env, app)
 		} else {
 			path = env
 		}
@@ -361,15 +361,13 @@ func Releases(
 
 	commits, err := repo.Log(
 		&git.LogOptions{
-			PathFilter: func(s string) bool {
-				return strings.HasPrefix(s, path)
-			},
 			Since: since,
 		},
 	)
 	if err != nil {
 		return nil, err
 	}
+	commits = NewCommitDirIterFromIter(path, commits, repo)
 
 	err = commits.ForEach(func(c *object.Commit) error {
 		if limit != 0 && len(releases) >= limit {
@@ -427,7 +425,6 @@ func Releases(
 		release.RolledBack = rolledBack
 
 		releases = append(releases, release)
-
 		return nil
 	})
 	if err != nil &&
@@ -543,18 +540,16 @@ func DeleteCommit(c *object.Commit) bool {
 }
 
 func HasBeenReverted(repo *git.Repository, commit *object.Commit, env string, app string) (bool, error) {
-	path := fmt.Sprintf("%s/%s/", env, app)
+	path := fmt.Sprintf("%s/%s", env, app)
 	commits, err := repo.Log(
 		&git.LogOptions{
-			PathFilter: func(s string) bool {
-				return strings.HasPrefix(s, path)
-			},
 			Since: &commit.Author.When,
 		},
 	)
 	if err != nil {
 		return false, errors.WithMessage(err, "could not walk commits")
 	}
+	commits = NewCommitDirIterFromIter(path, commits, repo)
 
 	hasBeenReverted := false
 	err = commits.ForEach(func(c *object.Commit) error {
