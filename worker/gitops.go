@@ -222,7 +222,9 @@ func processBranchDeletedEvent(
 			"policy",
 			gitopsEvent,
 		)
-		deletedEvents = append(deletedEvents, gitopsEvent)
+		if gitopsEvent != nil {
+			deletedEvents = append(deletedEvents, gitopsEvent)
+		}
 		if err != nil {
 			return deletedEvents, err
 		}
