@@ -102,6 +102,7 @@ func processEvent(
 	case model.TypeArtifact:
 		gitopsEvents, err = processArtifactEvent(
 			gitopsRepo,
+			repoCache,
 			gitopsRepoDeployKeyPath,
 			token,
 			event,
@@ -114,6 +115,7 @@ func processEvent(
 		gitopsEvents, err = processReleaseEvent(
 			store,
 			gitopsRepo,
+			repoCache,
 			gitopsRepoDeployKeyPath,
 			token,
 			event,
@@ -191,8 +193,8 @@ func processBranchDeletedEvent(
 		}
 
 		gitopsEvent := &events.DeleteEvent{
-			Env: env.Env,
-			App: env.Cleanup.AppToCleanup,
+			Env:         env.Env,
+			App:         env.Cleanup.AppToCleanup,
 			TriggeredBy: "policy",
 			Status:      events.Success,
 			GitopsRepo:  gitopsRepo,
@@ -248,6 +250,7 @@ func setGitopsHashOnEvent(event *model.Event, gitopsSha string) {
 func processReleaseEvent(
 	store *store.Store,
 	gitopsRepo string,
+	gitopsRepoCache *nativeGit.GitopsRepoCache,
 	gitopsRepoDeployKeyPath string,
 	githubChartAccessToken string,
 	event *model.Event,
@@ -280,6 +283,7 @@ func processReleaseEvent(
 
 		gitopsEvent, err := cloneTemplateWriteAndPush(
 			gitopsRepo,
+			gitopsRepoCache,
 			gitopsRepoDeployKeyPath,
 			githubChartAccessToken,
 			artifact,
@@ -378,6 +382,7 @@ func shasSince(repo *git.Repository, since string) ([]string, error) {
 
 func processArtifactEvent(
 	gitopsRepo string,
+	gitopsRepoCache *nativeGit.GitopsRepoCache,
 	gitopsRepoDeployKeyPath string,
 	githubChartAccessToken string,
 	event *model.Event,
@@ -400,6 +405,7 @@ func processArtifactEvent(
 
 		gitopsEvent, err := cloneTemplateWriteAndPush(
 			gitopsRepo,
+			gitopsRepoCache,
 			gitopsRepoDeployKeyPath,
 			githubChartAccessToken,
 			artifact,
@@ -439,6 +445,7 @@ func keepReposWithCleanupPolicyUpToDate(dao *store.Store, artifact *dx.Artifact)
 
 func cloneTemplateWriteAndPush(
 	gitopsRepo string,
+	gitopsRepoCache *nativeGit.GitopsRepoCache,
 	gitopsRepoDeployKeyPath string,
 	githubChartAccessToken string,
 	artifact *dx.Artifact,
@@ -453,7 +460,7 @@ func cloneTemplateWriteAndPush(
 		GitopsRepo:  gitopsRepo,
 	}
 
-	repoTmpPath, repo, err := nativeGit.CloneToTmpFs(gitopsRepo, gitopsRepoDeployKeyPath)
+	repo, repoTmpPath, err := gitopsRepoCache.InstanceForWrite()
 	defer nativeGit.TmpFsCleanup(repoTmpPath)
 	if err != nil {
 		gitopsEvent.Status = events.Failure
@@ -614,7 +621,6 @@ func gitopsTemplateAndWrite(
 		env.Chart.Name = tmpChartDir
 		defer os.RemoveAll(tmpChartDir)
 	}
-
 
 	templatedManifests, err := helm.HelmTemplate(*env)
 	if err != nil {

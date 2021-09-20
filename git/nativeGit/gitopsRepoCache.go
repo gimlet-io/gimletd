@@ -68,11 +68,15 @@ func (r *GitopsRepoCache) syncGitRepo() {
 		logrus.Errorf("cannot generate public key from private: %s", err.Error())
 	}
 
-	err = r.repo.Fetch(&git.FetchOptions{
-		RefSpecs: fetchRefSpec,
-		Auth:     publicKeys,
-		Depth:    100,
-		Tags:     git.NoTags,
+	w, err := r.repo.Worktree()
+	if err != nil {
+		logrus.Errorf("could not get worktree: %s", err)
+		return
+	}
+
+	w.Pull(&git.PullOptions{
+		Auth:       publicKeys,
+		RemoteName: "origin",
 	})
 	if err == git.NoErrAlreadyUpToDate {
 		return
