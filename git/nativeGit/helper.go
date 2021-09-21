@@ -50,14 +50,18 @@ func TmpFsCleanup(path string) error {
 }
 
 func Push(repo *git.Repository, privateKeyPath string) error {
+	t0 := time.Now().UnixNano()
 	publicKeys, err := ssh.NewPublicKeysFromFile("git", privateKeyPath, "")
 	if err != nil {
 		return fmt.Errorf("cannot generate public key from private: %s", err.Error())
 	}
+	logrus.Infof("Reading public key took %d", (time.Now().UnixNano() - t0) / 1000 / 1000)
 
+	t0 = time.Now().UnixNano()
 	err = repo.Push(&git.PushOptions{
 		Auth: publicKeys,
 	})
+	logrus.Infof("Actual push took %d", (time.Now().UnixNano() - t0) / 1000 / 1000)
 
 	if err == git.NoErrAlreadyUpToDate {
 		return nil
