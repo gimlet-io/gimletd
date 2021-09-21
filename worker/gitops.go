@@ -460,7 +460,9 @@ func cloneTemplateWriteAndPush(
 		GitopsRepo:  gitopsRepo,
 	}
 
+	t0:= time.Now().UnixNano()
 	repo, repoTmpPath, err := gitopsRepoCache.InstanceForWrite()
+	logrus.Infof("Obtaining instance for write took %d", (time.Now().UnixNano() - t0) / 1000 / 1000)
 	defer nativeGit.TmpFsCleanup(repoTmpPath)
 	if err != nil {
 		gitopsEvent.Status = events.Failure
@@ -496,7 +498,9 @@ func cloneTemplateWriteAndPush(
 		return gitopsEvent, err
 	}
 
+	t0 = time.Now().UnixNano()
 	err = nativeGit.Push(repo, gitopsRepoDeployKeyPath)
+	logrus.Infof("Pushign took %d", (time.Now().UnixNano() - t0) / 1000 / 1000)
 	if err != nil {
 		gitopsEvent.Status = events.Failure
 		gitopsEvent.StatusDesc = err.Error()
@@ -614,18 +618,23 @@ func gitopsTemplateAndWrite(
 		return "", fmt.Errorf("only HTTPS git repo urls supported in GimletD for git based charts")
 	}
 	if strings.Contains(env.Chart.Name, ".git") {
+		t0 := time.Now().UnixNano()
 		tmpChartDir, err := helm.CloneChartFromRepo(*env, tokenForChartClone)
 		if err != nil {
 			return "", fmt.Errorf("cannot fetch chart from git %s", err.Error())
 		}
+		logrus.Infof("Cloning chart took %d", (time.Now().UnixNano() - t0) / 1000 / 1000)
 		env.Chart.Name = tmpChartDir
 		defer os.RemoveAll(tmpChartDir)
 	}
 
+	t0 := time.Now().UnixNano()
 	templatedManifests, err := helm.HelmTemplate(*env)
 	if err != nil {
 		return "", fmt.Errorf("cannot run helm template %s", err.Error())
 	}
+	logrus.Infof("Helm template took %d", (time.Now().UnixNano() - t0) / 1000 / 1000)
+
 	files := helm.SplitHelmOutput(map[string]string{"manifest.yaml": templatedManifests})
 
 	releaseString, err := json.Marshal(release)
