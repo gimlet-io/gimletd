@@ -499,8 +499,9 @@ func cloneTemplateWriteAndPush(
 	}
 
 	t0 = time.Now().UnixNano()
-	err = nativeGit.Push(repo, gitopsRepoDeployKeyPath)
-	logrus.Infof("Pushign took %d", (time.Now().UnixNano() - t0) / 1000 / 1000)
+	head, _ := repo.Head()
+	err = nativeGit.NativePush(repoTmpPath, gitopsRepoDeployKeyPath, head.Name().Short())
+	logrus.Infof("Pushing took %d", (time.Now().UnixNano() - t0) / 1000 / 1000)
 	if err != nil {
 		gitopsEvent.Status = events.Failure
 		gitopsEvent.StatusDesc = err.Error()
