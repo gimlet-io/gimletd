@@ -9,6 +9,7 @@ import (
 type fluxMessage struct {
 	gitopsCommit *model.GitopsCommit
 	gitopsRepo   string
+	env          string
 }
 
 func (fm *fluxMessage) AsSlackMessage() (*slackMessage, error) {
@@ -59,17 +60,18 @@ func (fm *fluxMessage) AsSlackMessage() (*slackMessage, error) {
 }
 
 func (fm *fluxMessage) Env() string {
-	return "TODO"
+	return fm.env
 }
 
 func (fm *fluxMessage) AsGithubStatus() (*githubLib.RepoStatus, error) {
 	return nil, nil
 }
 
-func NewMessage(gitopsRepo string, gitopsCommit *model.GitopsCommit) Message {
+func NewMessage(gitopsRepo string, gitopsCommit *model.GitopsCommit, env string) Message {
 	return &fluxMessage{
 		gitopsCommit: gitopsCommit,
 		gitopsRepo:   gitopsRepo,
+		env:          env,
 	}
 }
 

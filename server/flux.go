@@ -15,6 +15,7 @@ import (
 func fluxEvent(w http.ResponseWriter, r *http.Request) {
 	var event events.Event
 	json.NewDecoder(r.Body).Decode(&event)
+	env := r.URL.Query().Get("env")
 
 	gitopsCommit, err := asGitopsCommit(event)
 	if err != nil {
@@ -26,7 +27,7 @@ func fluxEvent(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	notificationsManager := ctx.Value("notificationsManager").(notifications.Manager)
 	gitopsRepo := ctx.Value("gitopsRepo").(string)
-	notificationsManager.Broadcast(notifications.NewMessage(gitopsRepo, gitopsCommit))
+	notificationsManager.Broadcast(notifications.NewMessage(gitopsRepo, gitopsCommit, env))
 
 	store := ctx.Value("store").(*store.Store)
 	err = store.SaveOrUpdateGitopsCommit(gitopsCommit)
