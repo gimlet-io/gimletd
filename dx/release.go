@@ -35,12 +35,13 @@ type RollbackRequest struct {
 
 //GitopsStatus holds the gitops references that were created based on an event
 type GitopsStatus struct {
+	Hash       string `json:"hash,omitempty"`
 	Status     string `json:"status,omitempty"`
 	StatusDesc string `json:"statusDesc,omitempty"`
 }
 
 type ReleaseStatus struct {
-	Status       string                  `json:"status"`
-	StatusDesc   string                  `json:"statusDesc"`
-	GitopsHashes map[string]GitopsStatus `json:"gitopsHashes"`
+	Status       string         `json:"status"`
+	StatusDesc   string         `json:"statusDesc"`
+	GitopsHashes []GitopsStatus `json:"gitopsHashes"`
 }

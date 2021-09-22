@@ -325,7 +325,7 @@ func getEvent(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 
-	gitopsStatus := map[string]dx.GitopsStatus{}
+	gitopsStatus := []dx.GitopsStatus{}
 	for _, gitopsHash := range event.GitopsHashes {
 		gitopsCommit, err := store.GitopsCommit(gitopsHash)
 		if err != nil {
@@ -333,15 +333,17 @@ func getEvent(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		gitopsStatus[gitopsHash] = dx.GitopsStatus{
-			Status: "N/A",
-		}
-
 		if gitopsCommit != nil {
-			gitopsStatus[gitopsHash] = dx.GitopsStatus{
+			gitopsStatus = append(gitopsStatus, dx.GitopsStatus{
+				Hash:       gitopsHash,
 				Status:     gitopsCommit.Status,
 				StatusDesc: gitopsCommit.StatusDesc,
-			}
+			})
+		} else {
+			gitopsStatus = append(gitopsStatus, dx.GitopsStatus{
+				Hash:   gitopsHash,
+				Status: "N/A",
+			})
 		}
 	}
 
