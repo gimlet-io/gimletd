@@ -125,6 +125,7 @@ func processEvent(
 		rollbackEvent, err = processRollbackEvent(
 			gitopsRepo,
 			gitopsRepoDeployKeyPath,
+			repoCache,
 			event,
 		)
 		notificationsManager.Broadcast(notifications.MessageFromRollbackEvent(rollbackEvent))
@@ -302,6 +303,7 @@ func processReleaseEvent(
 func processRollbackEvent(
 	gitopsRepo string,
 	gitopsRepoDeployKeyPath string,
+	gitopsRepoCache *nativeGit.GitopsRepoCache,
 	event *model.Event,
 ) (*events.RollbackEvent, error) {
 	var rollbackRequest dx.RollbackRequest
@@ -315,13 +317,15 @@ func processRollbackEvent(
 		GitopsRepo:      gitopsRepo,
 	}
 
-	repoTmpPath, repo, err := nativeGit.CloneToTmpFs(gitopsRepo, gitopsRepoDeployKeyPath)
+	t0 := time.Now().UnixNano()
+	repo, repoTmpPath, err := gitopsRepoCache.InstanceForWrite()
+	logrus.Infof("Obtaining instance for write took %d", (time.Now().UnixNano()-t0)/1000/1000)
+	defer nativeGit.TmpFsCleanup(repoTmpPath)
 	if err != nil {
 		rollbackEvent.Status = events.Failure
 		rollbackEvent.StatusDesc = err.Error()
 		return rollbackEvent, err
 	}
-	defer nativeGit.TmpFsCleanup(repoTmpPath)
 
 	headSha, _ := repo.Head()
 
@@ -345,7 +349,10 @@ func processRollbackEvent(
 		return rollbackEvent, err
 	}
 
-	err = nativeGit.Push(repo, gitopsRepoDeployKeyPath)
+	t0 = time.Now().UnixNano()
+	head, _ := repo.Head()
+	err = nativeGit.NativePush(repoTmpPath, gitopsRepoDeployKeyPath, head.Name().Short())
+	logrus.Infof("Pushing took %d", (time.Now().UnixNano()-t0)/1000/1000)
 	if err != nil {
 		rollbackEvent.Status = events.Failure
 		rollbackEvent.StatusDesc = err.Error()
@@ -460,9 +467,9 @@ func cloneTemplateWriteAndPush(
 		GitopsRepo:  gitopsRepo,
 	}
 
-	t0:= time.Now().UnixNano()
+	t0 := time.Now().UnixNano()
 	repo, repoTmpPath, err := gitopsRepoCache.InstanceForWrite()
-	logrus.Infof("Obtaining instance for write took %d", (time.Now().UnixNano() - t0) / 1000 / 1000)
+	logrus.Infof("Obtaining instance for write took %d", (time.Now().UnixNano()-t0)/1000/1000)
 	defer nativeGit.TmpFsCleanup(repoTmpPath)
 	if err != nil {
 		gitopsEvent.Status = events.Failure
@@ -501,7 +508,7 @@ func cloneTemplateWriteAndPush(
 	t0 = time.Now().UnixNano()
 	head, _ := repo.Head()
 	err = nativeGit.NativePush(repoTmpPath, gitopsRepoDeployKeyPath, head.Name().Short())
-	logrus.Infof("Pushing took %d", (time.Now().UnixNano() - t0) / 1000 / 1000)
+	logrus.Infof("Pushing took %d", (time.Now().UnixNano()-t0)/1000/1000)
 	if err != nil {
 		gitopsEvent.Status = events.Failure
 		gitopsEvent.StatusDesc = err.Error()
@@ -624,7 +631,7 @@ func gitopsTemplateAndWrite(
 		if err != nil {
 			return "", fmt.Errorf("cannot fetch chart from git %s", err.Error())
 		}
-		logrus.Infof("Cloning chart took %d", (time.Now().UnixNano() - t0) / 1000 / 1000)
+		logrus.Infof("Cloning chart took %d", (time.Now().UnixNano()-t0)/1000/1000)
 		env.Chart.Name = tmpChartDir
 		defer os.RemoveAll(tmpChartDir)
 	}
@@ -634,7 +641,7 @@ func gitopsTemplateAndWrite(
 	if err != nil {
 		return "", fmt.Errorf("cannot run helm template %s", err.Error())
 	}
-	logrus.Infof("Helm template took %d", (time.Now().UnixNano() - t0) / 1000 / 1000)
+	logrus.Infof("Helm template took %d", (time.Now().UnixNano()-t0)/1000/1000)
 
 	files := helm.SplitHelmOutput(map[string]string{"manifest.yaml": templatedManifests})
 
