@@ -67,7 +67,15 @@ func getReleases(w http.ResponseWriter, r *http.Request) {
 	gitopsRepoCache := ctx.Value("gitopsRepoCache").(*nativeGit.GitopsRepoCache)
 	gitopsRepo := ctx.Value("gitopsRepo").(string)
 
-	releases, err := nativeGit.Releases(gitopsRepoCache.InstanceForRead(), app, env, since, until, limit, gitRepo)
+	repo, pathToClanUp, err := gitopsRepoCache.InstanceForWrite() // using a copy of the repo to avoid concurrent map writes error
+	defer gitopsRepoCache.CleanupWrittenRepo(pathToClanUp)
+	if err != nil {
+		logrus.Errorf("cannot get gitops repo for write: %s", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	releases, err := nativeGit.Releases(repo, app, env, since, until, limit, gitRepo)
 	if err != nil {
 		logrus.Errorf("cannot get releases: %s", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
