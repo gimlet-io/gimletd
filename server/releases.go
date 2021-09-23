@@ -275,8 +275,8 @@ func delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	repo, pathToClanUp, err := gitopsRepoCache.InstanceForWrite()
-	defer gitopsRepoCache.CleanupWrittenRepo(pathToClanUp)
+	repo, pathToCleanUp, err := gitopsRepoCache.InstanceForWrite()
+	defer gitopsRepoCache.CleanupWrittenRepo(pathToCleanUp)
 	if err != nil {
 		logrus.Errorf("cannot get gitops repo for write: %s", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -304,7 +304,12 @@ func delete(w http.ResponseWriter, r *http.Request) {
 
 	gitMessage := fmt.Sprintf("[GimletD delete] %s/%s deleted by %s", env, app, user.Login)
 	_, err = nativeGit.Commit(repo, gitMessage)
-	nativeGit.Push(repo, gitopsRepoDeployKeyPath)
+
+	t0 := time.Now().UnixNano()
+	head, _ := repo.Head()
+	err = nativeGit.NativePush(pathToCleanUp, gitopsRepoDeployKeyPath, head.Name().Short())
+	logrus.Infof("Pushing took %d", (time.Now().UnixNano()-t0)/1000/1000)
+
 	gitopsRepoCache.Invalidate()
 
 	w.WriteHeader(http.StatusOK)
