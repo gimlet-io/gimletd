@@ -236,7 +236,7 @@ func (r *BranchDeleteEventWorker) clone(repoName string) error {
 			Username: user,
 			Password: token,
 		},
-		Depth: 1,
+		Depth: 100,
 		Tags:  git.NoTags,
 	}
 
