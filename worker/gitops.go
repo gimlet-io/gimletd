@@ -108,9 +108,6 @@ func processEvent(
 			event,
 			store,
 		)
-		if len(gitopsEvents) > 0 {
-			repoCache.Invalidate()
-		}
 	case model.TypeRelease:
 		gitopsEvents, err = processReleaseEvent(
 			store,
@@ -120,7 +117,6 @@ func processEvent(
 			token,
 			event,
 		)
-		repoCache.Invalidate()
 	case model.TypeRollback:
 		rollbackEvent, err = processRollbackEvent(
 			gitopsRepo,
@@ -132,19 +128,16 @@ func processEvent(
 		for _, sha := range rollbackEvent.GitopsRefs {
 			setGitopsHashOnEvent(event, sha)
 		}
-		repoCache.Invalidate()
 	case model.TypeBranchDeleted:
 		deleteEvents, err = processBranchDeletedEvent(
 			gitopsRepo,
 			gitopsRepoDeployKeyPath,
+			repoCache,
 			event,
 		)
 		for _, deleteEvent := range deleteEvents {
 			notificationsManager.Broadcast(notifications.MessageFromDeleteEvent(deleteEvent))
 			setGitopsHashOnEvent(event, deleteEvent.GitopsRef)
-		}
-		if len(deleteEvents) > 0 {
-			repoCache.Invalidate()
 		}
 	}
 
@@ -179,6 +172,7 @@ func processEvent(
 func processBranchDeletedEvent(
 	gitopsRepo string,
 	gitopsRepoDeployKeyPath string,
+	gitopsRepoCache *nativeGit.GitopsRepoCache,
 	event *model.Event,
 ) ([]*events.DeleteEvent, error) {
 	var deletedEvents []*events.DeleteEvent
@@ -218,7 +212,7 @@ func processBranchDeletedEvent(
 		}
 
 		gitopsEvent, err = cloneTemplateDeleteAndPush(
-			gitopsRepo,
+			gitopsRepoCache,
 			gitopsRepoDeployKeyPath,
 			env.Cleanup,
 			env.Env,
@@ -349,15 +343,14 @@ func processRollbackEvent(
 		return rollbackEvent, err
 	}
 
-	t0 = time.Now().UnixNano()
 	head, _ := repo.Head()
 	err = nativeGit.NativePush(repoTmpPath, gitopsRepoDeployKeyPath, head.Name().Short())
-	logrus.Infof("Pushing took %d", (time.Now().UnixNano()-t0)/1000/1000)
 	if err != nil {
 		rollbackEvent.Status = events.Failure
 		rollbackEvent.StatusDesc = err.Error()
 		return rollbackEvent, err
 	}
+	gitopsRepoCache.Invalidate()
 
 	rollbackEvent.GitopsRefs = hashes
 	rollbackEvent.Status = events.Success
@@ -467,9 +460,7 @@ func cloneTemplateWriteAndPush(
 		GitopsRepo:  gitopsRepo,
 	}
 
-	t0 := time.Now().UnixNano()
 	repo, repoTmpPath, err := gitopsRepoCache.InstanceForWrite()
-	logrus.Infof("Obtaining instance for write took %d", (time.Now().UnixNano()-t0)/1000/1000)
 	defer nativeGit.TmpFsCleanup(repoTmpPath)
 	if err != nil {
 		gitopsEvent.Status = events.Failure
@@ -505,17 +496,16 @@ func cloneTemplateWriteAndPush(
 		return gitopsEvent, err
 	}
 
-	t0 = time.Now().UnixNano()
-	head, _ := repo.Head()
-	err = nativeGit.NativePush(repoTmpPath, gitopsRepoDeployKeyPath, head.Name().Short())
-	logrus.Infof("Pushing took %d", (time.Now().UnixNano()-t0)/1000/1000)
-	if err != nil {
-		gitopsEvent.Status = events.Failure
-		gitopsEvent.StatusDesc = err.Error()
-		return gitopsEvent, err
-	}
-
 	if sha != "" { // if there is a change to push
+		head, _ := repo.Head()
+		err = nativeGit.NativePush(repoTmpPath, gitopsRepoDeployKeyPath, head.Name().Short())
+		if err != nil {
+			gitopsEvent.Status = events.Failure
+			gitopsEvent.StatusDesc = err.Error()
+			return gitopsEvent, err
+		}
+		gitopsRepoCache.Invalidate()
+
 		gitopsEvent.GitopsRef = sha
 	}
 
@@ -523,14 +513,14 @@ func cloneTemplateWriteAndPush(
 }
 
 func cloneTemplateDeleteAndPush(
-	gitopsRepo string,
+	gitopsRepoCache *nativeGit.GitopsRepoCache,
 	gitopsRepoDeployKeyPath string,
 	cleanupPolicy *dx.Cleanup,
 	env string,
 	triggeredBy string,
 	gitopsEvent *events.DeleteEvent,
 ) (*events.DeleteEvent, error) {
-	repoTmpPath, repo, err := nativeGit.CloneToTmpFs(gitopsRepo, gitopsRepoDeployKeyPath)
+	repo, repoTmpPath, err := gitopsRepoCache.InstanceForWrite()
 	defer nativeGit.TmpFsCleanup(repoTmpPath)
 	if err != nil {
 		gitopsEvent.Status = events.Failure
@@ -558,14 +548,15 @@ func cloneTemplateDeleteAndPush(
 	gitMessage := fmt.Sprintf("[GimletD delete] %s/%s deleted by %s", env, cleanupPolicy.AppToCleanup, triggeredBy)
 	sha, err := nativeGit.Commit(repo, gitMessage)
 
-	err = nativeGit.Push(repo, gitopsRepoDeployKeyPath)
-	if err != nil {
-		gitopsEvent.Status = events.Failure
-		gitopsEvent.StatusDesc = err.Error()
-		return gitopsEvent, err
-	}
-
 	if sha != "" { // if there is a change to push
+		err = nativeGit.Push(repo, gitopsRepoDeployKeyPath)
+		if err != nil {
+			gitopsEvent.Status = events.Failure
+			gitopsEvent.StatusDesc = err.Error()
+			return gitopsEvent, err
+		}
+		gitopsRepoCache.Invalidate()
+
 		gitopsEvent.GitopsRef = sha
 	}
 
