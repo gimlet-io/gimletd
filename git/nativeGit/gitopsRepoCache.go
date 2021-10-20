@@ -23,7 +23,6 @@ type GitopsRepoCache struct {
 	repo                    *git.Repository
 	cachePath               string
 	stopCh                  chan struct{}
-	invalidateCh            chan string
 }
 
 func NewGitopsRepoCache(
@@ -42,7 +41,6 @@ func NewGitopsRepoCache(
 		repo:                    repo,
 		cachePath:               cachePath,
 		stopCh:                  stopCh,
-		invalidateCh:            make(chan string),
 	}, nil
 }
 
@@ -55,8 +53,6 @@ func (r *GitopsRepoCache) Run() {
 			logrus.Infof("cleaning up git repo cache at %s", r.cachePath)
 			TmpFsCleanup(r.cachePath)
 			return
-		case <-r.invalidateCh:
-			logrus.Info("received cache invalidate message")
 		case <-time.After(30 * time.Second):
 		}
 	}
@@ -114,5 +110,5 @@ func (r *GitopsRepoCache) CleanupWrittenRepo(path string) error {
 }
 
 func (r *GitopsRepoCache) Invalidate() {
-	r.invalidateCh <- "invalidate"
+	r.syncGitRepo()
 }
