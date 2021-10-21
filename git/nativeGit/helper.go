@@ -151,13 +151,8 @@ func execCommand(rootPath string, cmdName string, args ...string) error {
 	logrus.Infof("git/commit: exec command '%s %s': stdout: %s", cmdName, strings.Join(args, " "), stdoutData)
 	logrus.Infof("git/commit: exec command '%s %s': stderr: %s", cmdName, strings.Join(args, " "), stderrData)
 	if err != nil {
-		return errors.WithMessage(err, "execute command failed")
+		return fmt.Errorf("cannot execute command %s: %s", err.Error(), stderrData)
 	}
-
-	// git writes to stderr by default, let's not raise an error, rely on exit codes
-	//if len(stderrData) != 0 {
-	//	return errors.New(string(stderrData))
-	//}
 
 	return nil
 }
