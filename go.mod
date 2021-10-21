@@ -4,6 +4,7 @@ go 1.16
 
 require (
 	github.com/Masterminds/sprig/v3 v3.1.0
+	github.com/cenkalti/backoff/v4 v4.1.1 // indirect
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/fluxcd/pkg/runtime v0.3.1
 	github.com/gimlet-io/gimlet-cli v0.4.0

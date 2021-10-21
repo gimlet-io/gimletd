@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/cenkalti/backoff/v4"
 	"github.com/gimlet-io/gimletd/dx"
 	"github.com/gimlet-io/gimletd/dx/helm"
 	"github.com/gimlet-io/gimletd/git/customScm"
@@ -498,7 +499,12 @@ func cloneTemplateWriteAndPush(
 
 	if sha != "" { // if there is a change to push
 		head, _ := repo.Head()
-		err = nativeGit.NativePush(repoTmpPath, gitopsRepoDeployKeyPath, head.Name().Short())
+
+		operation := func() error {
+			return nativeGit.NativePush(repoTmpPath, gitopsRepoDeployKeyPath, head.Name().Short())
+		}
+		backoffStrategy := backoff.WithMaxRetries(backoff.NewExponentialBackOff(), 5)
+		err := backoff.Retry(operation, backoffStrategy)
 		if err != nil {
 			gitopsEvent.Status = events.Failure
 			gitopsEvent.StatusDesc = err.Error()
