@@ -4,6 +4,11 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+
 	"github.com/cenkalti/backoff/v4"
 	"github.com/gimlet-io/gimletd/dx"
 	"github.com/gimlet-io/gimletd/dx/helm"
@@ -19,10 +24,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
-	"os"
-	"path/filepath"
-	"strings"
-	"time"
 )
 
 type GitopsWorker struct {
@@ -271,7 +272,7 @@ func processReleaseEvent(
 		if env.Env != releaseRequest.Env {
 			continue
 		}
-		env.ResolveVars(artifact.Context)
+		env.ResolveVars(artifact.Vars())
 		if releaseRequest.App != "" &&
 			env.App != releaseRequest.App {
 			continue
@@ -469,7 +470,7 @@ func cloneTemplateWriteAndPush(
 		return gitopsEvent, err
 	}
 
-	err = env.ResolveVars(artifact.Context)
+	err = env.ResolveVars(artifact.Vars())
 	if err != nil {
 		err = fmt.Errorf("cannot resolve manifest vars %s", err.Error())
 		gitopsEvent.Status = events.Failure

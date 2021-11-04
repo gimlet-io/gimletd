@@ -17,6 +17,10 @@ package worker
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"testing"
+
 	"github.com/gimlet-io/gimletd/dx"
 	"github.com/gimlet-io/gimletd/git/nativeGit"
 	"github.com/go-git/go-billy/v5/memfs"
@@ -26,9 +30,6 @@ import (
 	"github.com/go-git/go-git/v5/storage/memory"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"io/ioutil"
-	"os"
-	"testing"
 )
 
 func Test_gitopsTemplateAndWrite(t *testing.T) {
@@ -533,8 +534,8 @@ func Test_cleanupTrigger(t *testing.T) {
 	assert.False(t, triggered, "Should not trigger on missing branch filter")
 
 	triggered = cleanupTrigger("preview-test", &dx.Cleanup{
-		Branch:       "preview-test",
-		Event:        dx.BranchDeleted,
+		Branch: "preview-test",
+		Event:  dx.BranchDeleted,
 	})
 	assert.False(t, triggered, "Should not trigger on missing app")
 }
