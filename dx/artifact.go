@@ -44,3 +44,20 @@ func (a *Artifact) HasCleanupPolicy() bool {
 	}
 	return false
 }
+
+func (a *Artifact) Vars() map[string]string {
+	vars := map[string]string{}
+
+	for k, v := range a.Context {
+		vars[k] = v
+	}
+
+	for _, values := range a.Items {
+		for k, v := range values {
+			if w, ok := v.(string); ok {
+				vars[k] = w
+			}
+		}
+	}
+	return vars
+}
