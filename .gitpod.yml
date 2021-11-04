@@ -1,6 +1,17 @@
 tasks:
   - init: |
       make all
+  - name: vscode settings
+    init: |
+      mkdir -p "$PWD/.vscode";
+      cat << 'EOF' > "$PWD/.vscode/settings.json"
+        {
+          "terminal.integrated.fontFamily": "Monospace",
+          "terminal.integrated.fontSize": 14,
+          "window.zoomLevel": 1
+        }
+      EOF
+      exit
 
 vscode:
   extensions:
