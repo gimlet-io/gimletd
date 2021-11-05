@@ -2,15 +2,16 @@ package nativeGit
 
 import (
 	"fmt"
+	"io/ioutil"
+	"os"
+	"time"
+
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
 	"github.com/otiai10/copy"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"io/ioutil"
-	"os"
-	"time"
 )
 
 var fetchRefSpec = []config.RefSpec{
@@ -87,7 +88,7 @@ func (r *GitopsRepoCache) InstanceForRead() *git.Repository {
 }
 
 func (r *GitopsRepoCache) InstanceForWrite() (*git.Repository, string, error) {
-	tmpPath, err := ioutil.TempDir("", "gitops-")
+	tmpPath, err := ioutil.TempDir(r.cachePath, "gitops-")
 	if err != nil {
 		errors.WithMessage(err, "couldn't get temporary directory")
 	}
