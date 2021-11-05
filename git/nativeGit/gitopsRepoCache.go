@@ -19,6 +19,7 @@ var fetchRefSpec = []config.RefSpec{
 }
 
 type GitopsRepoCache struct {
+	cacheRoot               string
 	gitopsRepo              string
 	gitopsRepoDeployKeyPath string
 	repo                    *git.Repository
@@ -27,16 +28,18 @@ type GitopsRepoCache struct {
 }
 
 func NewGitopsRepoCache(
+	cacheRoot string,
 	gitopsRepo string,
 	gitopsRepoDeployKeyPath string,
 	stopCh chan struct{},
 ) (*GitopsRepoCache, error) {
-	cachePath, repo, err := CloneToTmpFs(gitopsRepo, gitopsRepoDeployKeyPath)
+	cachePath, repo, err := CloneToTmpFs(cacheRoot, gitopsRepo, gitopsRepoDeployKeyPath)
 	if err != nil {
 		return nil, err
 	}
 
 	return &GitopsRepoCache{
+		cacheRoot:               cacheRoot,
 		gitopsRepo:              gitopsRepo,
 		gitopsRepoDeployKeyPath: gitopsRepoDeployKeyPath,
 		repo:                    repo,
@@ -88,7 +91,7 @@ func (r *GitopsRepoCache) InstanceForRead() *git.Repository {
 }
 
 func (r *GitopsRepoCache) InstanceForWrite() (*git.Repository, string, error) {
-	tmpPath, err := ioutil.TempDir(r.cachePath, "gitops-")
+	tmpPath, err := ioutil.TempDir(r.cacheRoot, "gitops-cow-")
 	if err != nil {
 		errors.WithMessage(err, "couldn't get temporary directory")
 	}

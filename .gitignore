@@ -12,5 +12,6 @@ gimletd.sqlite
 .env
 deploykey
 deploykey.pub
+repocache
 
 fixtures/k3s/kubeconfig.yaml

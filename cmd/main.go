@@ -3,6 +3,11 @@ package main
 import (
 	"encoding/base32"
 	"fmt"
+	"log"
+	"net/http"
+	_ "net/http/pprof"
+	"strings"
+
 	"github.com/gimlet-io/gimletd/cmd/config"
 	"github.com/gimlet-io/gimletd/git/customScm"
 	"github.com/gimlet-io/gimletd/git/customScm/customGithub"
@@ -18,10 +23,6 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
-	"log"
-	"net/http"
-	_ "net/http/pprof"
-	"strings"
 )
 
 func main() {
@@ -69,7 +70,12 @@ func main() {
 	stopCh := make(chan struct{})
 	defer close(stopCh)
 
-	repoCache, err := nativeGit.NewGitopsRepoCache(config.GitopsRepo, config.GitopsRepoDeployKeyPath, stopCh)
+	repoCache, err := nativeGit.NewGitopsRepoCache(
+		config.RepoCachePath,
+		config.GitopsRepo,
+		config.GitopsRepoDeployKeyPath,
+		stopCh,
+	)
 	if err != nil {
 		panic(err)
 	}

@@ -5,6 +5,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+	"time"
+
 	"github.com/gimlet-io/gimlet-cli/commands"
 	"github.com/gimlet-io/gimletd/dx"
 	"github.com/go-git/go-billy/v5"
@@ -15,18 +22,12 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
-	"io/ioutil"
-	"os"
-	"os/exec"
-	"path/filepath"
-	"strings"
-	"time"
 )
 
 const gitSSHAddressFormat = "git@github.com:%s.git"
 
-func CloneToTmpFs(repoName string, privateKeyPath string) (string, *git.Repository, error) {
-	path, err := ioutil.TempDir("", "gitops-")
+func CloneToTmpFs(rootPath string, repoName string, privateKeyPath string) (string, *git.Repository, error) {
+	path, err := ioutil.TempDir(rootPath, "gitops-")
 	if err != nil {
 		errors.WithMessage(err, "get temporary directory")
 	}
