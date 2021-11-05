@@ -1,5 +1,6 @@
 tasks:
   - init: |
+      sudo cp docker/known_hosts /etc/ssh/ssh_known_hosts
       make all
   - name: vscode settings
     init: |
