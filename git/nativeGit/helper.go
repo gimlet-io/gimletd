@@ -280,6 +280,9 @@ func stageFile(worktree *git.Worktree, content string, path string) error {
 		return err
 	}
 	err = createdFile.Close()
+	if err != nil {
+		return err
+	}
 
 	_, err = worktree.Add(path)
 	return err
@@ -384,7 +387,7 @@ func Releases(
 	commits = NewCommitDirIterFromIter(path, commits, repo)
 
 	err = commits.ForEach(func(c *object.Commit) error {
-		if limit != 0 && len(releases) >= limit {
+		if limit != -1 && len(releases) >= limit {
 			return fmt.Errorf("%s", "LIMIT")
 		}
 
@@ -540,6 +543,9 @@ func readAppStatus(fs billy.Filesystem, path string) (*dx.Release, error) {
 	}
 
 	releaseBytes, err := ioutil.ReadAll(f)
+	if err != nil {
+		return nil, err
+	}
 	err = json.Unmarshal(releaseBytes, &release)
 	defer f.Close()
 	return release, err
