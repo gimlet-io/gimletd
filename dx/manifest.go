@@ -3,21 +3,24 @@ package dx
 import (
 	"bytes"
 	"fmt"
-	"github.com/Masterminds/sprig/v3"
 	"regexp"
-	"sigs.k8s.io/yaml"
 	"strings"
 	"text/template"
+
+	"github.com/Masterminds/sprig/v3"
+	"sigs.k8s.io/yaml"
 )
 
 type Manifest struct {
-	App       string                 `yaml:"app" json:"app"`
-	Env       string                 `yaml:"env" json:"env"`
-	Namespace string                 `yaml:"namespace" json:"namespace"`
-	Deploy    *Deploy                `yaml:"deploy,omitempty" json:"deploy,omitempty"`
-	Cleanup   *Cleanup               `yaml:"cleanup,omitempty" json:"cleanup,omitempty"`
-	Chart     Chart                  `yaml:"chart" json:"chart"`
-	Values    map[string]interface{} `yaml:"values" json:"values"`
+	App                   string                 `yaml:"app" json:"app"`
+	Env                   string                 `yaml:"env" json:"env"`
+	Namespace             string                 `yaml:"namespace" json:"namespace"`
+	Deploy                *Deploy                `yaml:"deploy,omitempty" json:"deploy,omitempty"`
+	Cleanup               *Cleanup               `yaml:"cleanup,omitempty" json:"cleanup,omitempty"`
+	Chart                 Chart                  `yaml:"chart" json:"chart"`
+	Values                map[string]interface{} `yaml:"values" json:"values"`
+	StrategicMergePatches string                 `yaml:"strategicMergePatches" json:"values"`
+	Json6902Patches       string                 `yaml:"json6902Patches" json:"values"`
 }
 
 type Chart struct {
