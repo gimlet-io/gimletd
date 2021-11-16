@@ -15,3 +15,5 @@ deploykey.pub
 repocache
 
 fixtures/k3s/kubeconfig.yaml
+
+.vscode/settings.json

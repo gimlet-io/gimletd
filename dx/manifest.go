@@ -19,8 +19,8 @@ type Manifest struct {
 	Cleanup               *Cleanup               `yaml:"cleanup,omitempty" json:"cleanup,omitempty"`
 	Chart                 Chart                  `yaml:"chart" json:"chart"`
 	Values                map[string]interface{} `yaml:"values" json:"values"`
-	StrategicMergePatches string                 `yaml:"strategicMergePatches" json:"values"`
-	Json6902Patches       string                 `yaml:"json6902Patches" json:"values"`
+	StrategicMergePatches string                 `yaml:"strategicMergePatches" json:"strategicMergePatches"`
+	Json6902Patches       string                 `yaml:"json6902Patches" json:"json6902Patches"`
 }
 
 type Chart struct {
