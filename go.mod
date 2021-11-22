@@ -161,6 +161,7 @@ require (
 	k8s.io/kubectl v0.19.3 // indirect
 	k8s.io/utils v0.0.0-20200729134348-d5654de09c73 // indirect
 	sigs.k8s.io/kustomize v2.0.3+incompatible // indirect
+	sigs.k8s.io/kustomize/api v0.6.4
 	sigs.k8s.io/structured-merge-diff/v4 v4.0.1 // indirect
 )
 
