@@ -16,8 +16,7 @@ tasks:
       GITOPS_REPO_DEPLOY_KEY_PATH=/workspace/gimletd/deploykey
       EOF
 
-      echo $DEPLOY_KEY_PUB > deploykey.pub
-      echo $DEPLOY_KEY > deploykey
+      echo $DEPLOY_KEY | base64 -d > deploykey
 
       make test
   - name: vscode settings
