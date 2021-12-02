@@ -11,7 +11,15 @@ tasks:
       export GIMLET_SERVER=http://127.0.0.1:8888
       EOF
 
-      make all
+      cat << EOF > ~/.env
+      GITOPS_REPO=$GITOPS_REPO
+      GITOPS_REPO_DEPLOY_KEY_PATH=/workspace/gimletd/deploykey
+      EOF
+
+      echo $DEPLOY_KEY_PUB > deploykey.pub
+      echo $DEPLOY_KEY > deploykey
+
+      make test
   - name: vscode settings
     init: |
       mkdir -p "$PWD/.vscode";
