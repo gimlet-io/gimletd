@@ -2,6 +2,7 @@ package kustomize
 
 import (
 	"fmt"
+
 	"sigs.k8s.io/kustomize/api/filesys"
 	"sigs.k8s.io/kustomize/api/krusty"
 )
@@ -33,8 +34,8 @@ patchesStrategicMerge:
 	}
 
 	fmt.Println(templatesManifests)
-	b := krusty.MakeKustomizer(fSys, krusty.MakeDefaultOptions())
-	resources, err := b.Run(".")
+	b := krusty.MakeKustomizer(krusty.MakeDefaultOptions())
+	resources, err := b.Run(fSys, ".")
 	if err != nil {
 		return "", err
 	}
