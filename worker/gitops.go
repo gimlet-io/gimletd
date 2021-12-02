@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/gimlet-io/gimletd/dx/kustomize"
 	"os"
 	"path/filepath"
 	"strings"
@@ -640,6 +641,13 @@ func gitopsTemplateAndWrite(
 		return "", fmt.Errorf("cannot run helm template %s", err.Error())
 	}
 	logrus.Infof("Helm template took %d", (time.Now().UnixNano()-t0)/1000/1000)
+
+	if env.StrategicMergePatches != "" {
+		templatedManifests, err = kustomize.ApplyPatches(env.StrategicMergePatches, templatedManifests)
+		if err != nil {
+			return "", fmt.Errorf("cannot apply Kustomize patches to chart %s", err.Error())
+		}
+	}
 
 	files := helm.SplitHelmOutput(map[string]string{"manifest.yaml": templatedManifests})
 

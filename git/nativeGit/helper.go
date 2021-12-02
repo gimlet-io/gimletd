@@ -12,7 +12,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gimlet-io/gimlet-cli/commands"
 	"github.com/gimlet-io/gimletd/dx"
 	"github.com/go-git/go-billy/v5"
 	"github.com/go-git/go-git/v5"
@@ -25,6 +24,8 @@ import (
 )
 
 const gitSSHAddressFormat = "git@github.com:%s.git"
+const File_RW_RW_R = 0664
+const Dir_RWX_RX_R = 0754
 
 func CloneToTmpFs(rootPath string, repoName string, privateKeyPath string) (string, *git.Repository, error) {
 	path, err := ioutil.TempDir(rootPath, "gitops-")
@@ -228,7 +229,7 @@ func CommitFilesToGit(
 	if err != nil {
 		return "", fmt.Errorf("cannot del dir: %s", err)
 	}
-	err = w.Filesystem.MkdirAll(filepath.Join(env, app), commands.Dir_RWX_RX_R)
+	err = w.Filesystem.MkdirAll(filepath.Join(env, app), Dir_RWX_RX_R)
 	if err != nil {
 		return "", fmt.Errorf("cannot create dir %s", err)
 	}
