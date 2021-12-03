@@ -28,9 +28,13 @@ const File_RW_RW_R = 0664
 const Dir_RWX_RX_R = 0754
 
 func CloneToTmpFs(rootPath string, repoName string, privateKeyPath string) (string, *git.Repository, error) {
+	err := os.MkdirAll(rootPath, Dir_RWX_RX_R)
+	if err != nil {
+		return "", nil, errors.WithMessage(err, "cannot create folder at $REPO_CACHE_PATH")
+	}
 	path, err := ioutil.TempDir(rootPath, "gitops-")
 	if err != nil {
-		errors.WithMessage(err, "get temporary directory")
+		return "", nil, errors.WithMessage(err, "get temporary directory")
 	}
 	url := fmt.Sprintf(gitSSHAddressFormat, repoName)
 	publicKeys, err := ssh.NewPublicKeysFromFile("git", privateKeyPath, "")

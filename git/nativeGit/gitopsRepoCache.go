@@ -7,16 +7,11 @@ import (
 	"time"
 
 	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
 	"github.com/otiai10/copy"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
-
-var fetchRefSpec = []config.RefSpec{
-	"refs/heads/*:refs/heads/*",
-}
 
 type GitopsRepoCache struct {
 	cacheRoot               string

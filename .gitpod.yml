@@ -32,6 +32,14 @@ tasks:
       EOF
       exit
 
+ports:
+  - port: 8889
+    onOpen: ignore
+  - port: 8888
+    onOpen: ignore
+  - port: 6060
+    onOpen: ignore
+
 vscode:
   extensions:
     - golang.go
