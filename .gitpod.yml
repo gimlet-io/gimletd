@@ -14,6 +14,7 @@ tasks:
       cat << EOF > $PWD/.env
       GITOPS_REPO=$GITOPS_REPO
       GITOPS_REPO_DEPLOY_KEY_PATH=/workspace/gimletd/deploykey
+      PRINT_ADMIN_TOKEN=true
       EOF
 
       echo $DEPLOY_KEY | base64 -d > deploykey
