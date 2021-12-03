@@ -14,9 +14,11 @@ tasks:
       cat << EOF > $PWD/.env
       GITOPS_REPO=$GITOPS_REPO
       GITOPS_REPO_DEPLOY_KEY_PATH=/workspace/gimletd/deploykey
+      PRINT_ADMIN_TOKEN=true
       EOF
 
       echo $DEPLOY_KEY | base64 -d > deploykey
+      echo $DEPLOY_KEY_PUB | base64 -d > deploykey.pub
 
       make test
   - name: vscode settings
@@ -30,6 +32,15 @@ tasks:
         }
       EOF
       exit
+
+ports:
+  - port: 8889
+    onOpen: ignore
+  - port: 8888
+    onOpen: ignore
+    visibility: public
+  - port: 6060
+    onOpen: ignore
 
 vscode:
   extensions:

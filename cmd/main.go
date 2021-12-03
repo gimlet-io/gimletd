@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/base32"
 	"fmt"
 	"log"
@@ -45,7 +46,7 @@ func main() {
 
 	store := store.New(config.Database.Driver, config.Database.Config)
 
-	err = setupAdminUser(store)
+	err = setupAdminUser(config, store)
 	if err != nil {
 		panic(err)
 	}
@@ -172,34 +173,48 @@ func initLogging(c *config.Config) {
 }
 
 // Creates an admin user and prints her access token, in case there are no users in the database
-func setupAdminUser(store *store.Store) error {
-	users, err := store.Users()
-	if err != nil {
-		return fmt.Errorf("couldn't list users to create admin user %s", err)
-	}
+func setupAdminUser(config *config.Config, store *store.Store) error {
+	admin, err := store.User("admin")
 
-	if len(users) == 0 {
-		user := &model.User{
+	if err == sql.ErrNoRows {
+		admin := &model.User{
 			Login: "admin",
 			Secret: base32.StdEncoding.EncodeToString(
 				securecookie.GenerateRandomKey(32),
 			),
 			Admin: true,
 		}
-		err = store.CreateUser(user)
+		err = store.CreateUser(admin)
 		if err != nil {
 			return fmt.Errorf("couldn't create user admin user %s", err)
 		}
-
-		token := token.New(token.UserToken, user.Login)
-		tokenStr, err := token.Sign(user.Secret)
+		err = printAdminToken(admin)
 		if err != nil {
-			return fmt.Errorf("couldn't create admin token %s", err)
+			return err
 		}
-		logrus.Infof("Admin token created: %s", tokenStr)
-	} else {
-		logrus.Info("Admin token is already created")
+	} else if err != nil {
+		return fmt.Errorf("couldn't list users to create admin user %s", err)
 	}
+
+	if config.PrintAdminToken {
+		err = printAdminToken(admin)
+		if err != nil {
+			return err
+		}
+	} else {
+		logrus.Infof("Admin token was already printed, use the PRINT_ADMIN_TOKEN=true env var to print it again")
+	}
+
+	return nil
+}
+
+func printAdminToken(admin *model.User) error {
+	token := token.New(token.UserToken, admin.Login)
+	tokenStr, err := token.Sign(admin.Secret)
+	if err != nil {
+		return fmt.Errorf("couldn't create admin token %s", err)
+	}
+	logrus.Infof("Admin token: %s", tokenStr)
 
 	return nil
 }

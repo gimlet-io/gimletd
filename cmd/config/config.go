@@ -1,9 +1,10 @@
 package config
 
 import (
+	"strings"
+
 	"github.com/kelseyhightower/envconfig"
 	"gopkg.in/yaml.v2"
-	"strings"
 )
 
 // Environ returns the settings from the environment.
@@ -47,6 +48,7 @@ type Config struct {
 	Notifications           Notifications
 	Github                  Github
 	ReleaseStats            string `envconfig:"RELEASE_STATS"`
+	PrintAdminToken         bool   `envconfig:"PRINT_ADMIN_TOKEN"`
 }
 
 type Database struct {
