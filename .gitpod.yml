@@ -17,6 +17,7 @@ tasks:
       EOF
 
       echo $DEPLOY_KEY | base64 -d > deploykey
+      echo $DEPLOY_KEY_PUB | base64 -d > deploykey.pub
 
       make test
   - name: vscode settings
