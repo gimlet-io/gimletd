@@ -38,6 +38,7 @@ ports:
     onOpen: ignore
   - port: 8888
     onOpen: ignore
+    visibility: public
   - port: 6060
     onOpen: ignore
 
