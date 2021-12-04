@@ -2,16 +2,17 @@ package notifications
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/gimlet-io/gimletd/worker/events"
 	githubLib "github.com/google/go-github/v37/github"
-	"strings"
 )
 
 type gitopsRollbackMessage struct {
 	event *events.RollbackEvent
 }
 
-func (gm *gitopsRollbackMessage) AsSlackMessage() (*slackMessage, error) {
+func (gm *gitopsRollbackMessage) AsSlackMessage(sendProgressingMessages bool) (*slackMessage, error) {
 	msg := &slackMessage{
 		Text:   "",
 		Blocks: []Block{},

@@ -11,10 +11,14 @@ tasks:
       export GIMLET_SERVER=http://127.0.0.1:8888
       EOF
 
-      cat << EOF > $PWD/.env
+      cat << EOF > $PWD/cmd/.env
       GITOPS_REPO=$GITOPS_REPO
       GITOPS_REPO_DEPLOY_KEY_PATH=/workspace/gimletd/deploykey
       PRINT_ADMIN_TOKEN=true
+
+      NOTIFICATIONS_PROVIDER=slack
+      NOTIFICATIONS_TOKEN=$SLACK_TOKEN
+      NOTIFICATIONS_DEFAULT_CHANNEL=gimletd
       EOF
 
       echo $DEPLOY_KEY | base64 -d > deploykey

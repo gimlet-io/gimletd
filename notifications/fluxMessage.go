@@ -2,6 +2,8 @@ package notifications
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/gimlet-io/gimletd/model"
 	githubLib "github.com/google/go-github/v37/github"
 )
@@ -12,8 +14,9 @@ type fluxMessage struct {
 	env          string
 }
 
-func (fm *fluxMessage) AsSlackMessage() (*slackMessage, error) {
-	if fm.gitopsCommit.Status == model.Progressing {
+func (fm *fluxMessage) AsSlackMessage(sendProgressingMessages bool) (*slackMessage, error) {
+	if fm.gitopsCommit.Status == model.Progressing &&
+		!sendProgressingMessages {
 		return nil, nil
 	}
 
@@ -22,13 +25,18 @@ func (fm *fluxMessage) AsSlackMessage() (*slackMessage, error) {
 		Blocks: []Block{},
 	}
 
-	if fm.gitopsCommit.Status == model.ReconciliationSucceeded {
-		msg.Text = fmt.Sprintf("Gitops changes applied :heavy_check_mark: %s", commitLink(fm.gitopsRepo, fm.gitopsCommit.Sha))
-	}
-
-	if fm.gitopsCommit.Status == model.ValidationFailed ||
-		fm.gitopsCommit.Status == model.ReconciliationFailed {
-		msg.Text = ":exclamation: Gitops apply failed"
+	switch fm.gitopsCommit.Status {
+	case model.Progressing:
+		msg.Text = fmt.Sprintf(":hourglass_flowing_sand: Applying gitops changes from %s", commitLink(fm.gitopsRepo, fm.gitopsCommit.Sha))
+	case model.ReconciliationSucceeded:
+		msg.Text = fmt.Sprintf(":heavy_check_mark: Gitops changes applied from %s", commitLink(fm.gitopsRepo, fm.gitopsCommit.Sha))
+	case model.ValidationFailed:
+	case model.ReconciliationFailed:
+		msg.Text = fmt.Sprintf(":exclamation: Gitops changes from %s failed to apply", commitLink(fm.gitopsRepo, fm.gitopsCommit.Sha))
+	case model.HealthCheckFailed:
+		msg.Text = fmt.Sprintf(":ambulance: Gitops changes from %s have health issues", commitLink(fm.gitopsRepo, fm.gitopsCommit.Sha))
+	default:
+		msg.Text = fmt.Sprintf("%s: %s", fm.gitopsCommit.Status, commitLink(fm.gitopsRepo, fm.gitopsCommit.Sha))
 	}
 
 	msg.Blocks = append(msg.Blocks,
@@ -41,15 +49,26 @@ func (fm *fluxMessage) AsSlackMessage() (*slackMessage, error) {
 		},
 	)
 
-	if fm.gitopsCommit.Status == model.ValidationFailed ||
-		fm.gitopsCommit.Status == model.ReconciliationFailed {
+	var contextText string
+	switch fm.gitopsCommit.Status {
+	case model.ValidationFailed:
+	case model.ReconciliationFailed:
+	case model.HealthCheckFailed:
+		contextText = fm.gitopsCommit.StatusDesc
+	case model.Progressing:
+		if strings.Contains(fm.gitopsCommit.StatusDesc, "Health check passed") {
+			contextText = fm.gitopsCommit.StatusDesc
+		}
+	}
+
+	if contextText != "" {
 		msg.Blocks = append(msg.Blocks,
 			Block{
 				Type: contextString,
 				Elements: []Text{
 					{
 						Type: markdown,
-						Text: fm.gitopsCommit.StatusDesc,
+						Text: contextText,
 					},
 				},
 			},

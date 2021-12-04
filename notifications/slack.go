@@ -5,9 +5,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/sirupsen/logrus"
 	"io/ioutil"
 	"net/http"
+
+	"github.com/sirupsen/logrus"
 )
 
 const markdown = "mrkdwn"
@@ -18,9 +19,10 @@ const githubCommitLinkFormat = "<https://github.com/%s/commit/%s|%s>"
 const bitbucketServerLinkFormat = "<http://%s/projects/%s/repos/%s/commits/%s|%s>"
 
 type SlackProvider struct {
-	Token          string
-	DefaultChannel string
-	ChannelMapping map[string]string
+	Token                   string
+	DefaultChannel          string
+	ChannelMapping          map[string]string
+	SendProgressingMessages bool
 }
 
 type slackMessage struct {
@@ -41,7 +43,7 @@ type Text struct {
 }
 
 func (s *SlackProvider) send(msg Message) error {
-	slackMessage, err := msg.AsSlackMessage()
+	slackMessage, err := msg.AsSlackMessage(s.SendProgressingMessages)
 	if err != nil {
 		return fmt.Errorf("cannot create slack message: %s", err)
 	}
