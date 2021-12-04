@@ -16,7 +16,7 @@ type gitopsDeployMessage struct {
 	event *events.DeployEvent
 }
 
-func (gm *gitopsDeployMessage) AsSlackMessage(sendProgressingMessages bool) (*slackMessage, error) {
+func (gm *gitopsDeployMessage) AsSlackMessage() (*slackMessage, error) {
 	msg := &slackMessage{
 		Text:   "",
 		Blocks: []Block{},

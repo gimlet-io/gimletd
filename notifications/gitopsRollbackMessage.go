@@ -12,7 +12,7 @@ type gitopsRollbackMessage struct {
 	event *events.RollbackEvent
 }
 
-func (gm *gitopsRollbackMessage) AsSlackMessage(sendProgressingMessages bool) (*slackMessage, error) {
+func (gm *gitopsRollbackMessage) AsSlackMessage() (*slackMessage, error) {
 	msg := &slackMessage{
 		Text:   "",
 		Blocks: []Block{},

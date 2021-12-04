@@ -146,10 +146,9 @@ func slackNotificationProvider(config *config.Config) *notifications.SlackProvid
 		}
 	}
 	return &notifications.SlackProvider{
-		Token:                   config.Notifications.Token,
-		ChannelMapping:          channelMap,
-		DefaultChannel:          config.Notifications.DefaultChannel,
-		SendProgressingMessages: config.Notifications.SendFluxProgressingMessages,
+		Token:          config.Notifications.Token,
+		ChannelMapping: channelMap,
+		DefaultChannel: config.Notifications.DefaultChannel,
 	}
 }
 

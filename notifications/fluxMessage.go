@@ -14,12 +14,7 @@ type fluxMessage struct {
 	env          string
 }
 
-func (fm *fluxMessage) AsSlackMessage(sendProgressingMessages bool) (*slackMessage, error) {
-	if fm.gitopsCommit.Status == model.Progressing &&
-		!sendProgressingMessages {
-		return nil, nil
-	}
-
+func (fm *fluxMessage) AsSlackMessage() (*slackMessage, error) {
 	msg := &slackMessage{
 		Text:   "",
 		Blocks: []Block{},
@@ -27,10 +22,13 @@ func (fm *fluxMessage) AsSlackMessage(sendProgressingMessages bool) (*slackMessa
 
 	switch fm.gitopsCommit.Status {
 	case model.Progressing:
-		msg.Text = fmt.Sprintf(":hourglass_flowing_sand: Applying gitops changes from %s", commitLink(fm.gitopsRepo, fm.gitopsCommit.Sha))
-	case model.ReconciliationSucceeded:
-		msg.Text = fmt.Sprintf(":heavy_check_mark: Gitops changes applied from %s", commitLink(fm.gitopsRepo, fm.gitopsCommit.Sha))
+		if strings.Contains(fm.gitopsCommit.StatusDesc, "Health check passed") {
+			msg.Text = fmt.Sprintf(":heavy_check_mark: Applied resources from %s are up and healthy", commitLink(fm.gitopsRepo, fm.gitopsCommit.Sha))
+		} else {
+			msg.Text = fmt.Sprintf(":hourglass_flowing_sand: Applying gitops changes from %s", commitLink(fm.gitopsRepo, fm.gitopsCommit.Sha))
+		}
 	case model.ValidationFailed:
+		fallthrough
 	case model.ReconciliationFailed:
 		msg.Text = fmt.Sprintf(":exclamation: Gitops changes from %s failed to apply", commitLink(fm.gitopsRepo, fm.gitopsCommit.Sha))
 	case model.HealthCheckFailed:
@@ -52,7 +50,9 @@ func (fm *fluxMessage) AsSlackMessage(sendProgressingMessages bool) (*slackMessa
 	var contextText string
 	switch fm.gitopsCommit.Status {
 	case model.ValidationFailed:
+		fallthrough
 	case model.ReconciliationFailed:
+		fallthrough
 	case model.HealthCheckFailed:
 		contextText = fm.gitopsCommit.StatusDesc
 	case model.Progressing:

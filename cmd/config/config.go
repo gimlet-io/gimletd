@@ -66,11 +66,10 @@ type Logging struct {
 }
 
 type Notifications struct {
-	Provider                    string `envconfig:"NOTIFICATIONS_PROVIDER"`
-	Token                       string `envconfig:"NOTIFICATIONS_TOKEN"`
-	DefaultChannel              string `envconfig:"NOTIFICATIONS_DEFAULT_CHANNEL"`
-	ChannelMapping              string `envconfig:"NOTIFICATIONS_CHANNEL_MAPPING"`
-	SendFluxProgressingMessages bool   `envconfig:"NOTIFICATIONS_SEND_FLUX_PROGRESSING_MESSAGES"`
+	Provider       string `envconfig:"NOTIFICATIONS_PROVIDER"`
+	Token          string `envconfig:"NOTIFICATIONS_TOKEN"`
+	DefaultChannel string `envconfig:"NOTIFICATIONS_DEFAULT_CHANNEL"`
+	ChannelMapping string `envconfig:"NOTIFICATIONS_CHANNEL_MAPPING"`
 }
 
 type Github struct {

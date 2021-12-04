@@ -12,7 +12,7 @@ type gitopsDeleteMessage struct {
 	event *events.DeleteEvent
 }
 
-func (gm *gitopsDeleteMessage) AsSlackMessage(sendProgressingMessages bool) (*slackMessage, error) {
+func (gm *gitopsDeleteMessage) AsSlackMessage() (*slackMessage, error) {
 	msg := &slackMessage{
 		Text:   "",
 		Blocks: []Block{},

@@ -19,10 +19,9 @@ const githubCommitLinkFormat = "<https://github.com/%s/commit/%s|%s>"
 const bitbucketServerLinkFormat = "<http://%s/projects/%s/repos/%s/commits/%s|%s>"
 
 type SlackProvider struct {
-	Token                   string
-	DefaultChannel          string
-	ChannelMapping          map[string]string
-	SendProgressingMessages bool
+	Token          string
+	DefaultChannel string
+	ChannelMapping map[string]string
 }
 
 type slackMessage struct {
@@ -43,7 +42,7 @@ type Text struct {
 }
 
 func (s *SlackProvider) send(msg Message) error {
-	slackMessage, err := msg.AsSlackMessage(s.SendProgressingMessages)
+	slackMessage, err := msg.AsSlackMessage()
 	if err != nil {
 		return fmt.Errorf("cannot create slack message: %s", err)
 	}
