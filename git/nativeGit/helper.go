@@ -565,7 +565,13 @@ func DeleteCommit(c *object.Commit) bool {
 }
 
 func HasBeenReverted(repo *git.Repository, commit *object.Commit, env string, app string) (bool, error) {
-	path := fmt.Sprintf("%s/%s", env, app)
+	var path string
+	if app != "" {
+		path = fmt.Sprintf("%s/%s", env, app)
+	} else {
+		path = env
+	}
+
 	commits, err := repo.Log(
 		&git.LogOptions{
 			Since: &commit.Author.When,

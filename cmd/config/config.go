@@ -27,7 +27,7 @@ func defaults(c *Config) {
 		c.RepoCachePath = "/tmp/gimletd"
 	}
 	if c.ReleaseStats == "" {
-		c.ReleaseStats = "enabled"
+		c.ReleaseStats = "disabled"
 	}
 }
 
