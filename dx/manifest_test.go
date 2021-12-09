@@ -1,6 +1,7 @@
 package dx
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -65,4 +66,15 @@ func Test_sanitizeDNSName(t *testing.T) {
 
 	sanitized = sanitizeDNSName("dope")
 	assert.Equal(t, "dope", sanitized)
+}
+
+func Test_resolveVars_missingVar(t *testing.T) {
+
+	m := &Manifest{
+		App:       "my-app-{{ .POSTFIX }}",
+		Namespace: "my-namespace",
+	}
+
+	err := m.ResolveVars(map[string]string{})
+	assert.True(t, strings.Contains(err.Error(), "map has no entry for key \"POSTFIX\""))
 }
