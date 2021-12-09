@@ -2,10 +2,11 @@ package notifications
 
 import (
 	"fmt"
-	"github.com/gimlet-io/gimletd/worker/events"
-	githubLib "github.com/google/go-github/v37/github"
 	"strings"
 	"time"
+
+	"github.com/gimlet-io/gimletd/worker/events"
+	githubLib "github.com/google/go-github/v37/github"
 )
 
 const githubCommitLink = "https://github.com/%s/commit/%s"

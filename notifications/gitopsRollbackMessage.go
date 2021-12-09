@@ -2,9 +2,10 @@ package notifications
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/gimlet-io/gimletd/worker/events"
 	githubLib "github.com/google/go-github/v37/github"
-	"strings"
 )
 
 type gitopsRollbackMessage struct {

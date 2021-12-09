@@ -4,6 +4,7 @@ const Progressing = "Progressing"
 const ReconciliationSucceeded = "ReconciliationSucceeded"
 const ValidationFailed = "ValidationFailed"
 const ReconciliationFailed = "ReconciliationFailed"
+const HealthCheckFailed = "HealthCheckFailed"
 
 type GitopsCommit struct {
 	ID         int64  `json:"-"  meddler:"id,pk"`

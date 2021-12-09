@@ -62,7 +62,9 @@ func main() {
 	}
 
 	notificationsManager := notifications.NewManager()
-	notificationsManager = addSlackNotificationProvider(config, notificationsManager)
+	if config.Notifications.Provider == "slack" {
+		notificationsManager.AddProvider(slackNotificationProvider(config))
+	}
 	if tokenManager != nil {
 		notificationsManager.AddProvider(notifications.NewGithubProvider(tokenManager))
 	}
@@ -134,7 +136,7 @@ func main() {
 	}
 }
 
-func addSlackNotificationProvider(config *config.Config, notificationsManager *notifications.ManagerImpl) *notifications.ManagerImpl {
+func slackNotificationProvider(config *config.Config) *notifications.SlackProvider {
 	channelMap := map[string]string{}
 	if config.Notifications.ChannelMapping != "" {
 		pairs := strings.Split(config.Notifications.ChannelMapping, ",")
@@ -143,13 +145,11 @@ func addSlackNotificationProvider(config *config.Config, notificationsManager *n
 			channelMap[keyValue[0]] = keyValue[1]
 		}
 	}
-	notificationsManager.AddProvider(&notifications.SlackProvider{
+	return &notifications.SlackProvider{
 		Token:          config.Notifications.Token,
 		ChannelMapping: channelMap,
 		DefaultChannel: config.Notifications.DefaultChannel,
-	})
-
-	return notificationsManager
+	}
 }
 
 // helper function configures the logging.
