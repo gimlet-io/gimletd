@@ -55,6 +55,7 @@ func (m *Manifest) ResolveVars(vars map[string]string) error {
 	}
 	functions["sanitizeDNSName"] = sanitizeDNSName
 	tpl, err := template.New("").
+		Option("missingkey=error").
 		Funcs(functions).
 		Parse(string(manifestString))
 	if err != nil {
