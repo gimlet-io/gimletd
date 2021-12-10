@@ -21,6 +21,7 @@ type Manifest struct {
 	Values                map[string]interface{} `yaml:"values" json:"values"`
 	StrategicMergePatches string                 `yaml:"strategicMergePatches" json:"strategicMergePatches"`
 	Json6902Patches       string                 `yaml:"json6902Patches" json:"json6902Patches"`
+	Manifests             string                 `yaml:"manifests" json:"manifests"`
 }
 
 type Chart struct {

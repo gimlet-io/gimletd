@@ -33,7 +33,6 @@ patchesStrategicMerge:
 		return "", err
 	}
 
-	fmt.Println(templatesManifests)
 	b := krusty.MakeKustomizer(krusty.MakeDefaultOptions())
 	resources, err := b.Run(fSys, ".")
 	if err != nil {
