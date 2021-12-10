@@ -2,6 +2,12 @@ package helm
 
 import (
 	"fmt"
+	"io/ioutil"
+	"net/url"
+	"os"
+	"path/filepath"
+	"strings"
+
 	"github.com/gimlet-io/gimletd/dx"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
@@ -10,10 +16,6 @@ import (
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	helmCLI "helm.sh/helm/v3/pkg/cli"
-	"io/ioutil"
-	"net/url"
-	"path/filepath"
-	"strings"
 )
 
 // HelmTemplate returns Kubernetes yaml from the Gimlet Manifest format
@@ -149,4 +151,46 @@ func CloneChartFromRepo(m dx.Manifest, token string) (string, error) {
 	}
 
 	return tmpChartDir, nil
+}
+
+func TemplateChart(m dx.Manifest) (string, error) {
+	var templatedManifests string
+
+	if m.Chart.Name == "" {
+		return "", nil
+	}
+
+	if strings.HasPrefix(m.Chart.Name, "git@") ||
+		strings.Contains(m.Chart.Name, ".git") { // for https:// git urls
+		tmpChartDir, err := CloneChartFromRepo(m, "")
+		if err != nil {
+			fmt.Errorf("cannot fetch chart from git %s", err.Error())
+		}
+		m.Chart.Name = tmpChartDir
+		defer os.RemoveAll(tmpChartDir)
+
+	}
+
+	templatedManifests, err := HelmTemplate(m)
+	if err != nil {
+		fmt.Errorf("cannot template Helm chart %s", err)
+	}
+
+	return templatedManifests, err
+
+}
+
+func GetTemplatedManifests(m dx.Manifest) (string, error) {
+
+	templatedManifests, err := TemplateChart(m)
+	if err != nil {
+		return templatedManifests, fmt.Errorf("cannot template Helm chart %s", err)
+	}
+
+	templatedManifests += m.Manifests
+	if templatedManifests == "" {
+		return templatedManifests, fmt.Errorf("no chart or raw yaml has been found")
+	}
+	return templatedManifests, nil
+
 }
