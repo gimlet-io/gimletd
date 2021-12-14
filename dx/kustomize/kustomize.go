@@ -1,34 +1,67 @@
 package kustomize
 
 import (
-	"fmt"
+	"bytes"
 
+	"github.com/gimlet-io/gimletd/dx"
+	"github.com/google/uuid"
+	"gopkg.in/yaml.v3"
 	"sigs.k8s.io/kustomize/api/filesys"
 	"sigs.k8s.io/kustomize/api/krusty"
 )
 
-func ApplyPatches(patch string, templatesManifests string) (string, error) {
-	bytePatch := []byte(fmt.Sprintf("%v", patch))
-
-	fSys := filesys.MakeFsInMemory()
-	err := fSys.WriteFile("manifests.yaml", []byte(templatesManifests))
-	if err != nil {
-		return "", err
-	}
-
-	err = fSys.WriteFile("patches.yaml", bytePatch)
-	if err != nil {
-		return "", err
-	}
-
-	err = fSys.WriteFile("kustomization.yaml", []byte(`
+const bareKustomization = `
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
 - manifests.yaml
+`
+
+func ApplyPatches(strategicMergePatch string, jsonPatches []dx.Json6902Patch, manifests string) (string, error) {
+	fSys := filesys.MakeFsInMemory()
+	err := fSys.WriteFile("manifests.yaml", []byte(manifests))
+	if err != nil {
+		return "", err
+	}
+
+	kustomization := bareKustomization
+
+	if strategicMergePatch != "" {
+		err = fSys.WriteFile("strategicMergePatches.yaml", []byte(strategicMergePatch))
+		if err != nil {
+			return "", err
+		}
+
+		kustomization += `
 patchesStrategicMerge:
-- patches.yaml
-`))
+- strategicMergePatches.yaml
+`
+	}
+
+	if len(jsonPatches) > 0 {
+		kustomization += "patchesJson6902:\n"
+	}
+	for _, jsonPatch := range jsonPatches {
+		fileName := uuid.NewString()
+		err = fSys.WriteFile(fileName, []byte(jsonPatch.Patch))
+		if err != nil {
+			return "", err
+		}
+
+		var b bytes.Buffer
+		yamlEncoder := yaml.NewEncoder(&b)
+		yamlEncoder.SetIndent(2)
+		err := yamlEncoder.Encode([]patch{{
+			Path:   fileName,
+			Target: jsonPatch.Target,
+		}})
+		if err != nil {
+			return "", err
+		}
+		kustomization += b.String()
+	}
+
+	err = fSys.WriteFile("kustomization.yaml", []byte(kustomization))
 	if err != nil {
 		return "", err
 	}
@@ -52,4 +85,9 @@ patchesStrategicMerge:
 	}
 
 	return string(files), err
+}
+
+type patch struct {
+	Path   string    `yaml:"path" json:"path"`
+	Target dx.Target `yaml:"target" json:"target"`
 }
