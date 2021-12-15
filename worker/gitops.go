@@ -4,11 +4,12 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/gimlet-io/gimletd/dx/kustomize"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/gimlet-io/gimletd/dx/kustomize"
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/gimlet-io/gimletd/dx"
@@ -643,7 +644,11 @@ func gitopsTemplateAndWrite(
 	logrus.Infof("Helm template took %d", (time.Now().UnixNano()-t0)/1000/1000)
 
 	if env.StrategicMergePatches != "" {
-		templatedManifests, err = kustomize.ApplyPatches(env.StrategicMergePatches, templatedManifests)
+		templatedManifests, err = kustomize.ApplyPatches(
+			env.StrategicMergePatches,
+			env.Json6902Patches,
+			templatedManifests,
+		)
 		if err != nil {
 			return "", fmt.Errorf("cannot apply Kustomize patches to chart %s", err.Error())
 		}

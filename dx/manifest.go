@@ -20,8 +20,20 @@ type Manifest struct {
 	Chart                 Chart                  `yaml:"chart" json:"chart"`
 	Values                map[string]interface{} `yaml:"values" json:"values"`
 	StrategicMergePatches string                 `yaml:"strategicMergePatches" json:"strategicMergePatches"`
-	Json6902Patches       string                 `yaml:"json6902Patches" json:"json6902Patches"`
+	Json6902Patches       []Json6902Patch        `yaml:"json6902Patches" json:"json6902Patches"`
 	Manifests             string                 `yaml:"manifests" json:"manifests"`
+}
+
+type Json6902Patch struct {
+	Patch  string `yaml:"patch" json:"patch"`
+	Target Target `yaml:"target" json:"target"`
+}
+
+type Target struct {
+	Group   string `yaml:"group" json:"group"`
+	Version string `yaml:"version" json:"version"`
+	Kind    string `yaml:"kind" json:"kind"`
+	Name    string `yaml:"name" json:"name"`
 }
 
 type Chart struct {

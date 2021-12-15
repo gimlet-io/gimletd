@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	v2 "gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 func Test_resolveVars(t *testing.T) {
@@ -77,4 +79,28 @@ func Test_resolveVars_missingVar(t *testing.T) {
 
 	err := m.ResolveVars(map[string]string{})
 	assert.True(t, strings.Contains(err.Error(), "map has no entry for key \"POSTFIX\""))
+}
+
+func Test_UnmarshallingToDefaultValues(t *testing.T) {
+	manifestString := ""
+
+	var m Manifest
+	err := yaml.Unmarshal([]byte(manifestString), &m)
+	assert.Nil(t, err)
+
+	manifestString = `
+app: hello
+`
+
+	err = yaml.Unmarshal([]byte(manifestString), &m)
+	assert.Nil(t, err)
+	assert.Equal(t, "hello", m.App)
+
+	manifestString = `
+app: hello
+`
+
+	err = v2.Unmarshal([]byte(manifestString), &m)
+	assert.Nil(t, err)
+	assert.Equal(t, "hello", m.App)
 }
