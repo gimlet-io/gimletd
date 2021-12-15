@@ -2,7 +2,7 @@ tasks:
   - init: |
       sudo cp docker/known_hosts /etc/ssh/ssh_known_hosts
 
-      curl -L https://github.com/gimlet-io/gimlet-cli/releases/download/v0.9.7/gimlet-$(uname)-$(uname -m) -o gimlet
+      curl -L https://github.com/gimlet-io/gimlet-cli/releases/download/v0.11.0/gimlet-$(uname)-$(uname -m) -o gimlet
       chmod +x gimlet
       sudo mv ./gimlet /usr/local/bin/gimlet
       gimlet --version
