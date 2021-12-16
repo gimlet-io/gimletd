@@ -271,10 +271,10 @@ func processReleaseEvent(
 	}
 
 	for _, env := range artifact.Environments {
+		env.ResolveVars(artifact.Vars())
 		if env.Env != releaseRequest.Env {
 			continue
 		}
-		env.ResolveVars(artifact.Vars())
 		if releaseRequest.App != "" &&
 			env.App != releaseRequest.App {
 			continue
@@ -403,6 +403,7 @@ func processArtifactEvent(
 	}
 
 	for _, env := range artifact.Environments {
+		env.ResolveVars(artifact.Vars())
 		if !deployTrigger(artifact, env.Deploy) {
 			continue
 		}
@@ -467,14 +468,6 @@ func cloneTemplateWriteAndPush(
 	repo, repoTmpPath, err := gitopsRepoCache.InstanceForWrite()
 	defer nativeGit.TmpFsCleanup(repoTmpPath)
 	if err != nil {
-		gitopsEvent.Status = events.Failure
-		gitopsEvent.StatusDesc = err.Error()
-		return gitopsEvent, err
-	}
-
-	err = env.ResolveVars(artifact.Vars())
-	if err != nil {
-		err = fmt.Errorf("cannot resolve manifest vars %s", err.Error())
 		gitopsEvent.Status = events.Failure
 		gitopsEvent.StatusDesc = err.Error()
 		return gitopsEvent, err
