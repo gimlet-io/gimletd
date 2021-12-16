@@ -279,7 +279,14 @@ func processReleaseEvent(
 			GitopsRepo:  gitopsRepo,
 		}
 
-		manifest.ResolveVars(artifact.Vars())
+		err := manifest.ResolveVars(artifact.Vars())
+		if err != nil {
+			deployEvent.Status = events.Failure
+			deployEvent.StatusDesc = err.Error()
+			deployEvents = append(deployEvents, deployEvent)
+			continue
+		}
+
 		if manifest.Env != releaseRequest.Env {
 			continue
 		}
@@ -304,11 +311,12 @@ func processReleaseEvent(
 			manifest,
 			releaseMeta,
 		)
+		if err != nil {
+			deployEvent.Status = events.Failure
+			deployEvent.StatusDesc = err.Error()
+		}
 		deployEvent.GitopsRef = sha
 		deployEvents = append(deployEvents, deployEvent)
-		if err != nil {
-			return deployEvents, err
-		}
 	}
 
 	return deployEvents, nil
@@ -427,7 +435,14 @@ func processArtifactEvent(
 			GitopsRepo:  gitopsRepo,
 		}
 
-		manifest.ResolveVars(artifact.Vars())
+		err := manifest.ResolveVars(artifact.Vars())
+		if err != nil {
+			deployEvent.Status = events.Failure
+			deployEvent.StatusDesc = err.Error()
+			deployEvents = append(deployEvents, deployEvent)
+			continue
+		}
+
 		if !deployTrigger(artifact, manifest.Deploy) {
 			continue
 		}
@@ -448,11 +463,12 @@ func processArtifactEvent(
 			manifest,
 			releaseMeta,
 		)
+		if err != nil {
+			deployEvent.Status = events.Failure
+			deployEvent.StatusDesc = err.Error()
+		}
 		deployEvent.GitopsRef = sha
 		deployEvents = append(deployEvents, deployEvent)
-		if err != nil {
-			return deployEvents, err
-		}
 	}
 
 	return deployEvents, nil
@@ -618,35 +634,35 @@ func updateEvent(store *store.Store, event *model.Event) error {
 
 func gitopsTemplateAndWrite(
 	repo *git.Repository,
-	env *dx.Manifest,
+	manifest *dx.Manifest,
 	release *dx.Release,
 	tokenForChartClone string,
 ) (string, error) {
-	if strings.HasPrefix(env.Chart.Name, "git@") {
+	if strings.HasPrefix(manifest.Chart.Name, "git@") {
 		return "", fmt.Errorf("only HTTPS git repo urls supported in GimletD for git based charts")
 	}
-	if strings.Contains(env.Chart.Name, ".git") {
+	if strings.Contains(manifest.Chart.Name, ".git") {
 		t0 := time.Now().UnixNano()
-		tmpChartDir, err := helm.CloneChartFromRepo(*env, tokenForChartClone)
+		tmpChartDir, err := helm.CloneChartFromRepo(*manifest, tokenForChartClone)
 		if err != nil {
 			return "", fmt.Errorf("cannot fetch chart from git %s", err.Error())
 		}
 		logrus.Infof("Cloning chart took %d", (time.Now().UnixNano()-t0)/1000/1000)
-		env.Chart.Name = tmpChartDir
+		manifest.Chart.Name = tmpChartDir
 		defer os.RemoveAll(tmpChartDir)
 	}
 
 	t0 := time.Now().UnixNano()
-	templatedManifests, err := helm.HelmTemplate(*env)
+	templatedManifests, err := helm.HelmTemplate(*manifest)
 	if err != nil {
 		return "", fmt.Errorf("cannot run helm template %s", err.Error())
 	}
 	logrus.Infof("Helm template took %d", (time.Now().UnixNano()-t0)/1000/1000)
 
-	if env.StrategicMergePatches != "" {
+	if manifest.StrategicMergePatches != "" {
 		templatedManifests, err = kustomize.ApplyPatches(
-			env.StrategicMergePatches,
-			env.Json6902Patches,
+			manifest.StrategicMergePatches,
+			manifest.Json6902Patches,
 			templatedManifests,
 		)
 		if err != nil {
@@ -661,7 +677,7 @@ func gitopsTemplateAndWrite(
 		return "", fmt.Errorf("cannot marshal release meta data %s", err.Error())
 	}
 
-	sha, err := nativeGit.CommitFilesToGit(repo, files, env.Env, env.App, "automated deploy", string(releaseString))
+	sha, err := nativeGit.CommitFilesToGit(repo, files, manifest.Env, manifest.App, "automated deploy", string(releaseString))
 	if err != nil {
 		return "", fmt.Errorf("cannot write to git: %s", err.Error())
 	}
