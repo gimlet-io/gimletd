@@ -1,5 +1,11 @@
 package dx
 
+import (
+	"fmt"
+
+	"gopkg.in/yaml.v3"
+)
+
 type Version struct {
 	RepositoryName string   `json:"repositoryName,omitempty"`
 	SHA            string   `json:"sha,omitempty"`
@@ -63,4 +69,23 @@ func (a *Artifact) Vars() map[string]string {
 		}
 	}
 	return vars
+}
+
+func (a *Artifact) CueEnvironmentsToManifests() ([]*Manifest, error) {
+	var manifests []*Manifest
+	for _, cueManifest := range a.CueEnvironments {
+		manifestStrings, err := RenderCueToManifests(cueManifest)
+		if err != nil {
+			return manifests, fmt.Errorf("cannot render cue file %s", err.Error())
+		}
+		for _, manifestString := range manifestStrings {
+			var m Manifest
+			yaml.Unmarshal([]byte(manifestString), &m)
+			if err != nil {
+				return manifests, fmt.Errorf("cannot parse manifest %s", err.Error())
+			}
+			manifests = append(manifests, &m)
+		}
+	}
+	return manifests, nil
 }
