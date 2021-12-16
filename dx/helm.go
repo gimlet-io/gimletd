@@ -1,4 +1,4 @@
-package helm
+package dx
 
 import (
 	"fmt"
@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/gimlet-io/gimletd/dx"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
@@ -19,7 +18,7 @@ import (
 )
 
 // HelmTemplate returns Kubernetes yaml from the Gimlet Manifest format
-func HelmTemplate(m dx.Manifest) (string, error) {
+func HelmTemplate(m Manifest) (string, error) {
 	actionConfig := new(action.Configuration)
 	client := action.NewInstall(actionConfig)
 
@@ -90,7 +89,7 @@ func SplitHelmOutput(input map[string]string) map[string]string {
 }
 
 // CloneChartFromRepo returns the chart location of the specified chart
-func CloneChartFromRepo(m dx.Manifest, token string) (string, error) {
+func CloneChartFromRepo(m Manifest, token string) (string, error) {
 	gitAddress, err := giturl.Parse(m.Chart.Name)
 	if err != nil {
 		return "", fmt.Errorf("cannot parse chart's git address: %s", err)
@@ -153,7 +152,7 @@ func CloneChartFromRepo(m dx.Manifest, token string) (string, error) {
 	return tmpChartDir, nil
 }
 
-func TemplateChart(m dx.Manifest) (string, error) {
+func TemplateChart(m Manifest) (string, error) {
 	var templatedManifests string
 
 	if m.Chart.Name == "" {
@@ -180,7 +179,7 @@ func TemplateChart(m dx.Manifest) (string, error) {
 
 }
 
-func GetTemplatedManifests(m dx.Manifest) (string, error) {
+func GetTemplatedManifests(m Manifest) (string, error) {
 
 	templatedManifests, err := TemplateChart(m)
 	if err != nil {

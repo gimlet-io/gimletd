@@ -9,11 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gimlet-io/gimletd/dx/kustomize"
-
 	"github.com/cenkalti/backoff/v4"
 	"github.com/gimlet-io/gimletd/dx"
-	"github.com/gimlet-io/gimletd/dx/helm"
 	"github.com/gimlet-io/gimletd/git/customScm"
 	"github.com/gimlet-io/gimletd/git/nativeGit"
 	"github.com/gimlet-io/gimletd/model"
@@ -643,7 +640,7 @@ func gitopsTemplateAndWrite(
 	}
 	if strings.Contains(manifest.Chart.Name, ".git") {
 		t0 := time.Now().UnixNano()
-		tmpChartDir, err := helm.CloneChartFromRepo(*manifest, tokenForChartClone)
+		tmpChartDir, err := dx.CloneChartFromRepo(*manifest, tokenForChartClone)
 		if err != nil {
 			return "", fmt.Errorf("cannot fetch chart from git %s", err.Error())
 		}
@@ -653,14 +650,14 @@ func gitopsTemplateAndWrite(
 	}
 
 	t0 := time.Now().UnixNano()
-	templatedManifests, err := helm.HelmTemplate(*manifest)
+	templatedManifests, err := dx.HelmTemplate(*manifest)
 	if err != nil {
 		return "", fmt.Errorf("cannot run helm template %s", err.Error())
 	}
 	logrus.Infof("Helm template took %d", (time.Now().UnixNano()-t0)/1000/1000)
 
 	if manifest.StrategicMergePatches != "" {
-		templatedManifests, err = kustomize.ApplyPatches(
+		templatedManifests, err = dx.ApplyPatches(
 			manifest.StrategicMergePatches,
 			manifest.Json6902Patches,
 			templatedManifests,
@@ -670,7 +667,7 @@ func gitopsTemplateAndWrite(
 		}
 	}
 
-	files := helm.SplitHelmOutput(map[string]string{"manifest.yaml": templatedManifests})
+	files := dx.SplitHelmOutput(map[string]string{"manifest.yaml": templatedManifests})
 
 	releaseString, err := json.Marshal(release)
 	if err != nil {

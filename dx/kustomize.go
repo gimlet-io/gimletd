@@ -1,9 +1,8 @@
-package kustomize
+package dx
 
 import (
 	"bytes"
 
-	"github.com/gimlet-io/gimletd/dx"
 	"github.com/google/uuid"
 	"gopkg.in/yaml.v3"
 	"sigs.k8s.io/kustomize/api/filesys"
@@ -17,7 +16,7 @@ resources:
 - manifests.yaml
 `
 
-func ApplyPatches(strategicMergePatch string, jsonPatches []dx.Json6902Patch, manifests string) (string, error) {
+func ApplyPatches(strategicMergePatch string, jsonPatches []Json6902Patch, manifests string) (string, error) {
 	fSys := filesys.MakeFsInMemory()
 	err := fSys.WriteFile("manifests.yaml", []byte(manifests))
 	if err != nil {
@@ -88,6 +87,6 @@ patchesStrategicMerge:
 }
 
 type patch struct {
-	Path   string    `yaml:"path" json:"path"`
-	Target dx.Target `yaml:"target" json:"target"`
+	Path   string `yaml:"path" json:"path"`
+	Target Target `yaml:"target" json:"target"`
 }
