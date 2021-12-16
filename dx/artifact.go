@@ -1,5 +1,11 @@
 package dx
 
+import (
+	"fmt"
+
+	"gopkg.in/yaml.v3"
+)
+
 type Version struct {
 	RepositoryName string   `json:"repositoryName,omitempty"`
 	SHA            string   `json:"sha,omitempty"`
@@ -32,6 +38,9 @@ type Artifact struct {
 	// The complete set of Gimlet environments from the Gimlet environment files
 	Environments []*Manifest `json:"environments,omitempty"`
 
+	// The complete set of Gimlet environments from the Gimlet environment files
+	CueEnvironments []string `json:"cueEnvironments,omitempty"`
+
 	// CI job information, test results, Docker image information, etc
 	Items []map[string]interface{} `json:"items,omitempty"`
 }
@@ -60,4 +69,23 @@ func (a *Artifact) Vars() map[string]string {
 		}
 	}
 	return vars
+}
+
+func (a *Artifact) CueEnvironmentsToManifests() ([]*Manifest, error) {
+	var manifests []*Manifest
+	for _, cueManifest := range a.CueEnvironments {
+		manifestStrings, err := RenderCueToManifests(cueManifest)
+		if err != nil {
+			return manifests, fmt.Errorf("cannot render cue file %s", err.Error())
+		}
+		for _, manifestString := range manifestStrings {
+			var m Manifest
+			yaml.Unmarshal([]byte(manifestString), &m)
+			if err != nil {
+				return manifests, fmt.Errorf("cannot parse manifest %s", err.Error())
+			}
+			manifests = append(manifests, &m)
+		}
+	}
+	return manifests, nil
 }
