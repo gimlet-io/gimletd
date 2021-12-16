@@ -273,6 +273,12 @@ func processReleaseEvent(
 		return deployEvents, fmt.Errorf("cannot parse artifact %s", err.Error())
 	}
 
+	manifests, err := cueEnvironmentsToManifests(artifact.CueEnvironments)
+	if err != nil {
+		return deployEvents, err
+	}
+	artifact.Environments = append(artifact.Environments, manifests...)
+
 	for _, manifest := range artifact.Environments {
 		deployEvent := &events.DeployEvent{
 			Manifest:    manifest,
