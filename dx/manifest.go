@@ -86,6 +86,27 @@ func (m *Manifest) ResolveVars(vars map[string]string) error {
 	return err
 }
 
+func (m *Manifest) Render() (string, error) {
+	templatedManifests, err := GetTemplatedManifests(m)
+	if err != nil {
+		return "", fmt.Errorf("cannot get templates manifests %s", err.Error())
+	}
+
+	// Check for patches
+	if m.StrategicMergePatches != "" || len(m.Json6902Patches) > 0 {
+		templatedManifests, err = ApplyPatches(
+			m.StrategicMergePatches,
+			m.Json6902Patches,
+			templatedManifests,
+		)
+		if err != nil {
+			return "", fmt.Errorf("cannot apply Kustomize patches to chart %s", err)
+		}
+	}
+
+	return templatedManifests, nil
+}
+
 func (c *Cleanup) ResolveVars(vars map[string]string) error {
 	cleanupPolicyString, err := yaml.Marshal(c)
 	if err != nil {

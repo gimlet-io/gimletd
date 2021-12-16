@@ -640,7 +640,7 @@ func gitopsTemplateAndWrite(
 	}
 	if strings.Contains(manifest.Chart.Name, ".git") {
 		t0 := time.Now().UnixNano()
-		tmpChartDir, err := dx.CloneChartFromRepo(*manifest, tokenForChartClone)
+		tmpChartDir, err := dx.CloneChartFromRepo(manifest, tokenForChartClone)
 		if err != nil {
 			return "", fmt.Errorf("cannot fetch chart from git %s", err.Error())
 		}
@@ -650,22 +650,11 @@ func gitopsTemplateAndWrite(
 	}
 
 	t0 := time.Now().UnixNano()
-	templatedManifests, err := dx.HelmTemplate(*manifest)
+	templatedManifests, err := manifest.Render()
 	if err != nil {
-		return "", fmt.Errorf("cannot run helm template %s", err.Error())
+		return "", fmt.Errorf("cannot run render template %s", err.Error())
 	}
 	logrus.Infof("Helm template took %d", (time.Now().UnixNano()-t0)/1000/1000)
-
-	if manifest.StrategicMergePatches != "" {
-		templatedManifests, err = dx.ApplyPatches(
-			manifest.StrategicMergePatches,
-			manifest.Json6902Patches,
-			templatedManifests,
-		)
-		if err != nil {
-			return "", fmt.Errorf("cannot apply Kustomize patches to chart %s", err.Error())
-		}
-	}
 
 	files := dx.SplitHelmOutput(map[string]string{"manifest.yaml": templatedManifests})
 
