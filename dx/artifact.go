@@ -32,6 +32,9 @@ type Artifact struct {
 	// The complete set of Gimlet environments from the Gimlet environment files
 	Environments []*Manifest `json:"environments,omitempty"`
 
+	// The complete set of Gimlet environments from the Gimlet environment files
+	CueEnvironments []string `json:"cueEnvironments,omitempty"`
+
 	// CI job information, test results, Docker image information, etc
 	Items []map[string]interface{} `json:"items,omitempty"`
 }

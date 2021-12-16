@@ -23,6 +23,12 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
+	"sigs.k8s.io/yaml"
+
+	"cuelang.org/go/cue"
+	"cuelang.org/go/cue/cuecontext"
+	cueerrors "cuelang.org/go/cue/errors"
+	cueyaml "cuelang.org/go/encoding/yaml"
 )
 
 type GitopsWorker struct {
@@ -423,6 +429,12 @@ func processArtifactEvent(
 		keepReposWithCleanupPolicyUpToDate(dao, artifact)
 	}
 
+	manifests, err := cueEnvironmentsToManifests(artifact.CueEnvironments)
+	if err != nil {
+		return deployEvents, err
+	}
+	artifact.Environments = append(artifact.Environments, manifests...)
+
 	for _, manifest := range artifact.Environments {
 		deployEvent := &events.DeployEvent{
 			Manifest:    manifest,
@@ -780,4 +792,52 @@ func cleanupTrigger(branch string, cleanupPolicy *dx.Cleanup) bool {
 	}
 
 	return false
+}
+
+func renderCueToManifests(fileContent string) ([]string, error) {
+	c := cuecontext.New()
+	v := c.CompileString(fileContent)
+
+	err := v.Validate()
+	if err != nil {
+		msg := cueerrors.Details(err, nil)
+		return []string{}, fmt.Errorf("cannot parse cue file: %s", msg)
+	}
+
+	configs := v.LookupPath(cue.ParsePath("configs"))
+	if !configs.Exists() {
+		return []string{}, fmt.Errorf("cue files should have a `configs` field that holds an array of Gimlet manfiests")
+	}
+
+	var manifests []string
+
+	iter, _ := configs.List()
+	for iter.Next() {
+		m, err := cueyaml.Encode(iter.Value())
+		if err != nil {
+			return []string{}, err
+		}
+		manifests = append(manifests, string(m))
+	}
+
+	return manifests, nil
+}
+
+func cueEnvironmentsToManifests(cueEnvironments []string) ([]*dx.Manifest, error) {
+	var manifests []*dx.Manifest
+	for _, cueManifest := range cueEnvironments {
+		manifestStrings, err := renderCueToManifests(cueManifest)
+		if err != nil {
+			return manifests, fmt.Errorf("cannot render cue file %s", err.Error())
+		}
+		for _, manifestString := range manifestStrings {
+			var m dx.Manifest
+			yaml.Unmarshal([]byte(manifestString), &m)
+			if err != nil {
+				return manifests, fmt.Errorf("cannot parse manifest %s", err.Error())
+			}
+			manifests = append(manifests, &m)
+		}
+	}
+	return manifests, nil
 }
