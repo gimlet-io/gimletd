@@ -64,6 +64,6 @@
       }
     ],
     "cueEnvironments": [
-      "import \"text/template\"\n_instances: [\"first\",\"second\",]\nconfigs: [ for instance in _instances {\n  app: template.Execute(\"myapp-{{ . }}\", instance)\nenv:\"local\"\nnamespace: \"default\"\nchart: {\n    repository: \"https://chart.onechart.dev\"\n    name:\"onechart\"\n    version:0.32\n}\nvalues: {\n  image: {\n    repository: \"myapp\"\n    tag:\"1.1.1\"\n}\n}\n}]"
+      "import \"text/template\"\n_instances: [\"first\",\"second\",]\nconfigs: [ for instance in _instances {\n  app: template.Execute(\"myapp-{{ . }}\", instance)\nenv:\"local\"\nnamespace: \"default\"\nchart: {\n    repository: \"https://chart.onechart.dev\"\n    name:\"onechart\"\n    version:0.32\n}\nvalues: {\n  image: {\n    repository: \"ghcr.io/podtato-head/podtatoserver\"\n    tag:\"v0.1.1\"\n}\n}\n}]"
     ]
   }
