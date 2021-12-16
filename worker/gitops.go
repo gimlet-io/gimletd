@@ -99,12 +99,12 @@ func processEvent(
 
 	// process event based on type
 	var err error
-	var gitopsEvents []*events.DeployEvent
+	var deployEvents []*events.DeployEvent
 	var rollbackEvent *events.RollbackEvent
 	var deleteEvents []*events.DeleteEvent
 	switch event.Type {
 	case model.TypeArtifact:
-		gitopsEvents, err = processArtifactEvent(
+		deployEvents, err = processArtifactEvent(
 			gitopsRepo,
 			repoCache,
 			gitopsRepoDeployKeyPath,
@@ -113,7 +113,7 @@ func processEvent(
 			store,
 		)
 	case model.TypeRelease:
-		gitopsEvents, err = processReleaseEvent(
+		deployEvents, err = processReleaseEvent(
 			store,
 			gitopsRepo,
 			repoCache,
@@ -146,13 +146,13 @@ func processEvent(
 	}
 
 	// send out notifications based on gitops events
-	for _, gitopsEvent := range gitopsEvents {
-		notificationsManager.Broadcast(notifications.MessageFromGitOpsEvent(gitopsEvent))
+	for _, deployEvent := range deployEvents {
+		notificationsManager.Broadcast(notifications.MessageFromGitOpsEvent(deployEvent))
 	}
 
 	// record gitops hashes on events
-	for _, gitopsEvent := range gitopsEvents {
-		setGitopsHashOnEvent(event, gitopsEvent.GitopsRef)
+	for _, deployEvent := range deployEvents {
+		setGitopsHashOnEvent(event, deployEvent.GitopsRef)
 	}
 
 	// store event state
@@ -254,48 +254,72 @@ func processReleaseEvent(
 	githubChartAccessToken string,
 	event *model.Event,
 ) ([]*events.DeployEvent, error) {
-	var gitopsEvents []*events.DeployEvent
+	var deployEvents []*events.DeployEvent
 	var releaseRequest dx.ReleaseRequest
 	err := json.Unmarshal([]byte(event.Blob), &releaseRequest)
 	if err != nil {
-		return gitopsEvents, fmt.Errorf("cannot parse release request with id: %s", event.ID)
+		return deployEvents, fmt.Errorf("cannot parse release request with id: %s", event.ID)
 	}
 
 	artifactEvent, err := store.Artifact(releaseRequest.ArtifactID)
 	if err != nil {
-		return gitopsEvents, fmt.Errorf("cannot find artifact with id: %s", event.ArtifactID)
+		return deployEvents, fmt.Errorf("cannot find artifact with id: %s", event.ArtifactID)
 	}
 	artifact, err := model.ToArtifact(artifactEvent)
 	if err != nil {
-		return gitopsEvents, fmt.Errorf("cannot parse artifact %s", err.Error())
+		return deployEvents, fmt.Errorf("cannot parse artifact %s", err.Error())
 	}
 
-	for _, env := range artifact.Environments {
-		if env.Env != releaseRequest.Env {
-			continue
+	for _, manifest := range artifact.Environments {
+		deployEvent := &events.DeployEvent{
+			Manifest:    manifest,
+			Artifact:    artifact,
+			TriggeredBy: releaseRequest.TriggeredBy,
+			Status:      events.Success,
+			GitopsRepo:  gitopsRepo,
 		}
-		env.ResolveVars(artifact.Vars())
-		if releaseRequest.App != "" &&
-			env.App != releaseRequest.App {
+
+		err := manifest.ResolveVars(artifact.Vars())
+		if err != nil {
+			deployEvent.Status = events.Failure
+			deployEvent.StatusDesc = err.Error()
+			deployEvents = append(deployEvents, deployEvent)
 			continue
 		}
 
-		gitopsEvent, err := cloneTemplateWriteAndPush(
+		if manifest.Env != releaseRequest.Env {
+			continue
+		}
+		if releaseRequest.App != "" &&
+			manifest.App != releaseRequest.App {
+			continue
+		}
+
+		releaseMeta := &dx.Release{
+			App:         manifest.App,
+			Env:         manifest.Env,
+			ArtifactID:  artifact.ID,
+			Version:     &artifact.Version,
+			TriggeredBy: releaseRequest.TriggeredBy,
+		}
+
+		sha, err := cloneTemplateWriteAndPush(
 			gitopsRepo,
 			gitopsRepoCache,
 			gitopsRepoDeployKeyPath,
 			githubChartAccessToken,
-			artifact,
-			env,
-			releaseRequest.TriggeredBy,
+			manifest,
+			releaseMeta,
 		)
-		gitopsEvents = append(gitopsEvents, gitopsEvent)
 		if err != nil {
-			return gitopsEvents, err
+			deployEvent.Status = events.Failure
+			deployEvent.StatusDesc = err.Error()
 		}
+		deployEvent.GitopsRef = sha
+		deployEvents = append(deployEvents, deployEvent)
 	}
 
-	return gitopsEvents, nil
+	return deployEvents, nil
 }
 
 func processRollbackEvent(
@@ -392,37 +416,62 @@ func processArtifactEvent(
 	event *model.Event,
 	dao *store.Store,
 ) ([]*events.DeployEvent, error) {
-	var gitopsEvents []*events.DeployEvent
+	var deployEvents []*events.DeployEvent
 	artifact, err := model.ToArtifact(event)
 	if err != nil {
-		return gitopsEvents, fmt.Errorf("cannot parse artifact %s", err.Error())
+		return deployEvents, fmt.Errorf("cannot parse artifact %s", err.Error())
 	}
 
 	if artifact.HasCleanupPolicy() {
 		keepReposWithCleanupPolicyUpToDate(dao, artifact)
 	}
 
-	for _, env := range artifact.Environments {
-		if !deployTrigger(artifact, env.Deploy) {
+	for _, manifest := range artifact.Environments {
+		deployEvent := &events.DeployEvent{
+			Manifest:    manifest,
+			Artifact:    artifact,
+			TriggeredBy: "policy",
+			Status:      events.Success,
+			GitopsRepo:  gitopsRepo,
+		}
+
+		err := manifest.ResolveVars(artifact.Vars())
+		if err != nil {
+			deployEvent.Status = events.Failure
+			deployEvent.StatusDesc = err.Error()
+			deployEvents = append(deployEvents, deployEvent)
 			continue
 		}
 
-		gitopsEvent, err := cloneTemplateWriteAndPush(
+		if !deployTrigger(artifact, manifest.Deploy) {
+			continue
+		}
+
+		releaseMeta := &dx.Release{
+			App:         manifest.App,
+			Env:         manifest.Env,
+			ArtifactID:  artifact.ID,
+			Version:     &artifact.Version,
+			TriggeredBy: "policy",
+		}
+
+		sha, err := cloneTemplateWriteAndPush(
 			gitopsRepo,
 			gitopsRepoCache,
 			gitopsRepoDeployKeyPath,
 			githubChartAccessToken,
-			artifact,
-			env,
-			"policy",
+			manifest,
+			releaseMeta,
 		)
-		gitopsEvents = append(gitopsEvents, gitopsEvent)
 		if err != nil {
-			return gitopsEvents, err
+			deployEvent.Status = events.Failure
+			deployEvent.StatusDesc = err.Error()
 		}
+		deployEvent.GitopsRef = sha
+		deployEvents = append(deployEvents, deployEvent)
 	}
 
-	return gitopsEvents, nil
+	return deployEvents, nil
 }
 
 func keepReposWithCleanupPolicyUpToDate(dao *store.Store, artifact *dx.Artifact) {
@@ -452,52 +501,23 @@ func cloneTemplateWriteAndPush(
 	gitopsRepoCache *nativeGit.GitopsRepoCache,
 	gitopsRepoDeployKeyPath string,
 	githubChartAccessToken string,
-	artifact *dx.Artifact,
-	env *dx.Manifest,
-	triggeredBy string,
-) (*events.DeployEvent, error) {
-	gitopsEvent := &events.DeployEvent{
-		Manifest:    env,
-		Artifact:    artifact,
-		TriggeredBy: triggeredBy,
-		Status:      events.Success,
-		GitopsRepo:  gitopsRepo,
-	}
-
+	manifest *dx.Manifest,
+	releaseMeta *dx.Release,
+) (string, error) {
 	repo, repoTmpPath, err := gitopsRepoCache.InstanceForWrite()
 	defer nativeGit.TmpFsCleanup(repoTmpPath)
 	if err != nil {
-		gitopsEvent.Status = events.Failure
-		gitopsEvent.StatusDesc = err.Error()
-		return gitopsEvent, err
-	}
-
-	err = env.ResolveVars(artifact.Vars())
-	if err != nil {
-		err = fmt.Errorf("cannot resolve manifest vars %s", err.Error())
-		gitopsEvent.Status = events.Failure
-		gitopsEvent.StatusDesc = err.Error()
-		return gitopsEvent, err
-	}
-
-	releaseMeta := &dx.Release{
-		App:         env.App,
-		Env:         env.Env,
-		ArtifactID:  artifact.ID,
-		Version:     &artifact.Version,
-		TriggeredBy: triggeredBy,
+		return "", err
 	}
 
 	sha, err := gitopsTemplateAndWrite(
 		repo,
-		env,
+		manifest,
 		releaseMeta,
 		githubChartAccessToken,
 	)
 	if err != nil {
-		gitopsEvent.Status = events.Failure
-		gitopsEvent.StatusDesc = err.Error()
-		return gitopsEvent, err
+		return "", err
 	}
 
 	if sha != "" { // if there is a change to push
@@ -509,16 +529,12 @@ func cloneTemplateWriteAndPush(
 		backoffStrategy := backoff.WithMaxRetries(backoff.NewExponentialBackOff(), 5)
 		err := backoff.Retry(operation, backoffStrategy)
 		if err != nil {
-			gitopsEvent.Status = events.Failure
-			gitopsEvent.StatusDesc = err.Error()
-			return gitopsEvent, err
+			return "", err
 		}
 		gitopsRepoCache.Invalidate()
-
-		gitopsEvent.GitopsRef = sha
 	}
 
-	return gitopsEvent, nil
+	return sha, nil
 }
 
 func cloneTemplateDeleteAndPush(
@@ -618,35 +634,35 @@ func updateEvent(store *store.Store, event *model.Event) error {
 
 func gitopsTemplateAndWrite(
 	repo *git.Repository,
-	env *dx.Manifest,
+	manifest *dx.Manifest,
 	release *dx.Release,
 	tokenForChartClone string,
 ) (string, error) {
-	if strings.HasPrefix(env.Chart.Name, "git@") {
+	if strings.HasPrefix(manifest.Chart.Name, "git@") {
 		return "", fmt.Errorf("only HTTPS git repo urls supported in GimletD for git based charts")
 	}
-	if strings.Contains(env.Chart.Name, ".git") {
+	if strings.Contains(manifest.Chart.Name, ".git") {
 		t0 := time.Now().UnixNano()
-		tmpChartDir, err := helm.CloneChartFromRepo(*env, tokenForChartClone)
+		tmpChartDir, err := helm.CloneChartFromRepo(*manifest, tokenForChartClone)
 		if err != nil {
 			return "", fmt.Errorf("cannot fetch chart from git %s", err.Error())
 		}
 		logrus.Infof("Cloning chart took %d", (time.Now().UnixNano()-t0)/1000/1000)
-		env.Chart.Name = tmpChartDir
+		manifest.Chart.Name = tmpChartDir
 		defer os.RemoveAll(tmpChartDir)
 	}
 
 	t0 := time.Now().UnixNano()
-	templatedManifests, err := helm.HelmTemplate(*env)
+	templatedManifests, err := helm.HelmTemplate(*manifest)
 	if err != nil {
 		return "", fmt.Errorf("cannot run helm template %s", err.Error())
 	}
 	logrus.Infof("Helm template took %d", (time.Now().UnixNano()-t0)/1000/1000)
 
-	if env.StrategicMergePatches != "" {
+	if manifest.StrategicMergePatches != "" {
 		templatedManifests, err = kustomize.ApplyPatches(
-			env.StrategicMergePatches,
-			env.Json6902Patches,
+			manifest.StrategicMergePatches,
+			manifest.Json6902Patches,
 			templatedManifests,
 		)
 		if err != nil {
@@ -661,7 +677,7 @@ func gitopsTemplateAndWrite(
 		return "", fmt.Errorf("cannot marshal release meta data %s", err.Error())
 	}
 
-	sha, err := nativeGit.CommitFilesToGit(repo, files, env.Env, env.App, "automated deploy", string(releaseString))
+	sha, err := nativeGit.CommitFilesToGit(repo, files, manifest.Env, manifest.App, "automated deploy", string(releaseString))
 	if err != nil {
 		return "", fmt.Errorf("cannot write to git: %s", err.Error())
 	}
