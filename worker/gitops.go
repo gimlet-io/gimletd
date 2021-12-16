@@ -270,13 +270,13 @@ func processReleaseEvent(
 		return gitopsEvents, fmt.Errorf("cannot parse artifact %s", err.Error())
 	}
 
-	for _, env := range artifact.Environments {
-		env.ResolveVars(artifact.Vars())
-		if env.Env != releaseRequest.Env {
+	for _, manifest := range artifact.Environments {
+		manifest.ResolveVars(artifact.Vars())
+		if manifest.Env != releaseRequest.Env {
 			continue
 		}
 		if releaseRequest.App != "" &&
-			env.App != releaseRequest.App {
+			manifest.App != releaseRequest.App {
 			continue
 		}
 
@@ -286,7 +286,7 @@ func processReleaseEvent(
 			gitopsRepoDeployKeyPath,
 			githubChartAccessToken,
 			artifact,
-			env,
+			manifest,
 			releaseRequest.TriggeredBy,
 		)
 		gitopsEvents = append(gitopsEvents, gitopsEvent)
@@ -402,9 +402,9 @@ func processArtifactEvent(
 		keepReposWithCleanupPolicyUpToDate(dao, artifact)
 	}
 
-	for _, env := range artifact.Environments {
-		env.ResolveVars(artifact.Vars())
-		if !deployTrigger(artifact, env.Deploy) {
+	for _, manifest := range artifact.Environments {
+		manifest.ResolveVars(artifact.Vars())
+		if !deployTrigger(artifact, manifest.Deploy) {
 			continue
 		}
 
@@ -414,7 +414,7 @@ func processArtifactEvent(
 			gitopsRepoDeployKeyPath,
 			githubChartAccessToken,
 			artifact,
-			env,
+			manifest,
 			"policy",
 		)
 		gitopsEvents = append(gitopsEvents, gitopsEvent)
@@ -454,11 +454,11 @@ func cloneTemplateWriteAndPush(
 	gitopsRepoDeployKeyPath string,
 	githubChartAccessToken string,
 	artifact *dx.Artifact,
-	env *dx.Manifest,
+	manifest *dx.Manifest,
 	triggeredBy string,
 ) (*events.DeployEvent, error) {
 	gitopsEvent := &events.DeployEvent{
-		Manifest:    env,
+		Manifest:    manifest,
 		Artifact:    artifact,
 		TriggeredBy: triggeredBy,
 		Status:      events.Success,
@@ -474,8 +474,8 @@ func cloneTemplateWriteAndPush(
 	}
 
 	releaseMeta := &dx.Release{
-		App:         env.App,
-		Env:         env.Env,
+		App:         manifest.App,
+		Env:         manifest.Env,
 		ArtifactID:  artifact.ID,
 		Version:     &artifact.Version,
 		TriggeredBy: triggeredBy,
@@ -483,7 +483,7 @@ func cloneTemplateWriteAndPush(
 
 	sha, err := gitopsTemplateAndWrite(
 		repo,
-		env,
+		manifest,
 		releaseMeta,
 		githubChartAccessToken,
 	)
