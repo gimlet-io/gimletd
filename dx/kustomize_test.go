@@ -1,10 +1,9 @@
-package kustomize
+package dx
 
 import (
 	"strings"
 	"testing"
 
-	"github.com/gimlet-io/gimletd/dx"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -53,15 +52,15 @@ spec:
         name: myapp
 `
 
-	patched, err := ApplyPatches(strategicMergePatch, []dx.Json6902Patch{}, manifest)
+	patched, err := ApplyPatches(strategicMergePatch, []Json6902Patch{}, manifest)
 	assert.Nil(t, err)
 	assert.True(t, strings.Contains(patched, "azureFile"))
 }
 
 func Test_ApplyJsonPatches(t *testing.T) {
 
-	jsonPatch := dx.Json6902Patch{
-		Target: dx.Target{
+	jsonPatch := Json6902Patch{
+		Target: Target{
 			Group:   "apps",
 			Version: "v1",
 			Kind:    "Deployment",
@@ -98,7 +97,7 @@ spec:
         name: myapp
 `
 
-	patched, err := ApplyPatches("", []dx.Json6902Patch{jsonPatch}, manifest)
+	patched, err := ApplyPatches("", []Json6902Patch{jsonPatch}, manifest)
 	assert.Nil(t, err)
 	assert.True(t, strings.Contains(patched, "myapp-replaced"))
 	assert.True(t, strings.Contains(patched, "Always"))
