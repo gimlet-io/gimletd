@@ -19,14 +19,16 @@ type GitopsRepoCache struct {
 	gitopsRepoDeployKeyPath string
 	repo                    *git.Repository
 	cachePath               string
-	stopCh                  chan struct{}
+	stopCh                  chan os.Signal
+	waitCh                  chan struct{}
 }
 
 func NewGitopsRepoCache(
 	cacheRoot string,
 	gitopsRepo string,
 	gitopsRepoDeployKeyPath string,
-	stopCh chan struct{},
+	stopCh chan os.Signal,
+	waitCh chan struct{},
 ) (*GitopsRepoCache, error) {
 	cachePath, repo, err := CloneToTmpFs(cacheRoot, gitopsRepo, gitopsRepoDeployKeyPath)
 	if err != nil {
@@ -40,6 +42,7 @@ func NewGitopsRepoCache(
 		repo:                    repo,
 		cachePath:               cachePath,
 		stopCh:                  stopCh,
+		waitCh:                  waitCh,
 	}, nil
 }
 
@@ -51,6 +54,7 @@ func (r *GitopsRepoCache) Run() {
 		case <-r.stopCh:
 			logrus.Infof("cleaning up git repo cache at %s", r.cachePath)
 			TmpFsCleanup(r.cachePath)
+			r.waitCh <- struct{}{}
 			return
 		case <-time.After(30 * time.Second):
 		}
