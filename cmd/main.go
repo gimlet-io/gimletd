@@ -7,7 +7,10 @@ import (
 	"log"
 	"net/http"
 	_ "net/http/pprof"
+	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 
 	"github.com/gimlet-io/gimletd/cmd/config"
 	"github.com/gimlet-io/gimletd/git/customScm"
@@ -70,14 +73,16 @@ func main() {
 	}
 	go notificationsManager.Run()
 
-	stopCh := make(chan struct{})
-	defer close(stopCh)
+	stopCh := make(chan os.Signal, 1)
+	signal.Notify(stopCh, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+	waitCh := make(chan struct{})
 
 	repoCache, err := nativeGit.NewGitopsRepoCache(
 		config.RepoCachePath,
 		config.GitopsRepo,
 		config.GitopsRepoDeployKeyPath,
 		stopCh,
+		waitCh,
 	)
 	if err != nil {
 		panic(err)
@@ -130,10 +135,15 @@ func main() {
 	}()
 
 	r := server.SetupRouter(config, store, notificationsManager, repoCache, perf)
-	err = http.ListenAndServe(":8888", r)
-	if err != nil {
-		panic(err)
-	}
+	go func() {
+		err = http.ListenAndServe(":8888", r)
+		if err != nil {
+			panic(err)
+		}
+	}()
+
+	<-waitCh
+	logrus.Info("Successfully cleaned up resources. Stopping.")
 }
 
 func slackNotificationProvider(config *config.Config) *notifications.SlackProvider {
