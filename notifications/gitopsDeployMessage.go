@@ -69,7 +69,7 @@ func (gm *gitopsDeployMessage) AsSlackMessage() (*slackMessage, error) {
 				Type: contextString,
 				Elements: []Text{
 					{Type: markdown, Text: fmt.Sprintf(":dart: %s", strings.Title(gm.event.Manifest.Env))},
-					{Type: markdown, Text: fmt.Sprintf(":clipboard: %s", gm.event.Artifact.Version.URL)},
+					{Type: markdown, Text: fmt.Sprintf(":clipboard: %s", commitLink(gm.event.Artifact.Version.RepositoryName, gm.event.Artifact.Version.SHA))},
 					{Type: markdown, Text: fmt.Sprintf(":paperclip: %s", commitLink(gm.event.GitopsRepo, gm.event.GitopsRef))},
 				},
 			},
