@@ -41,7 +41,7 @@ func (gm *gitopsDeleteMessage) AsSlackMessage() (*slackMessage, error) {
 			},
 		)
 	} else {
-		msg.Text = fmt.Sprintf("Deleting %s of %s", gm.event.App, gm.event.Env)
+		msg.Text = fmt.Sprintf("%s is deleting %s on %s", gm.event.TriggeredBy, gm.event.App, gm.event.Env)
 		msg.Blocks = append(msg.Blocks,
 			Block{
 				Type: section,
