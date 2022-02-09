@@ -52,7 +52,7 @@ func (gm *gitopsRollbackMessage) AsSlackMessage() (*slackMessage, error) {
 			},
 		)
 	} else {
-		msg.Text = fmt.Sprintf("🔙 %s is rolling back %s on %s", gm.event.RollbackRequest.TriggeredBy, gm.event.RollbackRequest.App, gm.event.RollbackRequest.Env)
+		msg.Text = fmt.Sprintf("🔙 User %s is rolling back %s on %s", gm.event.RollbackRequest.TriggeredBy, gm.event.RollbackRequest.App, gm.event.RollbackRequest.Env)
 		msg.Blocks = append(msg.Blocks,
 			Block{
 				Type: section,
