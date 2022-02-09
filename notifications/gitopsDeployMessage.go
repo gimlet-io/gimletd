@@ -54,7 +54,7 @@ func (gm *gitopsDeployMessage) AsSlackMessage() (*slackMessage, error) {
 			},
 		)
 	} else {
-		msg.Text = fmt.Sprintf("Rolling out %s of %s", gm.event.Manifest.App, gm.event.Artifact.Version.RepositoryName)
+		msg.Text = fmt.Sprintf("%s is rolling out %s on %s", gm.event.TriggeredBy, gm.event.Manifest.App, gm.event.Artifact.Version.RepositoryName)
 		msg.Blocks = append(msg.Blocks,
 			Block{
 				Type: section,
