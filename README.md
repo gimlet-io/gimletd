@@ -40,3 +40,18 @@ Set the following Gitpod variables so Gitpod can create a `.env` file and a `dep
 
 Use the `ssh-keygen -a 100 -t ed25519 -C your@email.here -f $(pwd)/deploykey` command to generate a deploykey when your setup GimletD for the first time.
 Use the `sed -z 's/\n/\\n/g' deploykey | base64 -w 0` command to get a base64 encoded representation of the SSH key that you store as the DEPLOY_KEY Gitpod variable
+
+#### Running Postgres
+
+```
+docker run --rm -e POSTGRES_PASSWORD=mysecretpassword -p 5432:5432 postgres
+```
+
+```
+DATABASE_DRIVER=postgres
+DATABASE_CONFIG=postgres://postgres:mysecretpassword@127.0.0.1:5432/postgres?sslmode=disable
+```
+
+```
+psql -h 127.0.0.1 -U postgres
+```

@@ -89,6 +89,68 @@ CREATE TABLE IF NOT EXISTS key_values (
 `,
 		},
 	},
-	"postgres": {},
-	"mysql":    {},
+	"postgres": {
+		{
+			name: createTableUsers,
+			stmt: `
+CREATE TABLE IF NOT EXISTS users (
+id           INTEGER PRIMARY KEY AUTOINCREMENT,
+login         TEXT,
+secret        TEXT,
+admin         BOOLEAN,
+UNIQUE(login)
+);
+`,
+		},
+		{
+			name: createTableEvents,
+			stmt: `
+CREATE TABLE IF NOT EXISTS events (
+id            TEXT,
+created       INTEGER,
+type          TEXT,
+blob          TEXT,
+status        TEXT DEFAULT 'new',
+status_desc   TEXT DEFAULT '',
+repository    TEXT,
+branch        TEXT,
+event         TEXT,
+source_branch TEXT,
+target_branch TEXT,
+tag           TEXT,
+sha           TEXT,
+artifact_id   TEXT,
+UNIQUE(id)
+);
+`,
+		},
+		{
+			name: addGitopsStatusColumnToEventsTable,
+			stmt: `ALTER TABLE events ADD COLUMN gitops_hashes TEXT DEFAULT '[]';`,
+		},
+		{
+			name: createTableGitopsCommits,
+			stmt: `
+CREATE TABLE IF NOT EXISTS gitops_commits (
+id          INTEGER PRIMARY KEY AUTOINCREMENT,
+sha         TEXT,
+status      TEXT,
+status_desc TEXT,
+UNIQUE(id)
+);
+`,
+		},
+		{
+			name: createTableKeyValues,
+			stmt: `
+CREATE TABLE IF NOT EXISTS key_values (
+	id        INTEGER PRIMARY KEY AUTOINCREMENT,
+	key       TEXT,
+	value      TEXT,
+	UNIQUE(key)
+	);
+`,
+		},
+	},
+	"mysql": {},
 }

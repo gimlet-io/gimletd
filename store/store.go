@@ -2,9 +2,10 @@ package store
 
 import (
 	"database/sql"
-	"github.com/gimlet-io/gimletd/store/ddl"
 	"os"
 	"time"
+
+	"github.com/gimlet-io/gimletd/store/ddl"
 
 	"github.com/russross/meddler"
 
@@ -107,7 +108,7 @@ func NewTest() *Store {
 // a connection can be established before we proceed with the
 // database setup and migration.
 func pingDatabase(db *sql.DB) (err error) {
-	for i := 0; i < 30; i++ {
+	for i := 0; i < 10; i++ {
 		err = db.Ping()
 		if err == nil {
 			return
