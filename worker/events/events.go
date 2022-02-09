@@ -25,6 +25,7 @@ type DeployEvent struct {
 
 type RollbackEvent struct {
 	RollbackRequest *dx.RollbackRequest
+	TriggeredBy string
 
 	Status     Status
 	StatusDesc string
