@@ -16,6 +16,13 @@ format:
 test:
 	$(DOCKER_RUN) go test -race -timeout 60s $(shell go list ./... )
 
+test-with-postgres:
+	docker run --rm -e POSTGRES_PASSWORD=mysecretpassword -p 5432:5432 -d postgres
+
+	export DATABASE_DRIVER=postgres
+	export DATABASE_CONFIG=postgres://postgres:mysecretpassword@127.0.0.1:5432/postgres?sslmode=disable
+	go test -timeout 60s github.com/gimlet-io/gimletd/store/...
+
 build:
 	$(DOCKER_RUN) go build -ldflags $(LDFLAGS) -o build/gimlet github.com/gimlet-io/gimletd/cmd
 

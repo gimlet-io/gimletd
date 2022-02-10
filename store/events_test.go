@@ -2,9 +2,11 @@ package store
 
 import (
 	"encoding/json"
+	"testing"
+	"time"
+
 	"github.com/gimlet-io/gimletd/dx"
 	"github.com/gimlet-io/gimletd/model"
-	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -53,4 +55,56 @@ func TestEventCRUD(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(artifacts))
 	assert.Equal(t, "ea9ab7cc31b2599bf4afcfd639da516ca27a4780", artifacts[0].SHA)
+}
+
+func TestAdvancedArtifactQueries(t *testing.T) {
+	s := NewTest()
+	defer func() {
+		s.Close()
+	}()
+
+	err := setupData(s)
+	assert.Nil(t, err)
+
+	artifacts, err := s.Artifacts("", "", nil, "", []string{}, 0, 0, nil, nil)
+	assert.Nil(t, err)
+	assert.Equal(t, 2, len(artifacts))
+	assert.Equal(t, "sha1", artifacts[0].SHA)
+
+	threeHoursAgo := time.Now().Add(-3 * time.Hour)
+	artifacts, err = s.Artifacts("", "", nil, "", []string{}, 0, 0, &threeHoursAgo, nil)
+	assert.Nil(t, err)
+	assert.Equal(t, 1, len(artifacts))
+	assert.Equal(t, "sha1", artifacts[0].SHA)
+
+	twoHoursAgo := time.Now().Add(-2 * time.Hour)
+	artifacts, err = s.Artifacts("", "", nil, "", []string{}, 0, 0, &threeHoursAgo, &twoHoursAgo)
+	assert.Nil(t, err)
+	assert.Equal(t, 0, len(artifacts))
+
+	artifacts, err = s.Artifacts("", "", nil, "", []string{"sha1", "sha2"}, 0, 0, nil, nil)
+	assert.Nil(t, err)
+	assert.Equal(t, 2, len(artifacts))
+}
+
+func setupData(s *Store) error {
+	anHourAgo := time.Now().Add(-1 * time.Hour)
+	aModel, _ := model.ToEvent(dx.Artifact{
+		Version: dx.Version{
+			SHA: "sha1",
+		},
+	})
+	_, err := s.createEvent(aModel, anHourAgo.Unix())
+	if err != nil {
+		return err
+	}
+
+	tenHoursAgo := time.Now().Add(-10 * time.Hour)
+	aModel, _ = model.ToEvent(dx.Artifact{
+		Version: dx.Version{
+			SHA: "sha2",
+		},
+	})
+	_, err = s.createEvent(aModel, tenHoursAgo.Unix())
+	return err
 }

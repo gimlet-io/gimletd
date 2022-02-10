@@ -2,9 +2,10 @@ package store
 
 import (
 	"database/sql"
-	"github.com/gimlet-io/gimletd/store/ddl"
 	"os"
 	"time"
+
+	"github.com/gimlet-io/gimletd/store/ddl"
 
 	"github.com/russross/meddler"
 
@@ -69,21 +70,6 @@ func open(driver, config string) *sql.DB {
 	return db
 }
 
-// openTest opens a new database connection for testing purposes.
-// The database driver and connection string are provided by
-// environment variables, with fallback to in-memory sqlite.
-func openTest() *sql.DB {
-	var (
-		driver = "sqlite3"
-		config = ":memory:"
-	)
-	if os.Getenv("DATABASE_DRIVER") != "" {
-		driver = os.Getenv("DATABASE_DRIVER")
-		config = os.Getenv("DATABASE_CONFIG")
-	}
-	return open(driver, config)
-}
-
 // NewTest creates a new database connection for testing purposes.
 // The database driver and connection string are provided by
 // environment variables, with fallback to in-memory sqlite.
@@ -96,18 +82,33 @@ func NewTest() *Store {
 		driver = os.Getenv("DATABASE_DRIVER")
 		config = os.Getenv("DATABASE_CONFIG")
 	}
-	return &Store{
+
+	store := &Store{
 		DB:     open(driver, config),
 		driver: driver,
 		config: config,
 	}
+
+	// if not in-memory DB, recreate tables between tests
+	if driver != "sqlite3" {
+		store.Exec(`
+drop table migrations;
+drop table users;
+drop table events;
+drop table gitops_commits;
+
+`)
+		setupDatabase(driver, store.DB)
+	}
+
+	return store
 }
 
 // helper function to ping the database with backoff to ensure
 // a connection can be established before we proceed with the
 // database setup and migration.
 func pingDatabase(db *sql.DB) (err error) {
-	for i := 0; i < 30; i++ {
+	for i := 0; i < 10; i++ {
 		err = db.Ping()
 		if err == nil {
 			return

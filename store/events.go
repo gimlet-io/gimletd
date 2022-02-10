@@ -2,19 +2,29 @@ package store
 
 import (
 	"fmt"
+	"strings"
+	"time"
+
 	"github.com/gimlet-io/gimletd/dx"
 	"github.com/gimlet-io/gimletd/model"
 	"github.com/gimlet-io/gimletd/store/sql"
 	"github.com/google/uuid"
 	"github.com/russross/meddler"
-	"strings"
-	"time"
 )
 
 // CreateEvent stores a new event in the database
 func (db *Store) CreateEvent(event *model.Event) (*model.Event, error) {
 	event.ID = uuid.New().String()
 	event.Created = time.Now().Unix()
+	event.Status = model.StatusNew
+	return event, meddler.Insert(db, "events", event)
+}
+
+// createEvent stores a new event in the database, but it is able to fake the created date.
+// Should be only used in tests
+func (db *Store) createEvent(event *model.Event, created int64) (*model.Event, error) {
+	event.ID = uuid.New().String()
+	event.Created = created
 	event.Status = model.StatusNew
 	return event, meddler.Insert(db, "events", event)
 }
@@ -31,33 +41,43 @@ func (db *Store) Artifacts(
 	filters := []string{}
 	args := []interface{}{}
 
-	filters = addFilter(filters, "type = ?")
+	filters = addFilter(filters, "type = $1")
 	args = append(args, model.TypeArtifact)
 
 	if since != nil {
-		filters = addFilter(filters, "created >= ?")
+		filters = addFilter(filters, fmt.Sprintf("created >= $%d", len(filters)+1))
 		args = append(args, since.Unix())
 	}
 	if until != nil {
-		filters = addFilter(filters, "created < ?")
+		filters = addFilter(filters, fmt.Sprintf("created < $%d", len(filters)+1))
 		args = append(args, until.Unix())
 	}
 
 	if repo != "" {
-		filters = addFilter(filters, "repository = ?")
+		filters = addFilter(filters, fmt.Sprintf("repository = $%d", len(filters)+1))
 		args = append(args, repo)
 	}
 	if branch != "" {
-		filters = addFilter(filters, "branch = ?")
+		filters = addFilter(filters, fmt.Sprintf("branch = $%d", len(filters)+1))
 		args = append(args, branch)
 	}
 	if sourceBranch != "" {
-		filters = addFilter(filters, "branch = ?")
+		filters = addFilter(filters, fmt.Sprintf("branch = $%d", len(filters)+1))
 		args = append(args, sourceBranch)
 	}
 	if len(sha) != 0 {
-		filters = addFilter(filters, "sha in (?" + strings.Repeat(",?", len(sha)-1) + ")")
-		for _, s := range sha {
+		for idx, s := range sha {
+			if idx == 0 {
+				if len(sha) == 1 {
+					filters = append(filters, fmt.Sprintf(" AND sha in ($%d)", len(filters)+1))
+				} else {
+					filters = append(filters, fmt.Sprintf(" AND sha in ($%d", len(filters)+1))
+				}
+			} else if idx == len(sha)-1 {
+				filters = append(filters, fmt.Sprintf(", $%d)", len(filters)+1))
+			} else {
+				filters = append(filters, fmt.Sprintf(", $%d", len(filters)+1))
+			}
 			args = append(args, s)
 		}
 	}
@@ -90,7 +110,7 @@ func (db *Store) Artifact(id string) (*model.Event, error) {
 	query := fmt.Sprintf(`
 SELECT id, repository, branch, event, source_branch, target_branch, tag, created, blob, status, status_desc, sha, artifact_id
 FROM events
-WHERE artifact_id = ?;
+WHERE artifact_id = $1;
 `)
 
 	var data model.Event
@@ -103,7 +123,7 @@ func (db *Store) Event(id string) (*model.Event, error) {
 	query := fmt.Sprintf(`
 SELECT id, created, blob, status, status_desc, gitops_hashes
 FROM events
-WHERE id = ?;
+WHERE id = $1;
 `)
 
 	var data model.Event
