@@ -68,7 +68,11 @@ func (db *Store) Artifacts(
 	if len(sha) != 0 {
 		for idx, s := range sha {
 			if idx == 0 {
-				filters = append(filters, fmt.Sprintf(" AND sha in ($%d", len(filters)+1))
+				if len(sha) == 1 {
+					filters = append(filters, fmt.Sprintf(" AND sha in ($%d)", len(filters)+1))
+				} else {
+					filters = append(filters, fmt.Sprintf(" AND sha in ($%d", len(filters)+1))
+				}
 			} else if idx == len(sha)-1 {
 				filters = append(filters, fmt.Sprintf(", $%d)", len(filters)+1))
 			} else {
