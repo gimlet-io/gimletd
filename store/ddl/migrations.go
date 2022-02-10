@@ -94,7 +94,7 @@ CREATE TABLE IF NOT EXISTS key_values (
 			name: createTableUsers,
 			stmt: `
 CREATE TABLE IF NOT EXISTS users (
-id           INTEGER PRIMARY KEY AUTOINCREMENT,
+id           SERIAL,
 login         TEXT,
 secret        TEXT,
 admin         BOOLEAN,
@@ -132,7 +132,7 @@ UNIQUE(id)
 			name: createTableGitopsCommits,
 			stmt: `
 CREATE TABLE IF NOT EXISTS gitops_commits (
-id          INTEGER PRIMARY KEY AUTOINCREMENT,
+id          SERIAL,
 sha         TEXT,
 status      TEXT,
 status_desc TEXT,
@@ -144,7 +144,7 @@ UNIQUE(id)
 			name: createTableKeyValues,
 			stmt: `
 CREATE TABLE IF NOT EXISTS key_values (
-	id        INTEGER PRIMARY KEY AUTOINCREMENT,
+	id        SERIAL,
 	key       TEXT,
 	value      TEXT,
 	UNIQUE(key)

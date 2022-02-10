@@ -84,7 +84,7 @@ CREATE TABLE IF NOT EXISTS migrations (
 `
 
 var migrationInsert = `
-INSERT INTO migrations (name) VALUES (?)
+INSERT INTO migrations (name) VALUES ($1)
 `
 
 var migrationSelect = `
