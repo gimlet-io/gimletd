@@ -36,11 +36,15 @@ jobs:
       env:
         VERSION: ${{ steps.get_version.outputs.version-without-v }}
 
-    - name: Test
+    - name: 🧪 Test
       run: |
         git config --global user.email "git@gimlet.io"
         git config --global user.name "Github Actions"
         make test
+
+    - name: 🐘 Test with Postgres store
+      run: |
+        make test-with-postgres
 
     - name: Build
       run: make build
