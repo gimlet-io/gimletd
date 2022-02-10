@@ -96,7 +96,7 @@ drop table migrations;
 drop table users;
 drop table events;
 drop table gitops_commits;
-
+drop table key_values;
 `)
 		setupDatabase(driver, store.DB)
 	}
