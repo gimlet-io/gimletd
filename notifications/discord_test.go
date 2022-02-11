@@ -1,6 +1,7 @@
 package notifications
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/gimlet-io/gimletd/dx"
@@ -26,7 +27,9 @@ func TestSendingFluxMessage(t *testing.T) {
 		t.Errorf("Failed to create Discord message!")
 	}
 
-	assertEqual(t, discordMessageHealthCheckPassed.Embed.Description, ":heavy_check_mark: Applied resources from [76ab7d6](https://github.com/gimlet/commit/76ab7d611242f7c6742f0ab662133e02b2ba2b1c) are up and healthy")
+	if !strings.Contains(discordMessageHealthCheckPassed.Embed.Description, "Applied resources from") {
+		t.Errorf("Flux health check passed message must contain 'Applied resources from'")
+	}
 
 	msgHealthCheckProgressing := fluxMessage{
 		gitopsCommit: &model.GitopsCommit{
@@ -44,7 +47,9 @@ func TestSendingFluxMessage(t *testing.T) {
 		t.Errorf("Failed to create Discord message!")
 	}
 
-	assertEqual(t, discordMessageHealthCheckProgressing.Embed.Description, ":hourglass_flowing_sand: Applying gitops changes from [76ab7d6](https://github.com/gimlet/commit/76ab7d611242f7c6742f0ab662133e02b2ba2b1c)")
+	if !strings.Contains(discordMessageHealthCheckProgressing.Embed.Description, "Applying gitops changes from") {
+		t.Errorf("Flux health check progressing message must contain 'Applying gitops changes from'")
+	}
 
 	msgHealthCheckFailed := fluxMessage{
 		gitopsCommit: &model.GitopsCommit{
@@ -62,7 +67,9 @@ func TestSendingFluxMessage(t *testing.T) {
 		t.Errorf("Failed to create Discord message!")
 	}
 
-	assertEqual(t, discordMessageHealthCheckFailed.Embed.Description, ":exclamation: Gitops changes from [76ab7d6](https://github.com/gimlet/commit/76ab7d611242f7c6742f0ab662133e02b2ba2b1c) failed to apply")
+	if !strings.Contains(discordMessageHealthCheckFailed.Embed.Description, "failed to apply") {
+		t.Errorf("Flux health check failed message message must contain 'failed to apply'")
+	}
 
 }
 
@@ -85,7 +92,9 @@ func TestSendingGitopsDeleteMessage(t *testing.T) {
 		t.Errorf("Failed to create Discord message!")
 	}
 
-	assertEqual(t, discordMessageDeleteFailed.Embed.Description, ":exclamation: *Error* :exclamation: cannot delete")
+	if !strings.Contains(discordMessageDeleteFailed.Embed.Description, "cannot delete") {
+		t.Errorf("Gitops deletion failed message must contain 'cannot delete'")
+	}
 
 	msgPolicyDeletion := gitopsDeleteMessage{
 		event: &events.DeleteEvent{
@@ -104,7 +113,9 @@ func TestSendingGitopsDeleteMessage(t *testing.T) {
 		t.Errorf("Failed to create Discord message!")
 	}
 
-	assertEqual(t, discordMessagePolicyDeletion.Text, "Policy based deletion of myapp on staging")
+	if !strings.Contains(discordMessagePolicyDeletion.Text, "Policy based deletion") {
+		t.Errorf("Gitops policy deletion message must contain 'Policy based deletion'")
+	}
 
 }
 
@@ -137,7 +148,9 @@ func TestSendingGitopsDeployMessage(t *testing.T) {
 		t.Errorf("Failed to create Discord message!")
 	}
 
-	assertEqual(t, discordMessageSendFailure.Text, "Failed to roll out myapp of testrepo")
+	if !strings.Contains(discordMessageSendFailure.Text, "Failed to roll out") {
+		t.Errorf("Gitops reploy failure message must contain 'Failed to roll back'")
+	}
 
 	msgSendByGimlet := gitopsDeployMessage{
 		event: &events.DeployEvent{
@@ -161,7 +174,9 @@ func TestSendingGitopsDeployMessage(t *testing.T) {
 		t.Errorf("Failed to create Discord message!")
 	}
 
-	assertEqual(t, discordMessageSendByGimlet.Text, "Gimlet is rolling out myapp on testrepo")
+	if !strings.Contains(discordMessageSendByGimlet.Text, "is rolling out") {
+		t.Errorf("Gitops deploy message which triggered by someone, must contain 'is rolling out'")
+	}
 
 }
 
@@ -187,7 +202,9 @@ func TestSendingGitopsRollbackMessage(t *testing.T) {
 		t.Errorf("Failed to create Discord message!")
 	}
 
-	assertEqual(t, discordMessageRollbackFailed.Text, "Failed to roll back myapp of staging")
+	if !strings.Contains(discordMessageRollbackFailed.Text, "Failed to roll back") {
+		t.Errorf("Rollback failed message must contain 'Failed to roll back'")
+	}
 
 	msgRollbackSuccess := gitopsRollbackMessage{
 		event: &events.RollbackEvent{
@@ -209,12 +226,8 @@ func TestSendingGitopsRollbackMessage(t *testing.T) {
 		t.Errorf("Failed to create Discord message!")
 	}
 
-	assertEqual(t, discordMessageRollbackSuccess.Text, ":arrow_backward: Gimlet is rolling back myapp on staging")
-
-}
-
-func assertEqual(t *testing.T, a interface{}, b interface{}) {
-	if a != b {
-		t.Fatalf("%s != %s", a, b)
+	if !strings.Contains(discordMessageRollbackSuccess.Text, "is rolling back") {
+		t.Errorf("Rollback success message must contain 'is rolling back'")
 	}
+
 }
