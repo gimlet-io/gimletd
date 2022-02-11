@@ -209,7 +209,7 @@ func TestSendingGitopsRollbackMessage(t *testing.T) {
 		t.Errorf("Failed to create Discord message!")
 	}
 
-	assertEqual(t, discordMessageRollbackSuccess.Text, "🔙 Gimlet is rolling back myapp on staging")
+	assertEqual(t, discordMessageRollbackSuccess.Text, ":arrow_backward: Gimlet is rolling back myapp on staging")
 
 }
 

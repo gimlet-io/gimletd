@@ -117,7 +117,7 @@ func (gm *gitopsRollbackMessage) AsDiscordMessage() (*discordMessage, error) {
 		msg.Embed.Color = 15158332
 
 	} else {
-		msg.Text = fmt.Sprintf("🔙 %s is rolling back %s on %s", gm.event.RollbackRequest.TriggeredBy, gm.event.RollbackRequest.App, gm.event.RollbackRequest.Env)
+		msg.Text = fmt.Sprintf(":arrow_backward: %s is rolling back %s on %s", gm.event.RollbackRequest.TriggeredBy, gm.event.RollbackRequest.App, gm.event.RollbackRequest.Env)
 
 		msg.Embed.Description += fmt.Sprintf(":dart: %s\n", strings.Title(gm.event.RollbackRequest.Env))
 		msg.Embed.Description += fmt.Sprintf(":clipboard: %s\n", gm.event.RollbackRequest.TargetSHA)
