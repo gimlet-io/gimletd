@@ -9,8 +9,9 @@ import (
 const githubCommitLinkFormatForDiscord = "[%s](https://github.com/%s/commit/%s)"
 
 type DiscordProvider struct {
-	Token     string
-	ChannelID string
+	Token          string
+	ChannelID      string
+	ChannelMapping map[string]string
 }
 
 type discordMessage struct {
@@ -29,6 +30,12 @@ func (s *DiscordProvider) send(msg Message) error {
 	if err != nil {
 		return fmt.Errorf("cannot create slack message: %s", err)
 	}
+
+	channel := s.ChannelID
+	if ch, ok := s.ChannelMapping[msg.Env()]; ok {
+		channel = ch
+	}
+	s.ChannelID = channel
 
 	return s.post(discordBot, discordMessage)
 }
