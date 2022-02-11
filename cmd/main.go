@@ -68,6 +68,9 @@ func main() {
 	if config.Notifications.Provider == "slack" {
 		notificationsManager.AddProvider(slackNotificationProvider(config))
 	}
+	if config.Notifications.Provider == "discord" {
+		notificationsManager.AddProvider(discordNotificationProvider(config))
+	}
 	if tokenManager != nil {
 		notificationsManager.AddProvider(notifications.NewGithubProvider(tokenManager))
 	}
@@ -159,6 +162,13 @@ func slackNotificationProvider(config *config.Config) *notifications.SlackProvid
 		Token:          config.Notifications.Token,
 		ChannelMapping: channelMap,
 		DefaultChannel: config.Notifications.DefaultChannel,
+	}
+}
+
+func discordNotificationProvider(config *config.Config) *notifications.DiscordProvider {
+	return &notifications.DiscordProvider{
+		Token:     config.Notifications.Token,
+		ChannelID: config.Notifications.DefaultChannel,
 	}
 }
 
