@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bwmarrin/discordgo"
 	"github.com/gimlet-io/gimletd/worker/events"
 	githubLib "github.com/google/go-github/v37/github"
 )
@@ -109,6 +110,45 @@ func (gm *gitopsDeployMessage) AsGithubStatus() (*githubLib.RepoStatus, error) {
 		Description: &desc,
 		TargetURL:   targetURLPtr,
 	}, nil
+}
+
+func (gm *gitopsDeployMessage) AsDiscordMessage() (*discordMessage, error) {
+
+	msg := &discordMessage{
+		Text: "",
+		Embed: &discordgo.MessageEmbed{
+			Type:        "article",
+			Description: "",
+			Color:       0,
+		},
+	}
+
+	if gm.event.Status == events.Failure {
+		msg.Text = fmt.Sprintf("Failed to roll out %s of %s", gm.event.Manifest.App, gm.event.Artifact.Version.RepositoryName)
+
+		msg.Embed.Description += fmt.Sprintf(":exclamation: *Error* :exclamation: \n%s\n", gm.event.StatusDesc)
+		msg.Embed.Description += fmt.Sprintf(":dart: %s\n", strings.Title(gm.event.Manifest.Env))
+		msg.Embed.Description += fmt.Sprintf(":clipboard: %s\n", gm.event.Artifact.Version.URL)
+
+		msg.Embed.Color = 15158332
+
+	} else {
+		if gm.event.TriggeredBy == "policy" {
+			msg.Text = fmt.Sprintf("Policy based rollout of %s on %s", gm.event.Manifest.App, gm.event.Artifact.Version.RepositoryName)
+		} else {
+			msg.Text = fmt.Sprintf("%s is rolling out %s on %s", gm.event.TriggeredBy, gm.event.Manifest.App, gm.event.Artifact.Version.RepositoryName)
+		}
+
+		msg.Embed.Description += fmt.Sprintf(":dart: %s\n", strings.Title(gm.event.Manifest.Env))
+		msg.Embed.Description += fmt.Sprintf(":clipboard: %s\n", gm.event.Artifact.Version.URL)
+		msg.Embed.Description += fmt.Sprintf(":paperclip: %s\n", discordCommitLink(gm.event.GitopsRepo, gm.event.GitopsRef))
+
+		msg.Embed.Color = 3066993
+
+	}
+
+	return msg, nil
+
 }
 
 func MessageFromGitOpsEvent(event *events.DeployEvent) Message {

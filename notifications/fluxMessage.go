@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/bwmarrin/discordgo"
 	"github.com/gimlet-io/gimletd/model"
 	githubLib "github.com/google/go-github/v37/github"
 )
@@ -84,6 +85,39 @@ func (fm *fluxMessage) Env() string {
 
 func (fm *fluxMessage) AsGithubStatus() (*githubLib.RepoStatus, error) {
 	return nil, nil
+}
+
+func (fm *fluxMessage) AsDiscordMessage() (*discordMessage, error) {
+
+	msg := &discordMessage{
+		Text: "Health check",
+		Embed: &discordgo.MessageEmbed{
+			Type:        "article",
+			Description: "",
+			Color:       3066993,
+		},
+	}
+
+	switch fm.gitopsCommit.Status {
+	case model.Progressing:
+		if strings.Contains(fm.gitopsCommit.StatusDesc, "Health check passed") {
+			msg.Embed.Description = fmt.Sprintf(":heavy_check_mark: Applied resources from %s are up and healthy", discordCommitLink(fm.gitopsRepo, fm.gitopsCommit.Sha))
+		} else {
+			msg.Embed.Description = fmt.Sprintf(":hourglass_flowing_sand: Applying gitops changes from %s", discordCommitLink(fm.gitopsRepo, fm.gitopsCommit.Sha))
+		}
+	case model.ValidationFailed:
+		fallthrough
+	case model.ReconciliationFailed:
+		msg.Embed.Description = fmt.Sprintf(":exclamation: Gitops changes from %s failed to apply", discordCommitLink(fm.gitopsRepo, fm.gitopsCommit.Sha))
+		msg.Embed.Color = 15158332
+	case model.HealthCheckFailed:
+		msg.Embed.Description = fmt.Sprintf(":ambulance: Gitops changes from %s have health issues", discordCommitLink(fm.gitopsRepo, fm.gitopsCommit.Sha))
+		msg.Embed.Color = 15158332
+	default:
+		msg.Embed.Description = fmt.Sprintf("%s: %s", fm.gitopsCommit.Status, discordCommitLink(fm.gitopsRepo, fm.gitopsCommit.Sha))
+	}
+
+	return msg, nil
 }
 
 func NewMessage(gitopsRepo string, gitopsCommit *model.GitopsCommit, env string) Message {

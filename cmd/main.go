@@ -68,6 +68,9 @@ func main() {
 	if config.Notifications.Provider == "slack" {
 		notificationsManager.AddProvider(slackNotificationProvider(config))
 	}
+	if config.Notifications.Provider == "discord" {
+		notificationsManager.AddProvider(discordNotificationProvider(config))
+	}
 	if tokenManager != nil {
 		notificationsManager.AddProvider(notifications.NewGithubProvider(tokenManager))
 	}
@@ -147,6 +150,26 @@ func main() {
 }
 
 func slackNotificationProvider(config *config.Config) *notifications.SlackProvider {
+	slackChannelMap := parseChannelMap(config)
+
+	return &notifications.SlackProvider{
+		Token:          config.Notifications.Token,
+		ChannelMapping: slackChannelMap,
+		DefaultChannel: config.Notifications.DefaultChannel,
+	}
+}
+
+func discordNotificationProvider(config *config.Config) *notifications.DiscordProvider {
+	discordChannelMapping := parseChannelMap(config)
+
+	return &notifications.DiscordProvider{
+		Token:          config.Notifications.Token,
+		ChannelMapping: discordChannelMapping,
+		ChannelID:      config.Notifications.DefaultChannel,
+	}
+}
+
+func parseChannelMap(config *config.Config) map[string]string {
 	channelMap := map[string]string{}
 	if config.Notifications.ChannelMapping != "" {
 		pairs := strings.Split(config.Notifications.ChannelMapping, ",")
@@ -155,11 +178,7 @@ func slackNotificationProvider(config *config.Config) *notifications.SlackProvid
 			channelMap[keyValue[0]] = keyValue[1]
 		}
 	}
-	return &notifications.SlackProvider{
-		Token:          config.Notifications.Token,
-		ChannelMapping: channelMap,
-		DefaultChannel: config.Notifications.DefaultChannel,
-	}
+	return channelMap
 }
 
 // helper function configures the logging.
