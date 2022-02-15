@@ -90,13 +90,11 @@ func NewTest() *Store {
 	}
 
 	// if not in-memory DB, recreate tables between tests
-	if driver != "sqlite3" {
+	if driver == "postgres" {
 		store.Exec(`
-drop table migrations;
-drop table users;
-drop table events;
-drop table gitops_commits;
-drop table key_values;
+select 'drop table if exists "' || tablename || '" cascade;'
+from pg_tables
+where tablename not like 'pg%' and tablename not like 'sql%';
 `)
 		setupDatabase(driver, store.DB)
 	}
