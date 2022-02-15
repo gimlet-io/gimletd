@@ -1,3 +1,12 @@
+**ARCHIVED**
+
+**Merged into https://github.com/gimlet-io/gimlet-cli**
+
+**The docker image location is still `ghcr.io/gimlet-io/gimletd:latest`**
+
+**Look for future releases under https://github.com/gimlet-io/gimlet-cli/releases tagged with `gimletd-vx.y.z`**
+
+
 # gimletd - the GitOps release manager
 
 [![Gitpod ready-to-code](https://img.shields.io/badge/Gitpod-ready--to--code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/gimlet-io/gimletd)
